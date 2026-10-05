@@ -1,9 +1,9 @@
 {
  "schema": "at2-progress-baseline/1",
  "target_binary": "SLPS_258.19",
- "generated_at": "2026-10-05T23:34:53+0800",
- "source_commit": "1ee1f1127de18a70dca32ce750f2ec6598e43db1",
- "source_dirty": false,
+ "generated_at": "2026-10-05T23:39:04+0800",
+ "source_commit": "c0c0541be07c0644ae2f250c010136644e03003a",
+ "source_dirty": true,
  "ratchet_payload_sha1": "7cc42d275750600d1f232b2632447f77205f3fc0",
  "report_sha256": "a2b9f7b0190209da800a29d852b009afbdca264707c18946edc449524a2aeaf4",
  "measures": {
@@ -52,13 +52,25 @@
   "stub_entries_excluded_from_decompiled": 145,
   "splat_glabels_total": 13250,
   "splat_glabels_absent_from_symbol_addrs": 2327,
-  "splat_glabels_absent_bytes_estimate": 273808,
-  "note": "stub_* （注释 tag）照抄汇编桩不计入已反编译，base_path=null；asm 树里由 splat disassemble_all 自动识别、但不在 symbol_addrs 的 2327 个 glabel 不在本报告分母内（约 273808 B 代码）"
+  "splat_glabels_absent_bytes": 289284,
+  "splat_glabels_absent_bytes_code": 249924,
+  "splat_glabels_absent_bytes_data_incbin": 39360,
+  "universe_all_projection": {
+   "note": "把上面 2327 个缺失 glabel 也当 unit（`--universe all`）后的投影；已用一次实测 --universe all 运行核对，total_code/百分比完全一致",
+   "total_units": 13250,
+   "total_functions": 13250,
+   "total_code": 2566064,
+   "matched_code": 119076,
+   "matched_code_percent": 4.6404,
+   "matched_functions": 2688,
+   "matched_functions_percent": 20.2868
+  },
+  "note": "stub_* （注释 tag）照抄汇编桩不计入已反编译，base_path=null；asm 树里由 splat disassemble_all 自动识别、但不在 symbol_addrs 的 2327 个 glabel（249924 B 代码 + 39360 B .incbin 数据 = 289284 B）**不在本报告分母内**；若纳入则见 universe_all_projection"
  },
  "timing_seconds": {
-  "total": 8.5,
-  "assemble": 1.2,
-  "objdiff_report": 1.6
+  "total": 19.1,
+  "assemble": 2.1,
+  "objdiff_report": 3.0
  },
  "tool_versions": {
   "objdiff-cli": "objdiff-cli 3.8.2",
