@@ -28,12 +28,12 @@ configure:
 
 rom:
 	@test -f orig/SLPS_258.19 || { echo "缺 orig/SLPS_258.19（自备正版光盘中的主程序）"; exit 1; }
-	@$(PY) tools/project/extract_payload.py orig/SLPS_258.19 SLPS_258.19.rom
+	@test -f SLPS_258.19.rom || $(PY) tools/project/extract_payload.py orig/SLPS_258.19 SLPS_258.19.rom
 	@sha1sum SLPS_258.19.rom
 
 split: rom
-	@splat split splat.yaml
-	@echo "splat split 完成：asm/ + include/"
+	@test -f include/macro.inc || splat split splat.yaml
+	@test -f include/macro.inc && echo "splat split 就绪：asm/ + include/" || { echo "splat split 失败"; exit 1; }
 
 build: split
 	@$(DRIVER) build
