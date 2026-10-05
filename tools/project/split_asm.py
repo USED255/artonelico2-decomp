@@ -32,7 +32,18 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent          # routebjp/
+def _find_root(start: Path) -> Path:
+    """布局无关：从脚本位置向上找同时含 asm/cod 或 splat.yaml 的目录。
+
+    私有布局 routebjp/tools/split_asm.py → routebjp/；公开扁平布局 tools/project/split_asm.py → 仓库根。
+    """
+    for cand in [start] + list(start.parents):
+        if (cand / "asm" / "cod").is_dir() or (cand / "splat.yaml").is_file():
+            return cand
+    return start.parent.parent
+
+
+ROOT = Path(os.environ.get("AT2_PROJECT_ROOT") or _find_root(Path(__file__).resolve().parent))
 REPO = ROOT.parent
 ASMDIR = ROOT / "asm" / "cod"
 BUILD_ASM = ROOT / "build" / "asm" / "cod"

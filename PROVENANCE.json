@@ -1,12 +1,12 @@
 {
  "generated_by": "at2/tools/export/export_public.py",
- "generated_at": "2026-10-05T23:37:55+0800",
+ "generated_at": "2026-10-06T00:02:06+0800",
  "source_repo": "at2 (private)",
- "source_commit": "0a9dda524f33fb476643bca188878a2ed950a2d4",
+ "source_commit": "96295f044191633ab1343a238ba0cb9bac436f36",
  "layout": "flat",
  "policy": "docs/PUBLICATION-POLICY.md",
  "counts": {
-  "generated": 2731,
+  "generated": 2732,
   "overlay": 10
  },
  "transforms": {
@@ -14,6 +14,14 @@
    [
     "RET=\"$HERE/../out/binaries/SLPS_258.19\"",
     "RET=\"${EE_GAME:-$HERE/orig/SLPS_258.19}\""
+   ],
+   [
+    "python3 tools/",
+    "python3 tools/project/"
+   ],
+   [
+    "sys.argv[1] + \"/tools\"",
+    "sys.argv[1] + \"/tools/project\""
    ],
    [
     "\"$HERE/tools/",
@@ -30,8 +38,8 @@
   ]
  },
  "files": {
-  "build.sh": "05f28ddb86666768ff095c276d9dc267d43c10ba22d394958872692a57174ac5",
-  "build_hybrid.sh": "1a7850716466a84973f64b39c02b825309c2af7a1408ac14ad99f8166fd6fb9e",
+  "build.sh": "8ea67755e3717fb30fb45d3e8e1e5cb69e8bf98a361ff77d8a1f59ce7c4104ae",
+  "build_hybrid.sh": "680ca18ffb603060e1176fca6703a5947d074d7793443903eb44fa1428f1b60d",
   "build_m2.sh": "4b02bc4a11ba66d4e5a27f723b722cc7ef1ffcd1f4b1ec9b6a79f879b67be9bf",
   "config/linker_script_extra.ld": "2307bbf40a589114e4e2aa97b89f56cc53e022d9ea1eb88a6c1de158b0cc9fc1",
   "config/matched_symbols.txt": "a4bcf66d9ba6f422d32ff39e1775fdde57aecf80deb6be1cca3a3b1b13a8ec47",
@@ -88,6 +96,7 @@
   "src/matched/baseelf_98.c": "1ed38f53802592e265c6f2b67e753d2c8639f8e5345df3f96c377a9bc6631c73",
   "src/matched/eepatch_22.c": "7124028d3eb2992eb0d7d5d8b2a0c4d82c2f772803f014e71cd96b393867d3b3",
   "src/matched/eetty_6.c": "65130e2f9249bd2252bdcd19b3bda8555626424ffb0423e56d3d8a1300be9d7b",
+  "src/matched/externs.h": "606bec51a6e94e359c01ba4bbad8cfc7114a4911f9dd72363f4c873c422524a0",
   "src/matched/func_0010054c.c": "96d22df295a6d7a23eb3305a41ca91ca48f00e42c3af7bfc6745ab4f4b9a237c",
   "src/matched/func_00100610.c": "5807ace58d28d9a08a87bcb87c26f8ee4ea49c7edea435f3fda8e0ef3bf2b49a",
   "src/matched/func_00100624.c": "8f0f8976722fd0310c3dabd0e03c14fa4a98d3b9291a1c3972055b215aade78e",
@@ -2754,7 +2763,7 @@
   "tools/project/p1a_pseudoc_probe.py": "d463570cea64f50cced2232225f2c04a41c6d74ee96ac9900613b4a1eed9df96",
   "tools/project/screen_flags.py": "295776d88b9a7b83e6ab10d64fd12c8dc3706fae0a479d0620d7233f960acd99",
   "tools/project/shape_lq_sq.py": "66baf771ec78a2513992064e00831d06f68cb9bec745216a90aeaa262c214baf",
-  "tools/project/split_asm.py": "d2362c50f9b990a68243305cc140aca42d9d3b9ae69f3227fcdd8887587f3012",
+  "tools/project/split_asm.py": "b8ae014ccb8f2dec90def622d7eb5fd04487998ca285fc4188733ebc2feb6251",
   "tools/report/c_route_measure.py": "e754c3fee88fa1adeb9717e577425e617f9d8781c901f392ae1ac213468d0216",
   "tools/report/disasm_stats.py": "30936831153421c80882478352193a8210549bb437ed926bafd1333cd8ca0fa6",
   "tools/report/gen_function_report.py": "51462f0e9c70d083a271000dbacf4c012e9e0531f6cf5dde492c4ebcde68d9d7",

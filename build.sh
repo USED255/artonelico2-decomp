@@ -12,7 +12,7 @@
 #
 # 前置：已跑过
 #   .tmp/splatvenv/bin/splat split SLPS_258.19.yaml      （在 routebjp/ 内）
-#   python3 tools/gen_symbol_addrs_jp.py ...             （见 tools/）
+#   python3 tools/project/gen_symbol_addrs_jp.py ...             （见 tools/）
 #
 # 工具位置（工作区外，属第三方/版权二进制，不入库）：
 #   ~/eecc/ps2binutils/mips-ps2-decompals-{as,objcopy}
@@ -123,7 +123,7 @@ if [ ! -f build/SLPS_258.19.elf ]; then
 echo "  链接完成: $(stat -c%s build/SLPS_258.19.elf) B"
 
 echo "== 3/4 抽取载荷（拼接全部 PT_LOAD）=="
-python3 tools/extract_payload.py build/SLPS_258.19.elf build/SLPS_258.19.bin
+python3 tools/project/extract_payload.py build/SLPS_258.19.elf build/SLPS_258.19.bin
 
 echo "== 4/4 比对 =="
 python3 - "$ROM" build/SLPS_258.19.bin <<'PY'

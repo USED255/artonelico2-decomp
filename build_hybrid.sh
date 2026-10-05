@@ -114,7 +114,7 @@ MODES="$OUT/residual.tsv"
 python3 - "$HERE" "$OUT" "$RESIDUAL" "${SYMS[@]}" -- "${SRCS[@]}" <<'PY' || exit 1
 import sys
 from pathlib import Path
-sys.path.insert(0, sys.argv[1] + "/tools")
+sys.path.insert(0, sys.argv[1] + "/tools/project")
 import split_asm
 
 out_dir, flag = Path(sys.argv[2]), sys.argv[3]
