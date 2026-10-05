@@ -1,0 +1,43 @@
+{
+  "_comment": "Pinned toolchain. CI verifies every hash before use; nothing here is redistributed by this repository.",
+  "game": {
+    "id": "SLPS_258.19",
+    "region": "jp",
+    "elf_size": 9352548,
+    "elf_sha1": "766836783c16b8616d3d84cfbd6af70a50b6c052",
+    "payload_sha1": "7cc42d275750600d1f232b2632447f77205f3fc0",
+    "payload_size": 9304936
+  },
+  "compilers": {
+    "game": {
+      "name": "ee-gcc",
+      "version": "3.2-ee-040921",
+      "archive": "e32.tar.xz",
+      "sha256": "8c60ca7482523190e999524a7e4de2379dcf7ffee543c1b5663bfdf6a80ebf0f",
+      "source": "private companion repository (Sony-licensed; not redistributable)"
+    },
+    "cri": {
+      "name": "ee-gcc",
+      "version": "2.96-ee-001003-1",
+      "archive": "ee-gcc2.96.tar.xz",
+      "sha256": "0590d2ca9da8f5903889d66761220d14b47a8d14ba987ca53db84a1650a1fd0a",
+      "source": "private companion repository (Sony-licensed; not redistributable)"
+    },
+    "binutils": {
+      "name": "decompals PS2 binutils",
+      "version": "2.40",
+      "archive": "b10.tar.gz",
+      "sha256": "9fe31ea3ee1a37536f9f0e2e12c668e7c3cb99e59f5154bd2f1fc4762473094c",
+      "source": "private companion repository"
+    }
+  },
+  "tools": {
+    "objdiff-cli": {
+      "version": "3.8.2",
+      "asset": "objdiff-cli-linux-x86_64",
+      "sha256": "e5445089a6f707e30cb5e02992451b604619cedfd2660ee2373a86bfefd9e718",
+      "url": "https://github.com/encounter/objdiff/releases/download/v3.8.2/objdiff-cli-linux-x86_64"
+    },
+    "splat": { "version": "0.50.0", "source": "pip install splat64" }
+  }
+}

@@ -1,0 +1,5 @@
+/* func_001a50ec @ 0x001a50ec (12 B, trivial) : shape=ret_data_load
+ * 由 routebjp/tools/auto_match_trivial.py 自动生成，objdiff 100% 验证后再纳入 hybrid。 */
+extern signed char D_00BC4436;
+
+signed char func_001a50ec(void) { return D_00BC4436; }

@@ -1,0 +1,68 @@
+{
+ "schema": "at2-progress-baseline/1",
+ "target_binary": "SLPS_258.19",
+ "generated_at": "2026-10-05T23:34:53+0800",
+ "source_commit": "1ee1f1127de18a70dca32ce750f2ec6598e43db1",
+ "source_dirty": false,
+ "ratchet_payload_sha1": "7cc42d275750600d1f232b2632447f77205f3fc0",
+ "report_sha256": "a2b9f7b0190209da800a29d852b009afbdca264707c18946edc449524a2aeaf4",
+ "measures": {
+  "fuzzy_match_percent": 5.2300177,
+  "total_code": "2276780",
+  "matched_code": "119076",
+  "matched_code_percent": 5.2300177,
+  "matched_data_percent": 100.0,
+  "total_functions": 10923,
+  "matched_functions": 2688,
+  "matched_functions_percent": 24.608624,
+  "complete_data_percent": 100.0,
+  "total_units": 10923
+ },
+ "categories": {
+  "c": {
+   "fuzzy_match_percent": 100.0,
+   "total_code": "119076",
+   "matched_code": "119076",
+   "matched_code_percent": 100.0,
+   "matched_data_percent": 100.0,
+   "total_functions": 2688,
+   "matched_functions": 2688,
+   "matched_functions_percent": 100.0,
+   "complete_data_percent": 100.0,
+   "total_units": 2688
+  },
+  "asm": {
+   "total_code": "2384",
+   "matched_data_percent": 100.0,
+   "total_functions": 145,
+   "complete_data_percent": 100.0,
+   "total_units": 145
+  }
+ },
+ "units_total": 10923,
+ "units_with_base": 2688,
+ "c_only_units": 2688,
+ "c_units_below_100": 0,
+ "accounting": {
+  "unit_universe": "config/symbol_addrs.txt 的 type:func（10923 个，一个函数一条 unit）",
+  "matched_symbols_entries_total": 2834,
+  "matched_symbols_entries_non_stub": 2689,
+  "matched_symbols_distinct_non_stub_symbols": 2688,
+  "c_only_entries_in_matched_symbols": 2689,
+  "stub_entries_excluded_from_decompiled": 145,
+  "splat_glabels_total": 13250,
+  "splat_glabels_absent_from_symbol_addrs": 2327,
+  "splat_glabels_absent_bytes_estimate": 273808,
+  "note": "stub_* （注释 tag）照抄汇编桩不计入已反编译，base_path=null；asm 树里由 splat disassemble_all 自动识别、但不在 symbol_addrs 的 2327 个 glabel 不在本报告分母内（约 273808 B 代码）"
+ },
+ "timing_seconds": {
+  "total": 8.5,
+  "assemble": 1.2,
+  "objdiff_report": 1.6
+ },
+ "tool_versions": {
+  "objdiff-cli": "objdiff-cli 3.8.2",
+  "mips-ps2-decompals-as": "GNU assembler (GNU Binutils) 2.40"
+ },
+ "generator": "tools/report/gen_function_report.py"
+}

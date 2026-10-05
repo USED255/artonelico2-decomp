@@ -1,0 +1,24 @@
+# 快速门禁（不需要任何 secret）：导出清单完整性 + 不可公开类别扫描 + 报告不变量 + 文档链接。
+# 「新提交的产物是不是匹配的」由 matching-gate.yml 用真构建回答；这里先挡住结构性错误。
+name: validate
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: 仓库自检（清单 / 类别 / 报告 / 链接）
+        run: make check

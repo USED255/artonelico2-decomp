@@ -1,0 +1,38 @@
+# ---- build outputs / generated code ----
+build/
+asm/
+assets/
+orig/
+*.o
+*.elf
+*.bin
+*.map
+
+# ---- splat 生成的中间件（由 make split 产出，不入库） ----
+include/
+undefined_funcs_auto.txt
+undefined_syms_auto.txt
+SLPS_258.19.d
+
+# ---- game media / SDK (never distributed) ----
+*.iso
+*.rom
+*.BIN
+*.ERX
+*.irx
+*.lzr
+*.evd
+*.AFS
+*.ADX
+*.SFD
+
+# ---- tool caches ----
+__pycache__/
+*.pyc
+.venv/
+venv/
+.tmp/
+
+# ---- editor / OS ----
+.DS_Store
+*.swp

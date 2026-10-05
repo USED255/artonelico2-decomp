@@ -1,0 +1,138 @@
+# 匹配门禁：**新提交的产物必须真的匹配**，否则失败且不产出进度报告。
+#
+# 需要的配置：
+#   secrets.ORIG_DEPLOY_KEY   —— 私有伴生仓库的只读部署密钥（里面放原版 SLPS_258.19 与 Sony 工具链）
+#   vars.PRIVATE_ORIG_REPO    —— 私有伴生仓库，形如 owner/at2-orig
+# fork 的 PR 拿不到 secrets/vars，此时 job 会明确跳过（notice），不是失败。
+name: matching-gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: matching-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  matching:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      HAS_ORIG: ${{ secrets.ORIG_DEPLOY_KEY != '' && vars.PRIVATE_ORIG_REPO != '' }}
+      PRIVATE_ORIG_REPO: ${{ vars.PRIVATE_ORIG_REPO }}
+    steps:
+      - name: 说明（无 secrets 时跳过）
+        if: env.HAS_ORIG != 'true'
+        run: |
+          echo "::notice::缺少 ORIG_DEPLOY_KEY / PRIVATE_ORIG_REPO（例如 fork 的 PR）——跳过真构建门禁。"
+
+      - name: Checkout this repository
+        if: env.HAS_ORIG == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0            # delta 需要 base 提交
+          persist-credentials: false
+
+      - name: Checkout private companion (原版 ELF + Sony 工具链)
+        if: env.HAS_ORIG == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.PRIVATE_ORIG_REPO }}
+          ssh-key: ${{ secrets.ORIG_DEPLOY_KEY }}
+          path: .orig
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        if: env.HAS_ORIG == 'true'
+        with:
+          python-version: '3.13'
+
+      - name: 安装工具链并校验 sha256
+        if: env.HAS_ORIG == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/tc"
+          for a in e32.tar.xz ee-gcc2.96.tar.xz b10.tar.gz; do
+            cp ".orig/toolchain/$a" "$HOME/tc/$a"
+          done
+          python3 - <<'PY'
+          import hashlib, json, pathlib, sys
+          lock = json.loads(pathlib.Path("toolchain.lock.json").read_text())
+          want = {c["archive"]: c["sha256"] for c in lock["compilers"].values()}
+          for name, digest in want.items():
+              p = pathlib.Path.home() / "tc" / name
+              got = hashlib.sha256(p.read_bytes()).hexdigest()
+              if got != digest:
+                  sys.exit(f"sha256 mismatch for {name}: {got} != {digest}")
+              print(f"ok {name} {got}")
+          PY
+          mkdir -p "$HOME/tc/x"
+          tar -xf "$HOME/tc/e32.tar.xz" -C "$HOME/tc/x"
+          tar -xf "$HOME/tc/ee-gcc2.96.tar.xz" -C "$HOME/tc/x"
+          tar -xf "$HOME/tc/b10.tar.gz" -C "$HOME/tc/x"
+          echo "TC=$HOME/tc/x" >> "$GITHUB_ENV"
+          find "$HOME/tc/x" -maxdepth 2 -name 'ee-gcc' -o -maxdepth 2 -name '*as' | head -20
+
+      - name: 取原版 ELF 并校验
+        if: env.HAS_ORIG == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p orig
+          cp .orig/orig/SLPS_258.19 orig/SLPS_258.19
+          rm -rf .orig
+          sha1sum orig/SLPS_258.19
+          python3 configure.py --game orig/SLPS_258.19
+
+      - name: 下载 objdiff-cli 并校验 sha256
+        if: env.HAS_ORIG == 'true'
+        run: |
+          set -euo pipefail
+          curl -fsSL -o objdiff-cli "$(python3 -c 'import json;print(json.load(open("toolchain.lock.json"))["tools"]["objdiff-cli"]["url"])')"
+          echo "$(python3 -c 'import json;print(json.load(open("toolchain.lock.json"))["tools"]["objdiff-cli"]["sha256"])')  objdiff-cli" | sha256sum -c -
+          chmod +x objdiff-cli
+          echo "$PWD" >> "$GITHUB_PATH"
+
+      - name: 安装 splat
+        if: env.HAS_ORIG == 'true'
+        run: python3 -m pip install --quiet splat64
+
+      - name: 仓库自检
+        if: env.HAS_ORIG == 'true'
+        run: make check
+
+      - name: 构建并断言载荷 sha1（棘轮）
+        if: env.HAS_ORIG == 'true'
+        run: make build
+
+      - name: 增量：本次改动过的 src/matched/*.c 必须 100% 匹配
+        if: env.HAS_ORIG == 'true'
+        run: |
+          BASE="${{ github.event.before }}"
+          case "$BASE" in ""|*0000000000000000000000000000000000000000) echo "首次推送：跳过增量检查（全量构建已断言棘轮）";; *)
+            git fetch --quiet origin "$BASE" || true
+            make delta BASE="$BASE"
+          ;; esac
+
+      - name: 生成进度报告
+        if: env.HAS_ORIG == 'true'
+        run: make report
+
+      - name: 报告不得相对基线回退
+        if: env.HAS_ORIG == 'true'
+        run: python3 tools/check/check_public_repo.py --baseline progress/baseline.json --report progress/SLPS_258.19_report.json
+
+      # ⚠️ 只有以上全部通过才会执行到这里；失败的 run 不会产出报告 artifact，
+      #    因此 decomp.dev 永远不会收到未经验证的数字。
+      - name: 上传进度报告（decomp.dev 只认 push + 默认分支 + 这个命名）
+        if: env.HAS_ORIG == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: SLPS_258.19_report
+          path: progress/SLPS_258.19_report.json
+          if-no-files-found: error
