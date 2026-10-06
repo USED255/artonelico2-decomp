@@ -2776,4 +2776,3 @@ sifcmd_30    # m2c_draft
 # ---- CRI 中间件（外部源复用：recvx-decomp, MIT；见 docs/kb/reports/R17）----
 func_0031a9c0    # CRI memcpy2 (ADXB)
 func_0031cbc8    # CRI adxf_wait_1ms
-func_00340548    # CRI AIFF_GetInfo

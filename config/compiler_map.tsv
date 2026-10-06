@@ -11,4 +11,3 @@
 # 只列非 game 的源即可（缺省 = game）。
 func_0031a9c0	cri	# CRI memcpy2 (ADXB)
 func_0031cbc8	cri	# CRI adxf_wait_1ms
-func_00340548	cri	# CRI AIFF_GetInfo
