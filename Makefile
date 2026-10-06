@@ -41,7 +41,7 @@ build: split
 
 report:
 	@AS="$${BINUTILS:-$$HOME/eecc/ps2binutils}/mips-ps2-decompals-as"; \
-	 $(PY) tools/report/gen_function_report.py --jobs 4 --as "$$AS" \
+	 $(PY) tools/report/gen_function_report.py --project . --jobs 4 --as "$$AS" \
 	   --objdiff "$${OBJDIFF:-$$HOME/eecc/objdiff-cli}" \
 	   --report-out progress/SLPS_258.19_report.json
 
