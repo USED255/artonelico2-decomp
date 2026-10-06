@@ -86,13 +86,12 @@ jobs:
                   sys.exit(f"sha256 mismatch for {name}: {got} != {digest}")
               print(f"ok {name} {got}")
           PY
-          mkdir -p "$HOME/tc/x"
-          tar -xf "$HOME/tc/e32.tar.xz" -C "$HOME/tc/x"
-          tar -xf "$HOME/tc/ee-gcc2.96.tar.xz" -C "$HOME/tc/x"
-          tar -xf "$HOME/tc/b10.tar.gz" -C "$HOME/tc/x"
-          mkdir -p "$HOME/tc/ld"
-          tar -xf "$HOME/tc/ld244.tar.xz" -C "$HOME/tc/ld"
-          find "$HOME/tc/x" -maxdepth 3 -type f \( -name 'ee-gcc' -o -name '*-as' -o -name '*ld.bfd' \) | sort | head -20
+          # 每个归档解到自己的目录：两个 ee-gcc 归档里都有 bin/ee-gcc，混在一起会互相覆盖
+          mkdir -p "$HOME/tc/e32" "$HOME/tc/cri" "$HOME/tc/bin" "$HOME/tc/ld"
+          tar -xf "$HOME/tc/e32.tar.xz"        -C "$HOME/tc/e32"   # ee-gcc 3.2-ee-040921
+          tar -xf "$HOME/tc/ee-gcc2.96.tar.xz" -C "$HOME/tc/cri"   # ee-gcc 2.96（备用）
+          tar -xf "$HOME/tc/b10.tar.gz"        -C "$HOME/tc/bin"   # PS2 binutils（归档是扁平结构）
+          tar -xf "$HOME/tc/ld244.tar.xz"      -C "$HOME/tc/ld"    # Debian 2.44 的 ld + 依赖库
 
       # The build scripts read these variables. Without them they fall back to
       # the maintainer's home directory, which does not exist on the runner.
@@ -100,25 +99,25 @@ jobs:
         if: env.HAS_ORIG == 'true'
         run: |
           set -euo pipefail
-          TC="$HOME/tc/x"
-          BIN="$(dirname "$(find "$TC" -type f -name 'mips-ps2-decompals-as' | head -1)")"
-          GCC="$(find "$TC" -type f -path '*-040921*/bin/ee-gcc' | head -1)"
+          BIN="$HOME/tc/bin"
+          GCC="$HOME/tc/e32/bin/ee-gcc"
           LD="$HOME/tc/ld/bin/mips-linux-gnu-ld.bfd"
           LIBDIR="$HOME/tc/ld/lib/x86_64-linux-gnu"
-          for v in BIN GCC LD; do
-            [ -n "${!v}" ] || { echo "::error::missing toolchain component: $v"; exit 1; }
+          for f in "$BIN/mips-ps2-decompals-as" "$GCC" "$LD"; do
+            [ -x "$f" ] || { echo "::error::toolchain component missing or not executable: $f"; exit 1; }
           done
           export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:$LIBDIR"   # 本步也要用（下面要打印 ld 版本）
           {
             echo "BINUTILS=$BIN"
             echo "GCC=$GCC"
+            echo "GCC_CRI=$HOME/tc/cri/bin/ee-gcc"
             echo "LD=$LD"
             echo "OBJDIFF=$PWD/objdiff-cli"
             echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-}:$LIBDIR"
           } >> "$GITHUB_ENV"
-          echo "as       = $("$BIN/mips-ps2-decompals-as" --version | head -1)"
-          echo "gcc      = $("$GCC" --version | head -1)"
-          echo "ld       = $("$LD" --version | head -1)"
+          echo "as  = $("$BIN/mips-ps2-decompals-as" --version | head -1)"
+          echo "gcc = $("$GCC" --version | head -1)"
+          echo "ld  = $("$LD" --version | head -1)"
 
       - name: Get the retail executable and check it
         if: env.HAS_ORIG == 'true'
