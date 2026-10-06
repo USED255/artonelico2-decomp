@@ -2,6 +2,8 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
+[![Progress](https://decomp.dev/USED255/artonelico2-decomp.svg?mode=shield)](https://decomp.dev/USED255/artonelico2-decomp)
+
 This repository contains reverse-engineered C source for the PlayStation 2 game
 **Ar tonelico II: Melody of Metafalica** (Japanese release `SLPS_258.19`).
 
