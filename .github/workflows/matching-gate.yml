@@ -1,9 +1,17 @@
-# 匹配门禁：**新提交的产物必须真的匹配**，否则失败且不产出进度报告。
+# Matching gate. This workflow answers one question:
+# "Does the new material really match the retail binary?"
 #
-# 需要的配置：
-#   secrets.ORIG_DEPLOY_KEY   —— 私有伴生仓库的只读部署密钥（里面放原版 SLPS_258.19 与 Sony 工具链）
-#   vars.PRIVATE_ORIG_REPO    —— 私有伴生仓库，形如 owner/at2-orig
-# fork 的 PR 拿不到 secrets/vars，此时 job 会明确跳过（notice），不是失败。
+# It needs these settings:
+#   secrets.ORIG_DEPLOY_KEY   read-only deploy key of the private companion repository
+#                             (the retail executable and the Sony toolchain)
+#   vars.PRIVATE_ORIG_REPO    the private companion repository, for example owner/at2-orig
+#
+# A pull request from a fork cannot get the secret or the variable. Then this job
+# skips with a notice. It does not fail.
+#
+# A manual run can verify a pull request. Give the pull request number as input.
+# WARNING: a manual run uses the secret, and it runs the scripts of that commit.
+# Start a manual run only after you reviewed the commit.
 name: matching-gate
 
 on:
@@ -11,6 +19,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      pr:
+        description: "Pull request number to verify (optional)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -27,19 +40,20 @@ jobs:
       HAS_ORIG: ${{ secrets.ORIG_DEPLOY_KEY != '' && vars.PRIVATE_ORIG_REPO != '' }}
       PRIVATE_ORIG_REPO: ${{ vars.PRIVATE_ORIG_REPO }}
     steps:
-      - name: 说明（无 secrets 时跳过）
+      - name: Notice (no secret, for example a pull request from a fork)
         if: env.HAS_ORIG != 'true'
         run: |
-          echo "::notice::缺少 ORIG_DEPLOY_KEY / PRIVATE_ORIG_REPO（例如 fork 的 PR）——跳过真构建门禁。"
+          echo "::notice::The secret ORIG_DEPLOY_KEY or the variable PRIVATE_ORIG_REPO is absent. Skip the build gate."
 
       - name: Checkout this repository
         if: env.HAS_ORIG == 'true'
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0            # delta 需要 base 提交
+          ref: ${{ github.event.inputs.pr && format('refs/pull/{0}/head', github.event.inputs.pr) || github.sha }}
+          fetch-depth: 0            # the delta check needs the base commit
           persist-credentials: false
 
-      - name: Checkout private companion (原版 ELF + Sony 工具链)
+      - name: Checkout the private companion (retail executable and Sony toolchain)
         if: env.HAS_ORIG == 'true'
         uses: actions/checkout@v4
         with:
@@ -53,7 +67,7 @@ jobs:
         with:
           python-version: '3.13'
 
-      - name: 安装工具链并校验 sha256
+      - name: Install the toolchain and check each sha256
         if: env.HAS_ORIG == 'true'
         run: |
           set -euo pipefail
@@ -79,7 +93,7 @@ jobs:
           echo "TC=$HOME/tc/x" >> "$GITHUB_ENV"
           find "$HOME/tc/x" -maxdepth 2 -name 'ee-gcc' -o -maxdepth 2 -name '*as' | head -20
 
-      - name: 取原版 ELF 并校验
+      - name: Get the retail executable and check it
         if: env.HAS_ORIG == 'true'
         run: |
           set -euo pipefail
@@ -89,7 +103,7 @@ jobs:
           sha1sum orig/SLPS_258.19
           python3 configure.py --game orig/SLPS_258.19
 
-      - name: 下载 objdiff-cli 并校验 sha256
+      - name: Get objdiff-cli and check its sha256
         if: env.HAS_ORIG == 'true'
         run: |
           set -euo pipefail
@@ -98,38 +112,38 @@ jobs:
           chmod +x objdiff-cli
           echo "$PWD" >> "$GITHUB_PATH"
 
-      - name: 安装 splat
+      - name: Install splat
         if: env.HAS_ORIG == 'true'
         run: python3 -m pip install --quiet splat64
 
-      - name: 仓库自检
+      - name: Repository check
         if: env.HAS_ORIG == 'true'
         run: make check
 
-      - name: 构建并断言载荷 sha1（棘轮）
+      - name: Build and check the payload hash (the ratchet)
         if: env.HAS_ORIG == 'true'
         run: make build
 
-      - name: 增量：本次改动过的 src/matched/*.c 必须 100% 匹配
+      - name: Delta check. Each changed file in src/matched/ must match 100%.
         if: env.HAS_ORIG == 'true'
         run: |
           BASE="${{ github.event.before }}"
-          case "$BASE" in ""|*0000000000000000000000000000000000000000) echo "首次推送：跳过增量检查（全量构建已断言棘轮）";; *)
+          case "$BASE" in ""|*0000000000000000000000000000000000000000) echo "First push. Skip the delta check. The full build checked the ratchet.";; *)
             git fetch --quiet origin "$BASE" || true
             make delta BASE="$BASE"
           ;; esac
 
-      - name: 生成进度报告
+      - name: Write the progress report
         if: env.HAS_ORIG == 'true'
         run: make report
 
-      - name: 报告不得相对基线回退
+      - name: The report must not be worse than the baseline
         if: env.HAS_ORIG == 'true'
         run: python3 tools/check/check_public_repo.py --baseline progress/baseline.json --report progress/SLPS_258.19_report.json
 
-      # ⚠️ 只有以上全部通过才会执行到这里；失败的 run 不会产出报告 artifact，
-      #    因此 decomp.dev 永远不会收到未经验证的数字。
-      - name: 上传进度报告（decomp.dev 只认 push + 默认分支 + 这个命名）
+      # The steps above must all pass to reach this step. A failed run writes no
+      # report artifact. Therefore decomp.dev never receives an unverified number.
+      - name: Publish the progress report (decomp.dev needs this exact name)
         if: env.HAS_ORIG == 'true'
         uses: actions/upload-artifact@v4
         with:

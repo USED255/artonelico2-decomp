@@ -9,8 +9,9 @@ The source in `src/matched/` compiles with the original compiler toolchain.
 The build compares the result with the retail binary byte by byte. A function is
 **matched** when the two byte sequences are equal.
 
-> **This repository is generated.** A private exporter writes it from a working
-> repository. Do not open a pull request here. See [CONTRIBUTING.md](CONTRIBUTING.md).
+> **Contributions are welcome.** This repository is generated: a private exporter
+> writes it from a working repository, and a maintainer imports an accepted change
+> there. Read [CONTRIBUTING.md](CONTRIBUTING.md) for the steps.
 
 ## Status
 

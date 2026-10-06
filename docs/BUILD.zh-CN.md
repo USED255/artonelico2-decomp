@@ -45,13 +45,15 @@ make check                       # 仓库自检；不需要原版可执行文件
 
 | workflow | 何时跑 | 做什么 |
 | --- | --- | --- |
-| `validate` | 每次 push、每个 PR | `make check`：清单完整性、禁止材料、报告 schema、相对基线不回退 |
+| `validate` | 每次 push、每个 PR、手动触发 | push 走**严格模式**：公开树必须等于导出结果；PR 走**贡献模式**：只允许白名单路径内的新增/修改。见 [CONTRIBUTING.zh-CN.md](../CONTRIBUTING.zh-CN.md) |
 | `matching-gate` | 默认分支 push、同仓库 PR、手动触发 | 从私有伴生仓库取原版可执行文件与工具链，跑 `make build` / `make delta` / `make report`；**全部通过才发布 artifact** |
 
 `matching-gate` 需要 secret `ORIG_DEPLOY_KEY` 与变量 `PRIVATE_ORIG_REPO`。
-**fork 的 PR 拿不到**，此时该 job 明确跳过，不算失败。
+**fork 的 PR 拿不到**，此时该 job 明确跳过，不算失败；之后由维护者复验该 commit。
 
 检查不过就**不产生**新的进度报告。因此公开的数字永远是**验证过的数字**。
+
+想贡献一个已匹配的函数？读 [CONTRIBUTING.zh-CN.md](../CONTRIBUTING.zh-CN.md)。
 
 ## 5. 排障
 

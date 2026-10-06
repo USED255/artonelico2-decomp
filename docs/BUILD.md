@@ -50,15 +50,17 @@ make check                       # repository checks; the retail executable is n
 
 | Workflow | When it runs | What it does |
 | --- | --- | --- |
-| `validate` | Each push and each pull request | `make check`: manifest integrity, forbidden material, report schema, and no regression against the baseline. |
+| `validate` | Each push, each pull request, and a manual start | On a push it runs in **strict mode**: the public tree must equal the exporter output. On a pull request it runs in **contribution mode**: it allows an addition or a change in the contribution paths only. Read [CONTRIBUTING.md](../CONTRIBUTING.md). |
 | `matching-gate` | A push to the default branch, an internal pull request, or a manual start | Gets the retail executable and the toolchain from a private companion repository. Then it runs `make build`, `make delta`, and `make report`. It publishes the artifact **only** when all checks pass. |
 
 The `matching-gate` workflow needs the secret `ORIG_DEPLOY_KEY` and the variable
 `PRIVATE_ORIG_REPO`. A pull request from a fork cannot get them. In that case the
-workflow skips the job and does not fail.
+workflow skips the job and does not fail. A maintainer then verifies the commit.
 
 A failed check produces no new progress report. Therefore the public numbers are
 always verified numbers.
+
+Do you want to contribute a matched function? Read [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## 5. Troubleshooting
 

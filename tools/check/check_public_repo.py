@@ -168,14 +168,90 @@ def check_no_regression(base_path: Path, report_path: Path) -> None:
             bad(f"百分比回退：{key} {c:.4f} < 基线 {b:.4f}")
 
 
+def check_contrib(base: str) -> None:
+    """贡献模式（PR 用）：白名单内的新增/修改放行；删除、越权、二进制、忌语一律 FAIL。
+
+    白名单与只读原因来自 `PROVENANCE.json`（由导出器写出）——公开侧不硬编码路径规则。
+    """
+    prov = ROOT / "PROVENANCE.json"
+    if not prov.is_file():
+        bad("缺少 PROVENANCE.json，无法判定可贡献范围")
+        return
+    meta = json.loads(prov.read_text(encoding="utf-8"))
+    globs = [c["glob"] for c in meta.get("contrib_paths", [])]
+    import_to = {c["glob"]: c["import_to"] for c in meta.get("contrib_paths", [])}
+    readonly = meta.get("readonly_paths", {})
+    max_bytes = int(meta.get("max_contrib_bytes", 1 << 20))
+
+    def target(rel: str) -> str | None:
+        for g in globs:
+            if fnmatch.fnmatch(rel, g):
+                return import_to[g].replace("{name}", Path(rel).name).replace("{rel}", rel)
+        return None
+
+    def why(rel: str) -> str:
+        for prefix, reason in readonly.items():
+            if rel == prefix or rel.startswith(prefix):
+                return reason
+        return "不在可贡献白名单内（见 CONTRIBUTING.md）"
+
+    cp = subprocess.run(["git", "-C", str(ROOT), "diff", "--name-status", f"{base}...HEAD"],
+                        capture_output=True, text=True)
+    if cp.returncode != 0:
+        bad(f"无法取得与基线 {base} 的差异：{cp.stderr.strip()[:120]}")
+        return
+    changes, renames = [], 0
+    for line in cp.stdout.splitlines():
+        parts = line.split("\t")
+        if len(parts) < 2:
+            continue
+        status, rel = parts[0], parts[-1]
+        if status.startswith(("R", "C")):
+            renames += 1
+            bad(f"不接受重命名/复制：{parts[1]} → {rel}（请改成「新增文件」+「不改原文件」）")
+            continue
+        changes.append((status, rel))
+
+    if not changes:
+        ok("本次 PR 没有文件改动")
+    for status, rel in changes:
+        if status.startswith("D"):
+            bad(f"不接受删除：{rel}（生成物由导出器管理，删掉会在下一次导出中回来）")
+            continue
+        tgt = target(rel)
+        if tgt is None:
+            bad(f"越权改动：{rel} —— {why(rel)}")
+            continue
+        p = ROOT / rel
+        if p.is_file():
+            if p.stat().st_size > max_bytes:
+                bad(f"文件过大（限 {max_bytes // 1024} KiB）：{rel}")
+                continue
+            try:
+                p.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                bad(f"不是文本文件：{rel}（本仓库只收文本贡献）")
+                continue
+        ok(f"允许贡献：{rel} → 导入私有仓库 {tgt}")
+    if renames:
+        ok(f"（重命名 {renames} 项已按上面的 FAIL 处理）")
+
+    check_deny(set())
+    check_report(ROOT / "progress" / "SLPS_258.19_report.json")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--check", action="store_true", help="完整性 + 类别 + 报告不变量（默认动作）")
+    ap.add_argument("--pr", metavar="BASE", default="",
+                    help="贡献模式：与 BASE（如 pull_request.base.sha）比较，只允许白名单内的新增/修改")
     ap.add_argument("--report", default="progress/SLPS_258.19_report.json")
     ap.add_argument("--baseline", default="progress/baseline.json")
     args = ap.parse_args()
 
-    if args.check or not (args.report and args.baseline):
+    if args.pr:
+        check_contrib(args.pr)
+    else:
         allowed = check_integrity()
         check_deny(allowed)
         check_report(ROOT / args.report)

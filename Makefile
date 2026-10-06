@@ -21,6 +21,7 @@ help:
 	@echo "  make report                  生成 objdiff 进度报告（progress/SLPS_258.19_report.json）"
 	@echo "  make delta BASE=<git-ref>    只检查本次改动过的 src/matched/*.c 是否 100% 匹配"
 	@echo "  make check                   仓库自检（导出清单 / 不可公开类别 / 报告不变量）"
+	@echo "  make check-pr BASE=<ref>     贡献模式：只允许白名单内的新增/修改（PR 用）"
 	@echo "  make clean                   清理构建产物"
 
 configure:
@@ -46,6 +47,10 @@ delta:
 
 check:
 	@$(PY) tools/check/check_public_repo.py --check
+
+check-pr:
+	@test -n "$(BASE)" || { echo "用法：make check-pr BASE=<git-ref>（比较该 ref 与 HEAD）"; exit 2; }
+	@$(PY) tools/check/check_public_repo.py --pr "$(BASE)"
 
 clean:
 	@rm -rf build asm

@@ -1,8 +1,8 @@
-# ---- build outputs / generated code ----
-build/
-asm/
-assets/
-orig/
+# ---- build outputs / generated code（只锚定仓库根：不要遮蔽 tools/build/ 等目录）----
+/build/
+/asm/
+/assets/
+/orig/
 *.o
 *.elf
 *.bin
