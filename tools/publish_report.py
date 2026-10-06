@@ -80,8 +80,13 @@ def main() -> int:
     ap.add_argument("--report", help="新报告 JSON（来自一次已验证构建）")
     ap.add_argument("--accept-baseline", action="store_true", help="同时把新报告接受为新基线")
     ap.add_argument("--force", action="store_true", help="允许发布比基线更差的报告（默认拒绝）")
+    ap.add_argument("--refresh", action="store_true",
+                    help="只按当前文件重算 PUBLISHED.json 的哈希（例如改过 toolchain.lock.json 之后）")
     ap.add_argument("--check", action="store_true", help="只校验发布记录自洽")
     a = ap.parse_args()
+    if a.refresh:
+        write_published()
+        return check()
     if a.check or not a.report:
         return check()
     src = Path(a.report)
