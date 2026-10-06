@@ -779,7 +779,6 @@ func_001dd9e4    # ghidra_draft:-O2
 func_001dd9f4    # ghidra_draft:-O2
 func_001de74c    # wrapper_o2_tail
 func_001deb30    # permuter
-func_001df944    # permuter
 func_001df970    # ghidra_draft:-O2
 func_001df9a4    # permuter
 func_001dfb10    # permuter
@@ -2588,6 +2587,10 @@ func_00332e58    # m2c_draft
 func_0033b9a8    # m2c_draft
 func_0033c7d8    # m2c_draft
 func_0035f5c0    # m2c_draft
+
+# ---- CRI 中间件（外部源复用：recvx-decomp, MIT；见 docs/kb/reports/R17）----
+func_0031a9c0    # CRI memcpy2 (ADXB)
+func_0031cbc8    # CRI adxf_wait_1ms
 baseelf_108    # m2c_draft
 baseelf_114    # m2c_draft
 baseelf_24    # m2c_draft
@@ -2663,6 +2666,7 @@ func_001d8704    # m2c_draft
 func_001de6e0    # m2c_draft
 func_001de94c    # m2c_draft
 func_001deec4    # m2c_draft
+func_001df944    # m2c_draft
 func_001e136c    # m2c_draft
 func_001e1840    # m2c_draft
 func_001e29a0    # m2c_draft
@@ -2807,17 +2811,20 @@ func_0027e684    # m2c_draft
 func_0027e6d0    # m2c_draft
 func_00283f08    # m2c_draft
 func_00284520    # m2c_draft
+func_0028627c    # m2c_draft
 func_00286fa8    # m2c_draft
 func_00288848    # m2c_draft
 func_002888b0    # m2c_draft
 func_0028a434    # m2c_draft
 func_0028ac9c    # m2c_draft
+func_00293548    # m2c_draft
 func_00294820    # m2c_draft
 func_0029652c    # m2c_draft
 func_002994c0    # m2c_draft
 func_00299ba4    # m2c_draft
 func_00299e6c    # m2c_draft
 func_00299ebc    # m2c_draft
+func_0029be00    # m2c_draft
 func_002a4438    # m2c_draft
 func_002a4568    # m2c_draft
 func_002a4578    # m2c_draft
@@ -2897,7 +2904,3 @@ func_00346750    # m2c_draft
 func_00346760    # m2c_draft
 loadcore_7    # m2c_draft
 sifcmd_30    # m2c_draft
-
-# ---- CRI 中间件（外部源复用：recvx-decomp, MIT；见 docs/kb/reports/R17）----
-func_0031a9c0    # CRI memcpy2 (ADXB)
-func_0031cbc8    # CRI adxf_wait_1ms

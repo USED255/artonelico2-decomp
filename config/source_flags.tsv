@@ -318,6 +318,7 @@ func_001de6e0	-Os
 func_001de94c	-Os
 func_001deb30	-Os
 func_001deec4	-Os
+func_001df944	-Os
 func_001dfb10	-Os
 func_001dfce4	-Os
 func_001e0274	-O2
@@ -815,6 +816,7 @@ func_00284354	-O2
 func_00284520	-Os
 func_00285c54	-O2
 func_00285ddc	-O2
+func_0028627c	-Os
 func_00286304	-Os
 func_00286610	-Os
 func_002866ac	-Os
@@ -844,6 +846,7 @@ func_0028fdd4	-O2
 func_002901e8	-O2
 func_00290268	-O2
 func_00291338	-O2
+func_00293548	-O2 -fno-optimize-sibling-calls
 func_00294820	-Os
 func_00294e54	-O2
 func_00296360	-O2
@@ -879,6 +882,7 @@ func_0029b7f0	-Os
 func_0029b844	-O2
 func_0029b944	-Os
 func_0029bcc8	-O1
+func_0029be00	-O2 -fno-optimize-sibling-calls
 func_0029bf18	-O2
 func_0029c004	-O1
 func_0029c678	-O2

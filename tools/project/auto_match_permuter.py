@@ -86,7 +86,10 @@ def _score(sym: str, src: Path, d: Path) -> float | None:
 # 档位矩阵（P-32/P-40）：-O 级别 × -G × -f* 都要试；`-Os` 是 2026-10-05 才发现的有效档位。
 FLAG_SETS = [["-Os"], ["-O2"], ["-O1"], ["-O3"], ["-O2", "-G8"], ["-O1", "-G8"], ["-O3", "-G8"],
              ["-Os", "-G8"], ["-O2", "-fno-common"], ["-O2", "-fomit-frame-pointer"],
-             ["-O1", "-fomit-frame-pointer"], ["-O2", "-fno-builtin"]]
+             ["-O1", "-fomit-frame-pointer"], ["-O2", "-fno-builtin"],
+             # R22 §7-P4（轮次 70 实测有效）：尾调用形态杠杆 j ↔ jal+jr（见 O-05），以及地址拆分
+             ["-O2", "-fno-optimize-sibling-calls"], ["-Os", "-fno-optimize-sibling-calls"],
+             ["-O1", "-fno-optimize-sibling-calls"], ["-O2", "-mno-split-addresses"]]
 
 
 def best_flags(sym: str, src: Path, d: Path) -> list:

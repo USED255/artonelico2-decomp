@@ -157,7 +157,7 @@ def main() -> int:
     ap.add_argument("--symbols-file", default="")
     # 2026-10-04：编译档轴此前只试过 O2 与 O2 -G8（第二档从未赢过）。实测 -O1 能让部分函数从 75% 直接到 100%，
     # 因此默认扩到 5 档，取各档中最高分（命中 100% 即停）。
-    ap.add_argument("--flags", default="Os,O2,O1,O3,O2 -G8,O1 -G8,O3 -G8,O2 -fno-common,O2 -fomit-frame-pointer,O1 -fomit-frame-pointer,O2 -fno-builtin")
+    ap.add_argument("--flags", default="Os,O2,O1,O3,O2 -G8,O1 -G8,O3 -G8,O2 -fno-common,O2 -fomit-frame-pointer,O1 -fomit-frame-pointer,O2 -fno-builtin,O2 -fno-optimize-sibling-calls,Os -fno-optimize-sibling-calls,O1 -fno-optimize-sibling-calls,O2 -mno-split-addresses,Os -mno-split-addresses")
     a = ap.parse_args()
 
     if a.mode == "apply-only":
