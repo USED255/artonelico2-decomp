@@ -22,6 +22,7 @@ baseelf_203	-O2
 baseelf_24	-O1
 baseelf_45	-O1
 baseelf_64	-O1
+baseelf_69	-O1
 baseelf_70	-O1
 baseelf_73	-Os
 baseelf_76	-O1
@@ -215,6 +216,7 @@ func_001920d4	-O1
 func_00192194	-O1
 func_001921cc	-O1
 func_00192204	-O1
+func_00192244	-Os
 func_00192310	-O1
 func_00192834	-Os
 func_0019288c	-O1
@@ -239,11 +241,13 @@ func_0019470c	-O2
 func_0019476c	-O2
 func_00194b50	-Os
 func_0019bf14	-Os
+func_0019c2e8	-Os
 func_0019c73c	-O2
 func_0019ea50	-O2
 func_0019eaa4	-O2
 func_0019eaf8	-O2
 func_0019ef18	-O2
+func_0019ef4c	-Os
 func_0019f208	-O2
 func_0019f5b8	-O1
 func_0019fab4	-O2
@@ -274,6 +278,7 @@ func_001b53dc	-Os
 func_001b5418	-O2
 func_001b5a2c	-O2
 func_001b5ad4	-O2
+func_001b5c60	-Os
 func_001b6080	-Os
 func_001b9a68	-Os
 func_001b9af0	-Os
@@ -308,6 +313,7 @@ func_001da848	-O1
 func_001db940	-O1
 func_001de6e0	-Os
 func_001de94c	-Os
+func_001deb30	-Os
 func_001deec4	-Os
 func_001dfce4	-Os
 func_001e0274	-O2

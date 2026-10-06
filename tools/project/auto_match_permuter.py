@@ -128,11 +128,11 @@ def setup_dir(sym: str, frontend: str = "ghidra") -> Path | None:
     d = WORK / sym
     d.mkdir(parents=True, exist_ok=True)
     cands = []
-    if frontend in ("m2c", "best"):
+    if frontend in ("m2c", "best", "best3"):
         s = M2C.emit(sym, d)
         if s is not None:
             cands.append(("m2c", s))
-    if frontend in ("ghidra", "best"):
+    if frontend in ("ghidra", "best", "best3"):
         s = GD.emit(sym, d)
         if s is not None:
             cands.append(("ghidra", s))
