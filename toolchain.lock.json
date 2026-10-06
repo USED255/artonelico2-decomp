@@ -48,11 +48,9 @@
   },
   "splat": {
    "version": "0.50.0",
-   "source": "pip install splat64",
-   "requires": {
-    "spimdisasm": "1.42.4"
-   },
-   "install": "pip install \"splat64==0.50.0\" \"spimdisasm==1.42.4\""
+   "install": "pip install -r tools/ci/splat-requirements.txt",
+   "requirements": "tools/ci/splat-requirements.txt",
+   "note": "requirements 照抄本机已验证的 splat venv（splat64 0.50.0 + spimdisasm 1.42.4 + n64img 等）"
   }
  }
 }

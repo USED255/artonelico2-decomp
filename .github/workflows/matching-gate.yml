@@ -103,6 +103,8 @@ jobs:
           GCC="$HOME/tc/e32/bin/ee-gcc"
           LD="$HOME/tc/ld/bin/mips-linux-gnu-ld.bfd"
           LIBDIR="$HOME/tc/ld/lib/x86_64-linux-gnu"
+          # ee-gcc 自带的共享库（若归档里没有就是空，不影响）
+          for d in $(find "$HOME/tc/e32" -type d -name lib | head -5); do LIBDIR="$LIBDIR:$d"; done
           for f in "$BIN/mips-ps2-decompals-as" "$GCC" "$LD"; do
             [ -x "$f" ] || { echo "::error::toolchain component missing or not executable: $f"; exit 1; }
           done
@@ -140,7 +142,7 @@ jobs:
 
       - name: Install splat (pinned, the version in toolchain.lock.json)
         if: env.HAS_ORIG == 'true'
-        run: python3 -m pip install --quiet "splat64==0.50.0" "spimdisasm==1.42.4"
+        run: python3 -m pip install --quiet -r tools/ci/splat-requirements.txt
 
       - name: Repository check
         if: env.HAS_ORIG == 'true'
