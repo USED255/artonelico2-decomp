@@ -59,6 +59,19 @@ BUILDDIR = WORK_ROOT / "m2" / "m3pilot"
 # 与 build_hybrid.sh 的 MATCHED_CFLAGS 完全一致：只有在这里 100% 的才会在混合构建里 100%
 CFLAGS = ["-O2", "-falign-functions=4", "-ffunction-sections"]
 
+# 编译档矩阵（P-32/P-40/轮次 64）：形状**在不同档位下可能才命中**。
+# 后出现的 -O 覆盖前面的（gcc 取最后一个），所以额外标志一律排在 CFLAGS 之后。
+# ⚠️ 2026-10-07：m2c 侧靠 -Os 多出 110 个、Ghidra 侧多出 40 个 ⇒ 形状库也必须扫全矩阵，
+#    否则同一个漏档问题会在这里重演第三次。
+FLAG_MATRIX = [[x if x.startswith("-") else "-" + x for x in item.split()] for item in (
+    "Os", "O2", "O1", "O3", "O2 -G8", "O1 -G8", "O3 -G8",
+    "O2 -fno-common", "O2 -fomit-frame-pointer", "O1 -fomit-frame-pointer", "O2 -fno-builtin",
+)]
+
+
+def flag_key(fs) -> str:
+    return "".join(fs).replace("-", "")
+
 M3_BEGIN = "# ---- M3 trivial 自动匹配（auto_match_trivial.py 生成，勿手改本段）----"
 M3_END = "# ---- M3 段结束 ----"
 
@@ -1154,23 +1167,46 @@ def write_target(syms, path):
 
 
 def run_objdiff(workdir: Path, chosen, tag: str):
-    """编译 probe + 汇编 target + objdiff，返回 {sym: match_percent}。"""
+    """编译 probe（**逐档**）+ 汇编 target + objdiff。
+
+    返回 `({sym: 最高分}, {sym: 获胜档位})`。同一个 probe 只写一次、target 只汇编一次，
+    每个档位各编译一次（单 TU，成本很低）。
+    """
     probe = workdir / f"probe_{tag}.c"
     target_s = workdir / f"target_{tag}.s"
     target_o = workdir / f"target_{tag}.o"
-    base_o = workdir / f"base_{tag}.o"
-    diff = workdir / f"diff_{tag}.json"
     write_probe(chosen, probe)
     write_target(list(chosen.keys()), target_s)
     subprocess.run([AS, "-EL", "-march=r5900", "-I", str(ROOT / "include"),
                     "-o", str(target_o), str(target_s)], check=True, capture_output=True)
-    subprocess.run([GCC, *CFLAGS, "-I", str(ROOT / "include"), "-c",
-                    "-o", str(base_o), str(probe)], check=True, capture_output=True)
-    subprocess.run([OBJDIFF, "diff", "-1", str(target_o), "-2", str(base_o),
-                    "-o", str(diff), "--format", "json"], check=True, capture_output=True)
-    d = json.loads(diff.read_text(encoding="utf-8"))
-    return {s["name"]: s.get("match_percent")
-            for s in d["left"]["symbols"] if s.get("kind") == "SYMBOL_FUNCTION"}
+    best: dict[str, float] = {}
+    best_flags: dict[str, str] = {}
+    for fs in FLAG_MATRIX:
+        base_o = workdir / f"base_{tag}_{flag_key(fs)}.o"
+        diff = workdir / f"diff_{tag}_{flag_key(fs)}.json"
+        c = subprocess.run([GCC, *CFLAGS, *fs, "-I", str(ROOT / "include"), "-c",
+                            "-o", str(base_o), str(probe)], capture_output=True)
+        if c.returncode:
+            continue
+        x = subprocess.run([OBJDIFF, "diff", "-1", str(target_o), "-2", str(base_o),
+                            "-o", str(diff), "--format", "json"], capture_output=True)
+        if x.returncode:
+            continue
+        try:
+            d = json.loads(diff.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        for s in d["left"]["symbols"]:
+            if s.get("kind") != "SYMBOL_FUNCTION":
+                continue
+            mp = s.get("match_percent")
+            if mp is None:
+                continue
+            mp = float(mp)
+            if s["name"] not in best or mp > best[s["name"]]:
+                best[s["name"]] = mp
+                best_flags[s["name"]] = " ".join(fs)
+    return best, best_flags
 
 
 # --------------------------------------------------------------------------
@@ -1193,13 +1229,14 @@ def do_run(tier: str = "trivial", max_rounds: int = 4):
         for sym, info in remaining.items():
             vs = info["variants"]
             chosen[sym] = (vs[min(info.get("_vi", 0), len(vs) - 1)], info["externs"])
-        per = run_objdiff(BUILDDIR, chosen, f"r{rnd}")
+        per, pflags = run_objdiff(BUILDDIR, chosen, f"r{rnd}")
         n_ok, nxt = 0, OrderedDict()
         for sym, info in remaining.items():
             mp = per.get(sym)
             tried.setdefault(sym, []).append(mp)
             if mp == 100.0:
                 info["_win_body"] = chosen[sym][0]
+                info["_win_flags"] = pflags.get(sym, "")
                 winners[sym] = info
                 n_ok += 1
             else:
@@ -1212,12 +1249,13 @@ def do_run(tier: str = "trivial", max_rounds: int = 4):
 
     for sym, info in tail.items():
         for vi, body in enumerate(info["variants"]):
-            per = run_objdiff(BUILDDIR, OrderedDict([(sym, (body, info["externs"]))]),
-                              f"tail_{sym}_{vi}")
+            per, pflags = run_objdiff(BUILDDIR, OrderedDict([(sym, (body, info["externs"]))]),
+                                      f"tail_{sym}_{vi}")
             mp = per.get(sym)
             tried.setdefault(sym, []).append(mp)
             if mp == 100.0:
                 info["_win_body"] = body
+                info["_win_flags"] = pflags.get(sym, "")
                 winners[sym] = info
                 break
         else:
@@ -1244,6 +1282,24 @@ def do_apply(winners):
         decls = "\n".join(extern_decl(n, t) for n, t in info["externs"])
         src = hdr + (decls + "\n\n" if decls else "") + info["_win_body"] + "\n"
         (SRCDIR / f"{sym}.c").write_text(src, encoding="utf-8")
+
+    # 编译档必须落盘（键 = 清单第二列，即符号名，无扩展名；见 P-34），
+    # 否则构建会用默认 -O2 重编 ⇒ 与验证时的档位不一致 ⇒ 载荷校验红。
+    fmap: dict[str, str] = {}
+    if FLAGS_TSV.is_file():
+        for line in FLAGS_TSV.read_text(encoding="utf-8").splitlines():
+            a = line.split("\t")
+            if len(a) >= 2 and not line.lstrip().startswith("#"):
+                fmap[a[0]] = a[1]
+    for sym, info in winners.items():
+        fl = (info.get("_win_flags") or "").strip()
+        if fl and fl != "-O2":
+            fmap[sym] = fl
+        elif sym in fmap and (not fl or fl == "-O2"):
+            del fmap[sym]
+    FLAGS_TSV.write_text("\n".join(["# 格式：<source-basename>\t<extra-cflags>"]
+                                    + [f"{k}\t{fmap[k]}" for k in sorted(fmap)]) + "\n",
+                         encoding="utf-8")
 
     text = MATCHED_LIST.read_text(encoding="utf-8")
     pre = text.split(M3_BEGIN)[0].rstrip("\n") if M3_BEGIN in text else text.rstrip("\n")
