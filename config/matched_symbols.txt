@@ -81,9 +81,11 @@ func_0010230c    # ghidra_draft:-O2
 func_00102338    # ret_data_load
 func_0010264c    # wrapper_o1_jal
 func_00102800    # llm_draft
+func_00102908    # ghidra_draft:-Os
 func_00102adc    # ghidra_draft:-O2
 func_00102bfc    # permuter
 func_00103b04    # permuter
+func_00103b30    # ghidra_draft:-Os
 func_00103b5c    # ghidra_draft:-O1
 func_00103b78    # ghidra_draft:-O1
 func_0010415c    # permuter
@@ -98,6 +100,7 @@ func_0010694c    # ghidra_draft:-O2
 func_001078d4    # wrapper_o2_tail
 func_00107e18    # permuter
 func_00107e30    # ghidra_draft:-O2
+func_00107e48    # ghidra_draft:-Os
 func_00107f6c    # ghidra_draft:-O2
 func_00107f88    # ghidra_draft:-O2
 func_00108254    # ghidra_draft:-O2
@@ -134,6 +137,7 @@ func_00112a74    # store_data
 func_00114708    # permuter
 func_001155f8    # ghidra_draft:-O1
 func_001157f0    # permuter
+func_00119bf8    # ghidra_draft:-Os
 func_0011b1a8    # wrapper_o1_jal
 func_0011e430    # ret_const
 func_0011e6b4    # ghidra_draft:-O2
@@ -161,6 +165,7 @@ func_00122c4c    # ghidra_draft:-O2
 func_00123754    # ghidra_draft:-O2
 func_0012378c    # ghidra_draft:-O2
 func_0012449c    # empty
+func_001248a0    # ghidra_draft:-Os
 func_001248cc    # permuter
 func_00124a64    # empty
 func_00125be4    # ghidra_draft:-O2
@@ -176,9 +181,12 @@ func_0012a634    # wrapper_o2_tail
 func_0012a7f8    # empty
 func_0012b688    # ghidra_draft:-O2
 func_0012c2dc    # permuter
+func_0012c30c    # ghidra_draft:-Os
 func_0012c4e0    # ghidra_draft:-O2
 func_0012da10    # ghidra_draft:-O2
+func_0012f18c    # permuter
 func_0012f1e0    # permuter
+func_0012f234    # ghidra_draft:-Os
 func_001302fc    # ghidra_draft:-O1
 func_00131078    # wrapper_o2_tail
 func_001310a8    # ghidra_draft:-O2
@@ -204,6 +212,7 @@ func_00138a14    # permuter
 func_00138a40    # store_data
 func_00138abc    # ghidra_draft:-O2
 func_00138ae0    # ghidra_draft:-O2
+func_00139694    # ghidra_draft:-Os
 func_0013ae70    # ghidra_draft:-O1
 func_0013aea0    # permuter
 func_0013c190    # empty
@@ -251,6 +260,7 @@ func_0014536c    # ghidra_draft:-O2
 func_001457e0    # permuter
 func_001458a0    # ghidra_draft:-O2
 func_00145e38    # ghidra_draft:-O2
+func_00145e6c    # ghidra_draft:-Os
 func_00145fe0    # ghidra_draft:-O2
 func_00146880    # ghidra_draft:-O2
 func_001468c4    # permuter
@@ -301,10 +311,12 @@ func_0014c6e8    # ghidra_draft:-O2
 func_0014cbd4    # ghidra_draft:-O2
 func_0014cfc8    # llm_draft
 func_0014d02c    # ghidra_draft:-O2
+func_0014d0f8    # permuter
 func_0014d19c    # ghidra_draft:-O2
 func_0014d218    # wrapper_o2_tail
 func_0014d22c    # permuter
 func_0014d340    # ghidra_draft:-O2
+func_0014d540    # permuter
 func_0014d614    # ghidra_draft:-O2
 func_0014dbac    # ghidra_draft:-O2
 func_0014dbe4    # ghidra_draft:-O2
@@ -337,6 +349,7 @@ func_0014f3d0    # ghidra_draft:-O2
 func_0014f840    # wrapper_o2_tail
 func_0014fb58    # ghidra_draft:-O2
 func_0014fc38    # ghidra_draft:-O2
+func_0014fcf4    # ghidra_draft:-Os
 func_0014fdcc    # permuter
 func_0014fe0c    # ghidra_draft:-O2
 func_0014fe28    # ghidra_draft:-O2
@@ -357,12 +370,14 @@ func_00153318    # ghidra_draft:-O2
 func_001538dc    # ghidra_draft:-O2
 func_00154740    # ghidra_draft:-O2
 func_0015478c    # llm_draft
+func_00154b20    # ghidra_draft:-Os
 func_00155894    # ghidra_draft:-O2
 func_00155934    # ghidra_draft:-O2
 func_00155958    # ghidra_draft:-O2
 func_001562a8    # permuter
 func_00156334    # ghidra_draft:-O2
 func_00156d30    # permuter
+func_0015761c    # ghidra_draft:-Os
 func_001579d8    # ghidra_draft:-O2
 func_00157a10    # ghidra_draft:-O1
 func_00159400    # ghidra_draft:-O2
@@ -375,7 +390,13 @@ func_00159b14    # ghidra_draft:-O2
 func_00159b5c    # ghidra_draft:-O2
 func_0015b538    # empty
 func_00160050    # mem_multi_store
+func_001609f8    # ghidra_draft:-Os
+func_001614a4    # ghidra_draft:-Os
+func_00161590    # ghidra_draft:-Os
+func_00161658    # ghidra_draft:-Os
 func_00163f20    # ret_const
+func_00166f9c    # ghidra_draft:-Os
+func_001679e4    # permuter
 func_001686b0    # permuter
 func_001686e0    # ghidra_draft:-O2
 func_00168a80    # permuter
@@ -393,6 +414,7 @@ func_0016f02c    # permuter
 func_0016f2b0    # permuter
 func_001744c4    # permuter
 func_00175238    # wrapper_o2_tail
+func_00177760    # ghidra_draft:-Os
 func_00178d64    # ghidra_draft:-O2
 func_0017a16c    # empty
 func_0017cc90    # permuter
@@ -403,6 +425,9 @@ func_0017ec50    # ghidra_draft:-O2
 func_001806b8    # wrapper_o2_tail
 func_001806cc    # permuter
 func_0018077c    # permuter
+func_00180854    # ghidra_draft:-Os
+func_00180cec    # ghidra_draft:-Os
+func_00180ef8    # permuter
 func_00182384    # permuter
 func_00183a70    # ghidra_draft:-O2
 func_001855d4    # permuter
@@ -498,6 +523,7 @@ func_0019288c    # ghidra_draft:-O1
 func_001928a8    # llm_draft
 func_001928d8    # permuter
 func_0019298c    # llm_draft
+func_00192af0    # ghidra_draft:-Os
 func_00192cb0    # permuter
 func_00192e58    # ret_load_arg0
 func_00192e60    # ret_load_arg0
@@ -529,6 +555,7 @@ func_00194754    # ghidra_draft:-O2
 func_00194b50    # llm_draft
 func_001953d4    # ghidra_draft:-O2
 func_00195f24    # ghidra_draft:-O2
+func_0019bf14    # ghidra_draft:-Os
 func_0019c26c    # permuter
 func_0019c340    # ghidra_draft:-O2
 func_0019c998    # ghidra_draft:-O2
@@ -673,6 +700,7 @@ func_001c933c    # empty
 func_001c9354    # ghidra_draft:-O2
 func_001cba00    # ghidra_draft:-O2
 func_001cba20    # empty
+func_001cbd38    # ghidra_draft:-Os
 func_001cbdc8    # empty
 func_001cbdd0    # empty
 func_001cbe50    # empty
@@ -694,6 +722,7 @@ func_001d1d54    # ghidra_draft:-O2
 func_001d6338    # ghidra_draft:-O1
 func_001d6704    # permuter
 func_001d6dc8    # ghidra_draft:-O2
+func_001d7aac    # ghidra_draft:-Os
 func_001d81d0    # ghidra_draft:-O2
 func_001d8318    # ghidra_draft:-O2
 func_001d8458    # permuter
@@ -870,6 +899,7 @@ func_001fde54    # const_store
 func_002008f0    # ghidra_draft:-O1
 func_00202bcc    # permuter
 func_002038f4    # const_store
+func_00203960    # permuter
 func_00203f30    # ret_bool
 func_002042dc    # llm_draft
 func_00204328    # ghidra_draft:-O2
@@ -1064,6 +1094,7 @@ func_00239140    # wrapper_o2_tail
 func_002391b4    # store_arg0
 func_002391bc    # ret_load_arg0
 func_00239424    # permuter
+func_00239584    # ghidra_draft:-Os
 func_002395b0    # ghidra_draft:-O2
 func_002395e8    # ghidra_draft:-O2
 func_0023966c    # store_data
@@ -1078,7 +1109,9 @@ func_0023d1bc    # ghidra_draft:-O2
 func_0023d5dc    # ghidra_draft:-O2
 func_0023de74    # ghidra_draft:-O2
 func_0023e2a0    # empty
+func_0023e2a8    # ghidra_draft:-Os
 func_0023e2d8    # permuter
+func_0023e308    # ghidra_draft:-Os
 func_0023e3a4    # llm_draft
 func_0023efb0    # permuter
 func_002401c4    # permuter
@@ -1170,6 +1203,7 @@ func_0024f148    # ghidra_draft:-O2
 func_0024f1b8    # permuter
 func_0024f270    # wrapper_o2_tail
 func_0024f284    # wrapper_o2_tail
+func_0024f2d8    # ghidra_draft:-Os
 func_0024f4a0    # wrapper_o2_tail
 func_0024f4b4    # wrapper_o2_tail
 func_0024f51c    # ghidra_draft:-O2
@@ -1191,6 +1225,7 @@ func_00250504    # wrapper_o2_tail
 func_002505ec    # permuter
 func_0025067c    # wrapper_o2_tail
 func_00250690    # wrapper_o2_tail
+func_002521bc    # ghidra_draft:-Os
 func_00252d30    # wrapper_o2_tail
 func_00252dd8    # permuter
 func_0025334c    # ghidra_draft:-O2
@@ -1215,6 +1250,7 @@ func_002575d8    # ghidra_draft:-O2
 func_00257630    # ghidra_draft:-O2
 func_002576d8    # ghidra_draft:-O2
 func_00257bd8    # ghidra_draft:-O2
+func_00257c7c    # ghidra_draft:-Os
 func_00257ea0    # ghidra_draft:-O2
 func_00257ec4    # ghidra_draft:-O2
 func_00258030    # ghidra_draft:-O2
@@ -1232,6 +1268,7 @@ func_00258bec    # ghidra_draft:-O2
 func_00258c0c    # ghidra_draft:-O2
 func_0025900c    # ghidra_draft:-O2
 func_0025909c    # ghidra_draft:-O2
+func_002594a0    # permuter
 func_002595a8    # ghidra_draft:-O2
 func_00259a60    # ghidra_draft:-O2
 func_00259e80    # ghidra_draft:-O2
@@ -1265,6 +1302,7 @@ func_0025f770    # ghidra_draft:-O2
 func_0025f9e4    # ghidra_draft:-O2
 func_00260a8c    # ghidra_draft:-O2
 func_00260c50    # ghidra_draft:-O2
+func_00261be8    # ghidra_draft:-Os
 func_00261ef0    # permuter
 func_00264894    # llm_draft
 func_002648c4    # permuter
@@ -1282,6 +1320,7 @@ func_002677b8    # ghidra_draft:-O2
 func_002677d8    # mem_multi_store
 func_002678c0    # ghidra_draft:-O2
 func_00267ac4    # permuter
+func_00267b40    # ghidra_draft:-Os
 func_0026828c    # permuter
 func_00268b38    # permuter
 func_00268bac    # ghidra_draft:-O2
@@ -1289,6 +1328,7 @@ func_0026917c    # ghidra_draft:-O2
 func_0026afb8    # permuter
 func_0026b004    # store_arg0
 func_0026b020    # permuter
+func_0026b064    # ghidra_draft:-Os
 func_0026bbf8    # ghidra_draft:-O2
 func_0026bc24    # ghidra_draft:-O2
 func_0026bc48    # ghidra_draft:-O2
@@ -1377,6 +1417,7 @@ func_0027d53c    # ret_load_arg0
 func_0027e3c0    # permuter
 func_0027e3dc    # permuter
 func_0027e5b8    # permuter
+func_0027e71c    # ghidra_draft:-Os
 func_0027e794    # permuter
 func_0027f260    # wrapper_o2_tail
 func_0027fe98    # ghidra_draft:-O2
@@ -1450,8 +1491,10 @@ func_00299288    # ghidra_draft:-O2
 func_002993b0    # ghidra_draft:-O2
 func_002993f8    # ghidra_draft:-O2
 func_00299480    # ghidra_draft:-O2
+func_00299574    # ghidra_draft:-Os
 func_002995a0    # store_zero_ret0
 func_002995ac    # ghidra_draft:-O2
+func_00299a14    # ghidra_draft:-Os
 func_00299c34    # ghidra_draft:-O2
 func_00299f0c    # permuter
 func_00299f38    # permuter
@@ -1496,6 +1539,7 @@ func_0029b178    # permuter
 func_0029b4f4    # ghidra_draft:-O1
 func_0029b5fc    # ghidra_draft:-O2
 func_0029b6a0    # ghidra_draft:-O2
+func_0029b7f0    # ghidra_draft:-Os
 func_0029b944    # llm_draft
 func_0029b964    # ghidra_draft:-O2
 func_0029ba10    # ghidra_draft:-O2
@@ -1521,6 +1565,7 @@ func_0029cf0c    # store_arg0
 func_0029cf14    # empty
 func_0029cf1c    # empty
 func_0029d0c8    # llm_draft
+func_0029d0f8    # ghidra_draft:-Os
 func_0029d128    # permuter
 func_0029d3e4    # store_data
 func_0029d3f0    # store_data
@@ -1554,11 +1599,13 @@ func_002a107c    # ghidra_draft:-O2
 func_002a1734    # permuter
 func_002a19c8    # ghidra_draft:-O2
 func_002a19e0    # ghidra_draft:-O2
+func_002a1e74    # ghidra_draft:-Os
 func_002a2220    # ghidra_draft:-O2
 func_002a2ae4    # ghidra_draft:-O2
 func_002a2afc    # ghidra_draft:-O2
 func_002a2b3c    # permuter
 func_002a2b8c    # permuter
+func_002a2d24    # ghidra_draft:-Os
 func_002a319c    # ghidra_draft:-O2
 func_002a31c4    # wrapper_o2_tail
 func_002a31d8    # wrapper_o2_tail
@@ -2578,7 +2625,6 @@ func_001d8704    # m2c_draft
 func_001de6e0    # m2c_draft
 func_001de94c    # m2c_draft
 func_001deec4    # m2c_draft
-func_001df944    # m2c_draft
 func_001e136c    # m2c_draft
 func_001e1840    # m2c_draft
 func_001e29a0    # m2c_draft

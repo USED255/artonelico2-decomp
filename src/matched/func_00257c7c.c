@@ -1,0 +1,72 @@
+/* Ghidra 伪 C 的最小 shim（实验用；不是最终类型恢复） */
+typedef unsigned char      undefined;
+typedef unsigned char      undefined1;
+typedef unsigned short     undefined2;
+typedef unsigned int       undefined4;
+typedef unsigned long long undefined8;
+typedef unsigned int       uint;
+typedef unsigned long      ulong;
+typedef unsigned short     ushort;
+typedef unsigned char      uchar;
+typedef long long          longlong;
+typedef unsigned long long ulonglong;
+typedef unsigned char      byte;
+typedef unsigned char      code;
+typedef unsigned char      bool;
+typedef struct { int a[3]; } int3;
+typedef struct { unsigned int a[3]; } uint3;
+#define true 1
+#define false 0
+extern unsigned int _CONCAT44(unsigned int, unsigned int);
+extern unsigned long long _CONCAT82(unsigned int, unsigned int);
+#define CONCAT44(a,b) (((unsigned long long)(a) << 32) | (unsigned int)(b))
+#define CONCAT13(a,b) ((((unsigned int)(a)) << 24) | ((unsigned int)(b) & 0xffffff))
+#define CONCAT22(a,b) ((((unsigned int)(a)) << 16) | ((unsigned int)(b) & 0xffff))
+#define SUB41(a,b) ((unsigned int)(a))
+#define SUB42(a,b) ((unsigned int)(a))
+#define ZEXT14(a)  ((unsigned int)(unsigned char)(a))
+#define ZEXT24(a)  ((unsigned int)(unsigned short)(a))
+#define ZEXT48(a)  ((unsigned long long)(unsigned int)(a))
+#define SEXT14(a)  ((int)(signed char)(a))
+#define SEXT24(a)  ((int)(short)(a))
+#define SEXT48(a)  ((long long)(int)(a))
+#define LOWER(x)   ((unsigned int)(x))
+#define HIDWORD(x) ((unsigned int)((unsigned long long)(x) >> 32))
+extern void SYNC(int);
+extern void EI(void);
+extern void DI(void);
+extern void FlushCache(int);
+extern int  syscall(int);
+
+extern int func_0011e440();
+extern int func_00258230();
+extern int func_00259620();
+
+//==== 00257c7c func_00257c7c ====
+
+void func_00257c7c(int *param_1)
+
+{
+  int iVar1;
+  int iVar2;
+  int iVar3;
+  undefined4 uVar4;
+  
+  iVar1 = *param_1;
+  *(int *)(iVar1 + 0x130) = param_1[0x1f] + 1;
+  uVar4 = func_00259620(param_1[0x1c]);
+  iVar2 = param_1[3];
+  iVar3 = param_1[4];
+  *(undefined4 *)(iVar1 + 0x288) = uVar4;
+  *(undefined2 *)(iVar1 + 0x248) = 0xffff;
+  func_00258230(param_1 + 0xc,(iVar2 >> 4) + (int)*(short *)(iVar1 + 0x244) + -0x6c0,
+               (iVar3 >> 4) + (int)*(short *)(iVar1 + 0x246) + -0x720);
+  if (param_1[0x1e] != 0) {
+    func_0011e440(iVar1,7,0xb,0);
+    *(int *)(iVar1 + 400) = param_1[0x1d] + 1;
+    *(int *)(iVar1 + 0x1f0) = param_1[0x1e] + 1;
+    return;
+  }
+  func_0011e440(iVar1,7,0xb,0xffffffffffffffff);
+  return;
+}
