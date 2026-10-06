@@ -45,6 +45,9 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+import matched_ledger
 
 # --------------------------------------------------------------------------- #
 # 已知目标（版本 → 期望值）；未知目标必须用 --expect-sha1 显式给出
@@ -332,49 +335,110 @@ def cmd_report(args) -> int:
     return 0
 
 
-def _matched_symbols(ctx: Ctx) -> set:
-    fp = ctx.config / "matched_symbols.txt"
-    if not fp.is_file():
-        die(f"缺少 {fp}", 2)
-    out = set()
-    for line in fp.read_text(encoding="utf-8").splitlines():
-        s = line.strip()
-        if s and not s.startswith("#"):
-            out.add(s)
-    return out
+def _ledger(ctx: Ctx) -> dict:
+    """台账索引（唯一解析实现见 tools/build/matched_ledger.py）。"""
+    index = matched_ledger.parse_ledger(ctx.config / "matched_symbols.txt")
+    if not index:
+        die(f"台账为空或不存在：{ctx.config / 'matched_symbols.txt'}", 2)
+    return index
+
+
+def _git_changed(ctx: Ctx, base: str, *paths: str) -> list[str]:
+    cp = subprocess.run(["git", "-C", str(ctx.root), "diff", "--name-only", base, "--", *paths],
+                        capture_output=True, text=True)
+    if cp.returncode != 0:
+        die(f"git diff 失败（base={base}）：{cp.stderr.strip()}", 2)
+    return [l.strip() for l in cp.stdout.splitlines() if l.strip()]
+
+
+# 这些输入一变，受影响函数无法靠文件名推断 → 按「全量逐一比对」处理
+SHARED_INPUTS = ("config/matched_symbols.txt", "config/source_flags.tsv", "config/reloc_addrs.txt",
+                 "config/linker_script_extra.ld", "config/symbol_addrs.txt",
+                 "splat.yaml", "build.sh", "build_hybrid.sh", "build_m2.sh")
+FULL_ON_CHANGE = tuple(p for p in SHARED_INPUTS if p != "config/source_flags.tsv")
+
+
+def _delta_objects(ctx: Ctx, sym: str, src: str) -> tuple[Path, Path]:
+    """尽力找到该函数的目标对象与编译对象（单函数抽取物优先）。"""
+    targets = [ctx.build / "units" / f"{sym}.target.o", ctx.build / "asm" / "cod" / f"{sym}.o",
+               ctx.build / "asm" / "cod" / f"{src}.o"]
+    bases = [ctx.build / "hybrid" / "obj" / f"{src}.o", ctx.build / "hybrid" / "obj" / f"{sym}.o"]
+    t = next((x for x in targets if x.is_file()), targets[0])
+    b = next((x for x in bases if x.is_file()), bases[0])
+    return t, b
 
 
 def cmd_delta(args) -> int:
     ctx = make_ctx(args)
     if not args.base:
         die("delta 必须给 --base <git-ref>", 3)
-    matched = _matched_symbols(ctx)
+    index = _ledger(ctx)
     rel_src = os.path.relpath(ctx.matched, ctx.root)
-    cp = subprocess.run(["git", "-C", str(ctx.root), "diff", "--name-only", args.base, "--", rel_src],
-                        capture_output=True, text=True)
-    if cp.returncode != 0:
-        die(f"git diff 失败（base={args.base}）：{cp.stderr.strip()}", 2)
-    changed = [l for l in cp.stdout.splitlines() if l.strip().endswith(".c")]
-    if not changed:
-        print(f"delta：相对 {args.base} 没有改动的匹配源（{rel_src}/），无需 objdiff")
+    changed = _git_changed(ctx, args.base, rel_src)
+    shared = _git_changed(ctx, args.base, *SHARED_INPUTS)
+    if not changed and not shared:
+        print(f"delta：相对 {args.base} 没有改动（{rel_src}/ 与构建输入都未变），无需 objdiff")
         return 0
+
+    sources = [x for x in changed if x.endswith(".c")]
+    headers = [x for x in changed if x.endswith(".h")]
+    affected, unregistered = matched_ledger.resolve_changed(index, sources, rel_src)
+    full = any(x in shared for x in FULL_ON_CHANGE)
+
+    for h in headers:                                    # 头文件 → 扫 #include 找依赖源
+        name = Path(h).name
+        dep = [f"{rel_src}/{c.name}" for c in sorted(ctx.matched.glob("*.c"))
+               if f'"{name}"' in c.read_text(encoding="utf-8", errors="replace")]
+        extra, _ = matched_ledger.resolve_changed(index, dep, rel_src)
+        affected |= extra
+        print(f"说明：头文件 {h} 变化 → 按 #include 收录 {len(extra)} 个符号")
+
+    if "config/source_flags.tsv" in shared:              # 编译参数 → 受影响的源
+        cp = subprocess.run(["git", "-C", str(ctx.root), "diff", "-U0", args.base, "--",
+                             "config/source_flags.tsv"], capture_output=True, text=True)
+        flag_srcs = set()
+        for ln in cp.stdout.splitlines():
+            if ln.startswith(("+++", "---")) or not ln.startswith(("+", "-")):
+                continue
+            first = ln[1:].strip().split("\t")[0].strip()
+            if first:
+                flag_srcs.add(first)
+        for x in sorted(flag_srcs):
+            extra, _ = matched_ledger.resolve_changed(index, [f"{rel_src}/{x}.c"], rel_src)
+            affected |= extra
+        print(f"说明：config/source_flags.tsv 变化 → 收录 {len(flag_srcs)} 个源的符号")
+
+    if full:
+        affected = set(index)
+        print(f"说明：台账/链接脚本/构建入口变化 → 对全部 {len(affected)} 个已登记函数逐一比对")
+
+    if unregistered:
+        print(f"跳过 {len(unregistered)} 个未登记文件（不在 config/matched_symbols.txt；新文件需先入台账）：")
+        for u in unregistered[:10]:
+            print(f"  skip {u}")
+        if len(unregistered) > 10:
+            print(f"  … 共 {len(unregistered)} 个")
+
+    if not affected:
+        print("注意：本次改动没有影响任何**已登记**函数 → 未执行 objdiff 比对（这不是「全部 100%」）")
+        return 0
+
     cli = ctx.objdiff_cli()
     out_dir = ctx.build / "delta"
     out_dir.mkdir(parents=True, exist_ok=True)
-    bad, missing = [], []
-    for rel in changed:
-        sym = Path(rel).stem
-        if sym not in matched:
-            print(f"  skip {rel}（不在 config/matched_symbols.txt 里）")
-            continue
-        target = ctx.build / "asm" / "cod" / f"{sym}.o"
-        base = ctx.build / "hybrid" / "obj" / f"{sym}.o"
-        if not target.is_file() or not base.is_file():
-            missing.append(f"{sym}（target={target} base={base}）")
+    compared = passed = 0
+    bad: list[str] = []
+    missing: list[str] = []
+    for sym in sorted(affected):
+        src = index[sym][0]
+        target, base_obj = _delta_objects(ctx, sym, src)
+        if not target.is_file() or not base_obj.is_file():
+            missing.append(f"{sym}（target={target.name} base={base_obj.name}）")
             continue
         rep = out_dir / f"{sym}.json"
-        rc = run([cli, "diff", "-1", str(target), "-2", str(base), "-o", str(rep), "--format", "json"],
+        rc = run([cli, "diff", "-1", str(target), "-2", str(base_obj), "-o", str(rep), "--format", "json"],
                  cwd=ctx.root)
+        compared += 1
         if rc != 0:
             bad.append(f"{sym}（objdiff 退出码 {rc}）")
             continue
@@ -384,18 +448,28 @@ def cmd_delta(args) -> int:
         elif pct != 100.0:
             bad.append(f"{sym}（{pct:.1f}% ≠ 100%）")
         else:
+            passed += 1
             print(f"  ✅ {sym} 100%")
+
+    print(f"\ndelta 汇总：受影响 {len(affected)}｜实际比对 {compared}｜通过 {passed}｜"
+          f"失败 {len(bad)}｜缺产物 {len(missing)}｜未登记跳过 {len(unregistered)}")
     if missing:
-        print("FAIL: 以下匹配源缺 objdiff 产物（先跑 `decomp_build.py build`）：", file=sys.stderr)
+        print("FAIL: 以下函数缺 objdiff 产物（先跑 `decomp_build.py build`）：", file=sys.stderr)
         for x in missing:
             print(f"  - {x}", file=sys.stderr)
         return 2
     if bad:
-        print("FAIL: 以下匹配源未达到 100%：", file=sys.stderr)
+        print("FAIL: 以下函数未达到 100%：", file=sys.stderr)
         for x in bad:
             print(f"  - {x}", file=sys.stderr)
         return 1
-    print(f"delta 通过：{len(changed)} 个改动匹配源全部 100%")
+    if compared == 0:
+        print("FAIL: 有受影响函数，但一次比对都没执行（产物缺失？）", file=sys.stderr)
+        return 2
+    if passed != compared:
+        print(f"FAIL: 通过数 {passed} ≠ 实际比对 {compared}", file=sys.stderr)
+        return 1
+    print(f"delta 通过：实际比对 {compared} 个函数，全部 100%")
     return 0
 
 

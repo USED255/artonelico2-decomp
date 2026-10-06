@@ -44,6 +44,8 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "build"))
+import matched_ledger
 
 REPO = Path(__file__).resolve().parents[2]          # at2/
 DEFAULT_AS = os.environ.get("MIPS_AS", str(Path.home() / "eecc" / "ps2binutils" / "mips-ps2-decompals-as"))
@@ -73,38 +75,12 @@ def parse_symbol_addrs(path: Path) -> list[str]:
 
 
 def parse_matched(path: Path) -> dict[str, tuple[str, str]]:
-    """matched_symbols.txt → {sym: (source_basename, tag)}；tag 为行内注释去掉 `#` 后的原文。"""
-    out: dict[str, tuple[str, str]] = {}
-    if not path.exists():
-        return out
-    for raw in path.read_text(encoding="utf-8").splitlines():
-        body, _, comment = raw.partition("#")
-        body = body.strip()
-        if not body:
-            continue
-        parts = body.split()
-        sym = parts[0]
-        src = parts[1] if len(parts) > 1 else sym
-        out[sym] = (src, comment.strip())
-    return out
-
+    """台账 → {sym: (source_basename, tag)}（实现见 tools/build/matched_ledger.py，增量检查共用）。"""
+    return matched_ledger.parse_ledger(path)
 
 def matched_entry_stats(path: Path) -> tuple[int, int, int]:
-    """matched_symbols.txt 的**条目级**统计：(总条目, stub 条目, 去重后的非 stub 符号数)。"""
-    total = stub = 0
-    nonstub: set[str] = set()
-    for raw in path.read_text(encoding="utf-8").splitlines():
-        body, _, comment = raw.partition("#")
-        body = body.strip()
-        if not body:
-            continue
-        total += 1
-        if comment.strip().startswith("stub_"):
-            stub += 1
-        else:
-            nonstub.add(body.split()[0])
-    return total, stub, len(nonstub)
-
+    """条目级统计：总条目 / stub 条目 / 去重后的非 stub 符号数（共用实现）。"""
+    return matched_ledger.entry_stats(path)
 
 def index_asm(asm_root: Path) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
     """单遍扫描整棵 asm 树。
