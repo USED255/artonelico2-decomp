@@ -12,6 +12,11 @@
   --objdir DIR    输出对象目录（stamp 写 DIR/<key>.stamp）
   --cflags  ...   基础标志（C）
   --flags-file    每源额外标志 TSV（<src-basename><TAB><flags>），键 = key
+  --cc-map        每源编译器 TSV（<key><TAB><tag>），tag ∈ game|cri|<绝对路径>；
+                  缺省时全部走 --gcc（向后兼容）。游戏代码 = ee-gcc 3.2-ee-040921，
+                  CRI 中间件 = ee-gcc 2.96-ee-001003-1（两个归档都在 toolchain.lock.json 里，
+                  CI 早已安装并导出 GCC_CRI）——见 docs/kb/reports/R17 §4.2。
+  --gcc-cri       cri 编译器的路径（tag=cri 时使用）
   --jobs N        并行度（默认 4）
 
 行为：
@@ -88,6 +93,8 @@ def main() -> int:
     ap.add_argument("--sources", required=True, help="TSV：key<TAB>kind<TAB>srcfile")
     ap.add_argument("--objdir", required=True)
     ap.add_argument("--gcc", required=True)
+    ap.add_argument("--gcc-cri", default="", help="CRI 段编译器（tag=cri）；未提供且用到 cri 时报错")
+    ap.add_argument("--cc-map", default="", help="每源编译器 TSV：<key><TAB><tag>（tag=game|cri|路径）")
     ap.add_argument("--as", dest="as_", required=True)
     ap.add_argument("--include", default="include")
     ap.add_argument("--cflags", default="")
@@ -108,6 +115,34 @@ def main() -> int:
             if line:
                 a = line.split()
                 extra[a[0]] = " ".join(a[1:])
+
+    # 每源编译器（CRI 段用 ee-gcc 2.96，游戏代码用 3.2；见 R17 §4.2）
+    cc_map = {}
+    if args.cc_map and Path(args.cc_map).is_file():
+        for line in Path(args.cc_map).read_text(encoding="utf-8").splitlines():
+            line = line.split("#", 1)[0].strip()
+            if not line:
+                continue
+            a = line.split()
+            if len(a) < 2:
+                print(f"FAIL: cc-map 行格式不对: {line!r}", file=sys.stderr)
+                return 2
+            tag = a[1]
+            if tag == "cri":
+                if not args.gcc_cri:
+                    print("FAIL: cc-map 用到 cri，但没有 --gcc-cri", file=sys.stderr)
+                    return 2
+                cc_map[a[0]] = args.gcc_cri
+            elif tag == "game":
+                cc_map[a[0]] = args.gcc
+            else:
+                cc_map[a[0]] = tag          # 允许直接写绝对路径
+    _ver_cache: dict[str, str] = {}
+
+    def cc_version(cc: str) -> str:
+        if cc not in _ver_cache:
+            _ver_cache[cc] = tool_version(cc)
+        return _ver_cache[cc]
 
     global OBJCOPY, READELF
     bindir = Path(args.as_).parent
@@ -142,22 +177,23 @@ def main() -> int:
             print(f"FAIL: 缺少替换源 {src}", file=sys.stderr)
             return 2
         ex = extra.get(key, "")
-        ver = cc_ver if kind == "cc" else as_ver
+        gcc = (cc_map.get(key, args.gcc) if kind == "cc" else args.gcc)
+        ver = cc_version(gcc) if kind == "cc" else as_ver
         base = " ".join(base_cflags if kind == "cc" else base_asflags)
-        # stamp 必须覆盖**基础标志**：MATCHED_CFLAGS 被覆盖（负面对照）时要失效重建
+        # stamp 必须覆盖**基础标志**与**每源编译器**：MATCHED_CFLAGS/编译器被换掉时要失效重建
         # al4：2026-10-04 起 cc 对象统一把 .text* 段对齐降到 4（见 build 里的 objcopy），
         #      版本串加后缀让旧缓存失效重建。
-        want = f"{kind}|{ver}|al4|{base}|{ex}|{sha1_file(src)}"
+        want = f"{kind}|{ver}|al4|{base}|{ex}|{gcc}|{sha1_file(src)}"
         stamp = objdir / f"{key}.stamp"
         obj = objdir / f"{key}.o"
         if not args.no_cache and obj.is_file() and stamp.is_file() and stamp.read_text() == want:
             cached += 1
             continue
-        todo.append((key, kind, src, ex, want, obj, stamp))
+        todo.append((key, kind, src, ex, want, obj, stamp, gcc))
 
     def build(item):
-        key, kind, src, ex, want, obj, stamp = item
-        if kind == "cc":            cmd = [args.gcc, *base_cflags, *ex.split(), "-I", args.include, "-c", "-o", str(obj), str(src)]
+        key, kind, src, ex, want, obj, stamp, gcc = item
+        if kind == "cc":            cmd = [gcc, *base_cflags, *ex.split(), "-I", args.include, "-c", "-o", str(obj), str(src)]
         else:
             cmd = [args.as_, *base_asflags, "-I", args.include, "-o", str(obj), str(src)]
         r = subprocess.run(cmd, capture_output=True, text=True)

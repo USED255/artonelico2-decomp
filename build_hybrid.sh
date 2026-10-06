@@ -22,7 +22,9 @@ set -eu
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 BINUTILS="${BINUTILS:-$HOME/eecc/ps2binutils}"
-GCC="${GCC:-$HOME/eecc/ee-gcc3.2-040921/bin/ee-gcc}"
+GCC="${GCC:-${EE_GCC:-$HOME/eecc/ee-gcc3.2-040921/bin/ee-gcc}}"
+GCC_CRI="${GCC_CRI:-${EE_GCC_CRI:-$HOME/eecc/ee-gcc2.96/bin/ee-gcc}}"   # CRI 段（ADXT 10.03 / ADXRT 3100，R17 §4.2）
+CCMAP="$HERE/config/compiler_map.tsv"                    # 每源编译器：<source><TAB>game|cri
 LD="${LD:-$HOME/eecc/deb/root/usr/bin/mips-linux-gnu-ld.bfd}"
 export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:/home/liutao/eecc/deb/root/usr/lib/x86_64-linux-gnu"
 AS="$BINUTILS/mips-ps2-decompals-as"
@@ -103,10 +105,11 @@ done
 # shellcheck disable=SC2086
 python3 "$HERE/tools/project/compile_sources.py" \
     --sources "$SRCTSV" --objdir "$OUT/obj" \
-    --gcc "$GCC" --as "$AS" --include include \
+    --gcc "$GCC" --gcc-cri "$GCC_CRI" --cc-map "$CCMAP" --as "$AS" --include include \
     --cflags "$MATCHED_CFLAGS" --flags-file "$FLAGSFILE" \
     --jobs "${JOBS:-4}" ${HYBRID_NO_CACHE:+--no-cache} --label "源" || exit 1
-echo "  源文件数 = ${#compiled[@]}"
+n_cri=$(grep -cv '^[[:space:]]*\(#\|$\)' "$CCMAP" 2>/dev/null || echo 0)
+echo "  源文件数 = ${#compiled[@]}（per-source 编译器表：${n_cri} 条 CRI）"
 
 echo "== 2b/6 残差拆分（多 glabel / 尾部填充；HYBRID_RESIDUAL=$RESIDUAL）=="
 mkdir -p "$OUT/residual"

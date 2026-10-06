@@ -34,9 +34,14 @@ make build          # split, assemble, link, and check the payload hash
 make report         # write the progress report
 ```
 
+This is a mixed-compiler build: the game code uses `ee-gcc 3.2-ee-040921` and the
+CRI middleware uses `ee-gcc 2.96-ee-001003-1`. `config/compiler_map.tsv` states,
+per source file, which compiler to use (absent = the game compiler); the two
+paths come from `EE_GCC` / `EE_GCC_CRI` (or `GCC` / `GCC_CRI`). A source that
+needs the CRI compiler also needs `-G0` in `config/source_flags.tsv`.
+
 `make build` derives the payload from the retail executable. Then it splits the
-payload, assembles the source, and links the result. It checks the payload sha1
-value after each stage. The expected value is
+payload, assembles the source, and links the result. It checks the payload sha1value after each stage. The expected value is
 `7cc42d275750600d1f232b2632447f77205f3fc0`. One different byte stops the build.
 
 ## 3. Check a change

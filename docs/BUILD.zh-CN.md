@@ -31,6 +31,10 @@ make build          # 切分、汇编、链接、校验载荷哈希
 make report         # 生成进度报告
 ```
 
+这是**混合编译器**构建：游戏代码用 `ee-gcc 3.2-ee-040921`，CRI 中间件用 `ee-gcc 2.96-ee-001003-1`。
+`config/compiler_map.tsv` 逐源写明用哪个（缺省 = 游戏编译器），两个路径来自 `EE_GCC` / `EE_GCC_CRI`（或 `GCC` / `GCC_CRI`）；
+走 CRI 编译器的源还需要在 `config/source_flags.tsv` 里给 `-G0`。
+
 `make build` 先从零售可执行文件派生载荷，再切分载荷、汇编源码、链接结果，并在每个阶段后校验载荷 sha1。
 期望值是 `7cc42d275750600d1f232b2632447f77205f3fc0`。**差一个字节就停止**。
 
