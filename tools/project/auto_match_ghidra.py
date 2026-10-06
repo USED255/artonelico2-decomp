@@ -191,7 +191,7 @@ def main() -> int:
     ap.add_argument("mode", nargs="?", default="run", choices=["run", "apply-only"])
     ap.add_argument("--classes", default="", help="逗号分隔；空=所有非跳过类")
     ap.add_argument("--limit", type=int, default=0)
-    ap.add_argument("--flags", default="Os,O2,O1,O3,O2 -G8,O1 -G8,O3 -G8,O2 -fno-common,O2 -fomit-frame-pointer,O1 -fomit-frame-pointer,O2 -fno-builtin",
+    ap.add_argument("--flags", default="Os,O2,O1,O3,O2 -G8,O1 -G8,O3 -G8,O2 -fno-common,O2 -fomit-frame-pointer,O1 -fomit-frame-pointer,O2 -fno-builtin,O2 -fno-optimize-sibling-calls,Os -fno-optimize-sibling-calls,O2 -mno-split-addresses",
                     help="逗号分隔的编译档候选（**不要带前导 -**，如 O2,O1）。P-32：编译档轴必须探索")
     ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--apply", action="store_true")
