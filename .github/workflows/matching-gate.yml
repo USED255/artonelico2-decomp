@@ -140,7 +140,7 @@ jobs:
 
       - name: Install splat (pinned, the version in toolchain.lock.json)
         if: env.HAS_ORIG == 'true'
-        run: python3 -m pip install --quiet "splat64==0.50.0"
+        run: python3 -m pip install --quiet "splat64==0.50.0" "spimdisasm==1.42.4"
 
       - name: Repository check
         if: env.HAS_ORIG == 'true'

@@ -48,7 +48,11 @@
   },
   "splat": {
    "version": "0.50.0",
-   "source": "pip install splat64"
+   "source": "pip install splat64",
+   "requires": {
+    "spimdisasm": "1.42.4"
+   },
+   "install": "pip install \"splat64==0.50.0\" \"spimdisasm==1.42.4\""
   }
  }
 }
