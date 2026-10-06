@@ -46,6 +46,16 @@ REPO = PRIVATE_ROOT or ROOT            # 私有工作面（.tmp/permvenv 在这�
 PERMUTER = Path(os.environ.get("PERMUTER", Path.home() / "eecc" / "decomp-permuter" / "permuter.py"))
 PYTHON = os.environ.get("PERMUTER_PYTHON", str(REPO / ".tmp" / "permvenv" / "bin" / "python"))
 WORK = WORK_ROOT / "m2" / "perm"
+# LLM 候选生成器的产物目录（`llm_match_eval.py` 写；私有侧工作状态，与 m2c 草稿同级）。
+# 结构：<WORK_ROOT>/llm_eval/{llm,llm-fix}/<model>/<sym>/cand.c
+LLM_EVAL = WORK_ROOT / "llm_eval"
+
+
+def llm_drafts(sym: str) -> list[Path]:
+    """收集该符号的所有 LLM 草稿（多模型 / 多臂）。轮次 66 新增：把 LLM 近失当 permuter 种子。"""
+    if not LLM_EVAL.is_dir():
+        return []
+    return sorted(LLM_EVAL.glob(f"*/*/{sym}/cand.c"))
 FLAGS_TSV = FLAGS_TSV
 PREAMBLE = '.include "macro.inc"\n\n.set noat\n.set noreorder\n\n.section .text, "ax"\n'
 OBJDUMP = str(Path.home() / "eecc" / "ps2binutils" / "mips-ps2-decompals-objdump")
@@ -126,6 +136,9 @@ def setup_dir(sym: str, frontend: str = "ghidra") -> Path | None:
         s = GD.emit(sym, d)
         if s is not None:
             cands.append(("ghidra", s))
+    if frontend in ("llm", "best3"):
+        for i, q in enumerate(llm_drafts(sym)):
+            cands.append((f"llm{i}", q))
     if not cands:
         return None
     shutil.copyfile(cands[0][1], d / "base.c")
@@ -320,7 +333,7 @@ def main() -> int:
     ap.add_argument("--symbols-file", default="")
     ap.add_argument("--timeout", type=int, default=120)
     ap.add_argument("--jobs", type=int, default=3)
-    ap.add_argument("--frontend", default="ghidra", choices=["ghidra", "m2c", "best"])
+    ap.add_argument("--frontend", default="ghidra", choices=["ghidra", "m2c", "best", "llm", "best3"])
     ap.add_argument("--apply", action="store_true")
     args = ap.parse_args()
 
