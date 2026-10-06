@@ -62,7 +62,22 @@ always verified numbers.
 
 Do you want to contribute a matched function? Read [CONTRIBUTING.md](../CONTRIBUTING.md).
 
-## 5. Troubleshooting
+## 5. Publish the report
+
+After a green `matching-gate` run on the default branch, download the report
+artifact. Then write it into this repository:
+
+```bash
+gh run download <run-id> -R <owner>/<repo> -n SLPS_258.19_report -D .tmp/report
+python3 tools/publish_report.py --report .tmp/report/SLPS_258.19_report.json
+```
+
+The tool writes `progress/SLPS_258.19_report.json` and updates `PUBLISHED.json`.
+It also checks the numbers against the baseline. Use `--accept-baseline` to make
+the new report the baseline. Use `--refresh` after a change to
+`toolchain.lock.json`.
+
+## 6. Troubleshooting
 
 - **`payload sha1 mismatch`** — one replaced source does not agree with the
   retail bytes. Run `make delta BASE=<last good commit>` to find the file.

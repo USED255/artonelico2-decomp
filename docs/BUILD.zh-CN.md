@@ -55,7 +55,19 @@ make check                       # 仓库自检；不需要原版可执行文件
 
 想贡献一个已匹配的函数？读 [CONTRIBUTING.zh-CN.md](../CONTRIBUTING.zh-CN.md)。
 
-## 5. 排障
+## 5. 发布报告
+
+默认分支上 `matching-gate` 跑绿之后，下载报告 artifact，再写进本仓库：
+
+```bash
+gh run download <run-id> -R <owner>/<repo> -n SLPS_258.19_report -D .tmp/report
+python3 tools/publish_report.py --report .tmp/report/SLPS_258.19_report.json
+```
+
+该工具会写入 `progress/SLPS_258.19_report.json` 并更新 `PUBLISHED.json`，同时与基线比对数字。
+用 `--accept-baseline` 把新报告接受为新基线；改过 `toolchain.lock.json` 后用 `--refresh`。
+
+## 6. 排障
 
 - **`payload sha1 mismatch`**：某个替换源与零售字节不一致。用 `make delta BASE=<上一个好提交>` 缩小范围。
 - **汇编器拒绝 `$t4` 到 `$t7`**：请用 decompals 的 binutils 分支；官方 binutils 2.45 会拒绝这些别名。
