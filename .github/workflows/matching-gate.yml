@@ -115,6 +115,7 @@ jobs:
             echo "GCC_CRI=$HOME/tc/cri/bin/ee-gcc"
             echo "LD=$LD"
             echo "OBJDIFF=$PWD/objdiff-cli"
+            echo "BINUTILS=$BIN"
             echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-}:$LIBDIR"
           } >> "$GITHUB_ENV"
           echo "as  = $("$BIN/mips-ps2-decompals-as" --version | head -1)"
@@ -139,6 +140,7 @@ jobs:
           echo "$(python3 -c 'import json;print(json.load(open("toolchain.lock.json"))["tools"]["objdiff-cli"]["sha256"])')  objdiff-cli" | sha256sum -c -
           chmod +x objdiff-cli
           echo "$PWD" >> "$GITHUB_PATH"
+          echo "$BINUTILS" >> "$GITHUB_PATH"      # as/objcopy/readelf 也要能被找到
 
       - name: Install splat (pinned, the version in toolchain.lock.json)
         if: env.HAS_ORIG == 'true'
