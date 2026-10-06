@@ -33,12 +33,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ghidra_draft as GD  # noqa: E402
 from auto_match_trivial import (  # noqa: E402
-    ROOT, WORKQUEUE, MATCHED_LIST, SRCDIR, GCC, AS, OBJDIFF, CFLAGS,
-    split_mode, matched_in_list, M3_BEGIN, M3_END,
+    ROOT, WORK_ROOT, EVIDENCE_ROOT, WORKQUEUE, MATCHED_LIST, SRCDIR, GCC, AS, OBJDIFF,
+    CFLAGS, split_mode, matched_in_list, M3_BEGIN, M3_END,
 )
 
-BUILD = ROOT / "build" / "m2" / "ghidra_batch"
-FLAGS_FILE = ROOT / "config" / "source_flags.tsv"
+BUILD = WORK_ROOT / "m2" / "ghidra_batch"
+FLAGS_FILE = ROOT / "config" / "source_flags.tsv"   # 配置在项目根（公开仓库）
 PREAMBLE = '.include "macro.inc"\n\n.set noat\n.set noreorder\n\n.section .text, "ax"\n'
 # G_mmi 不跳过：Ghidra 的 r5900 语言把 lq/sq 展开成 4 次 32 位访存，实测不少
 # MMI 函数能出**普通 C**（见 out/evidence/jp_m3_p1_result.txt），值得一起试。

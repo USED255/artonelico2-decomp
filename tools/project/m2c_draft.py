@@ -25,7 +25,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+from at2_paths import PROJECT_ROOT as ROOT, WORK_ROOT, ASMDIR, INCLUDE  # noqa: E402  布局无关
 M2C = Path.home() / "eecc" / "m2c" / "m2c.py"
 
 REG = {0: "zero", 1: "at", 2: "v0", 3: "v1", 4: "a0", 5: "a1", 6: "a2", 7: "a3",
@@ -84,7 +84,7 @@ def gen(sym: str) -> str | None:
     if block is None:
         return None
     asm = ".set noat\n.set noreorder\n.section .text\n" + to_m2c_asm(block) + "\n"
-    tmp = ROOT / "build" / "m2c"
+    tmp = WORK_ROOT / "m2c"
     tmp.mkdir(parents=True, exist_ok=True)
     f = tmp / f"{sym}.m2c.s"
     f.write_text(asm, encoding="utf-8")

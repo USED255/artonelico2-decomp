@@ -24,14 +24,24 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ghidra_draft  # noqa: E402
 
-ROOT = Path(__file__).resolve().parent.parent          # routebjp/
-REPO = ROOT.parent
-WORKQUEUE = REPO / "out" / "evidence" / "jp_m3_workqueue.tsv"
-MATCHED = ROOT / "config" / "matched_symbols.txt"
-BUILD = ROOT / "build" / "m2" / "p1a"
-GCC = str(Path.home() / "eecc" / "ee-gcc3.2-040921" / "bin" / "ee-gcc")
-AS = str(Path.home() / "eecc" / "ps2binutils" / "mips-ps2-decompals-as")
-OBJDIFF = str(Path.home() / "eecc" / "objdiff-cli")
+from at2_paths import (  # noqa: E402  布局无关的路径解析（说明见 at2_paths.py 顶部）
+    PROJECT_ROOT as ROOT,
+    PRIVATE_ROOT,
+    EVIDENCE_ROOT,
+    WORK_ROOT,
+    MATCHED_LIST,
+    SRCDIR,
+    FLAGS_TSV,
+    ASMDIR,
+    WORKQUEUE,
+    GCC,
+    AS,
+    OBJDIFF,
+)
+
+REPO = PRIVATE_ROOT or ROOT
+MATCHED = MATCHED_LIST
+BUILD = WORK_ROOT / "m2" / "p1a"
 CFLAGS = ["-O2", "-falign-functions=4", "-ffunction-sections"]
 PREAMBLE = '.include "macro.inc"\n\n.set noat\n.set noreorder\n\n.section .text, "ax"\n'
 

@@ -44,12 +44,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from auto_match_trivial import (  # noqa: E402
-    ROOT, ASMDIR, MATCHED_LIST, SRCDIR, GCC, AS, OBJDIFF, CFLAGS, split_mode, matched_in_list,
+    ROOT, WORK_ROOT, ASMDIR, MATCHED_LIST, SRCDIR, GCC, AS, OBJDIFF, CFLAGS, split_mode, matched_in_list,
     M3_BEGIN, M3_END, A0, A1, A2, A3, ZERO, CARG, ARG_OF_REG,
 )
 
 FLAGS_FILE = ROOT / "config" / "source_flags.tsv"
-BUILDDIR = ROOT / "build" / "m2" / "m3wrap"
+BUILDDIR = WORK_ROOT / "m2" / "m3wrap"
 PREAMBLE = '.include "macro.inc"\n\n.set noat\n.set noreorder\n\n.section .text, "ax"\n'
 INS_RE = re.compile(r"/\* [0-9A-Fa-f]+ [0-9A-Fa-f]+ [0-9A-Fa-f]+ \*/")
 PROLOG = "addiu $29, $29, -0x10"

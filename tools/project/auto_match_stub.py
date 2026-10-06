@@ -36,13 +36,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from auto_match_trivial import (  # noqa: E402  复用同一批路径/工具链常量，避免口径漂移
-    ROOT, REPO, WORKQUEUE, ASMDIR, MATCHED_LIST, SRCDIR,
+    ROOT, REPO, WORK_ROOT, WORKQUEUE, ASMDIR, MATCHED_LIST, SRCDIR,
     GCC, AS, OBJDIFF, CFLAGS, split_mode, matched_in_list,
 )
 
 STUB_BEGIN = "# ---- M3 桩（syscall/break/手写指令；auto_match_stub.py 生成，勿手改本段）----"
 STUB_END = "# ---- M3 桩段结束 ----"
-BUILDDIR = ROOT / "build" / "m2" / "m3stub"
+BUILDDIR = WORK_ROOT / "m2" / "m3stub"
 PREAMBLE = '.include "macro.inc"\n\n.set noat\n.set noreorder\n\n.section .text, "ax"\n'
 INS_RE = re.compile(r"/\* [0-9A-Fa-f]+ [0-9A-Fa-f]+ [0-9A-Fa-f]+ \*/")
 # 「无 C 等价」的手写指令（语义由指令唯一确定）

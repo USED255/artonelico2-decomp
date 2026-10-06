@@ -10,7 +10,7 @@ GAME ?= orig/SLPS_258.19
 
 .DEFAULT_GOAL := help
 
-.PHONY: help configure rom split build report delta check clean
+.PHONY: help configure rom split build report delta check check-tools check-pr clean
 
 help:
 	@echo "Ar tonelico II matching decompilation —— 可用目标"
@@ -20,7 +20,7 @@ help:
 	@echo "  make build                   split → 汇编基线 → 链接 → 混合构建 → 断言载荷 sha1"
 	@echo "  make report                  生成 objdiff 进度报告（progress/SLPS_258.19_report.json）"
 	@echo "  make delta BASE=<git-ref>    只检查本次改动过的 src/matched/*.c 是否 100% 匹配"
-	@echo "  make check                   仓库自检（导出清单 / 不可公开类别 / 报告不变量）"
+	@echo "  make check                   仓库自检（路径自检 / 导出清单 / 不可公开类别 / 报告不变量）"
 	@echo "  make check-pr BASE=<ref>     贡献模式：只允许白名单内的新增/修改（PR 用）"
 	@echo "  make clean                   清理构建产物"
 
@@ -48,8 +48,11 @@ report:
 delta:
 	@$(DRIVER) delta --base "$(BASE)"
 
-check:
+check: check-tools
 	@$(PY) tools/check/check_public_repo.py --check
+
+check-tools:
+	@$(PY) tools/check/test_tool_paths.py
 
 check-pr:
 	@test -n "$(BASE)" || { echo "用法：make check-pr BASE=<git-ref>（比较该 ref 与 HEAD）"; exit 2; }

@@ -35,9 +35,10 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent          # routebjp/
-REPO = ROOT.parent                                     # workspace root
-ASM = ROOT / "asm" / "cod"
+from at2_paths import PROJECT_ROOT as ROOT, PRIVATE_ROOT, WORK_ROOT, ASMDIR  # noqa: E402  布局无关
+
+REPO = PRIVATE_ROOT or ROOT                            # 私有工作面
+ASM = ASMDIR
 CACHE = REPO / ".tmp" / "sig-analysis" / "callsites.json"
 
 # --- 汇编行解析 -------------------------------------------------------------
@@ -708,7 +709,7 @@ def main() -> int:
     out = []
     for r in rows:
         sym = r["sym"]
-        p = ROOT / "build" / "m2c" / "batch" / sym / f"{sym}.m2c.c"
+        p = WORK_ROOT / "m2c" / "batch" / sym / f"{sym}.m2c.c"
         if not p.is_file():
             continue
         src = p.read_text(encoding="utf-8")

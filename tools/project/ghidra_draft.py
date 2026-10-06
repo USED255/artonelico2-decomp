@@ -22,9 +22,10 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent          # routebjp/
-REPO = ROOT.parent
-DECOMP = ROOT / "build" / "ghidra" / "SLPS_258.19.decomp.c"
+from at2_paths import PROJECT_ROOT as ROOT, PRIVATE_ROOT, WORK_ROOT, ASMDIR  # noqa: E402  布局无关
+
+REPO = PRIVATE_ROOT or ROOT
+DECOMP = WORK_ROOT / "ghidra" / "SLPS_258.19.decomp.c"
 SYMADDRS = ROOT / "config" / "symbol_addrs.txt"
 
 MARK = re.compile(r"^//==== ([0-9a-fA-F]{8}) (\S+) ====", re.M)
@@ -96,8 +97,8 @@ def gp_value():
     global _GP_CACHE
     if _GP_CACHE is not None:
         return _GP_CACHE
-    for p in (ROOT / "build" / "hybrid" / "SLPS_258.19.map",
-              ROOT / "build" / "SLPS_258.19.map"):
+    for p in (WORK_ROOT / "hybrid" / "SLPS_258.19.map",
+              WORK_ROOT / "SLPS_258.19.map"):
         if p.is_file():
             for l in p.read_text(encoding="utf-8", errors="replace").splitlines():
                 m = re.match(r'\s*0x([0-9a-fA-F]+)\s+_gp\b', l)

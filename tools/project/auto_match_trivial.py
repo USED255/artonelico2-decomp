@@ -39,19 +39,24 @@ import sys
 from collections import Counter, OrderedDict
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent          # routebjp/
-REPO = ROOT.parent
-WORKQUEUE = REPO / "out/evidence/jp_m3_workqueue.tsv"
-ASMDIR = ROOT / "asm/cod"
-MATCHED_LIST = ROOT / "config/matched_symbols.txt"
-SRCDIR = ROOT / "src/matched"
-BUILDDIR = ROOT / "build/m2/m3pilot"
+from at2_paths import (  # noqa: E402  布局无关的路径解析（说明见 at2_paths.py 顶部）
+    PROJECT_ROOT as ROOT,
+    PRIVATE_ROOT,
+    EVIDENCE_ROOT,
+    WORK_ROOT,
+    MATCHED_LIST,
+    SRCDIR,
+    FLAGS_TSV,
+    ASMDIR,
+    WORKQUEUE,
+    GCC,
+    AS,
+    OBJDIFF,
+)
 
-GCC = os.environ.get("GCC", os.path.expanduser("~/eecc/ee-gcc3.2-040921/bin/ee-gcc"))
-BINUTILS = os.environ.get("BINUTILS", os.path.expanduser("~/eecc/ps2binutils"))
-AS = os.path.join(BINUTILS, "mips-ps2-decompals-as")
-OBJDIFF = os.environ.get("OBJDIFF", os.path.expanduser("~/eecc/objdiff-cli"))
-# 与 build_hybrid.sh 的 MATCHED_CFLAGS 完全一致：只有在这里 100% 的才会在 hybrid 里 100%
+REPO = PRIVATE_ROOT or ROOT          # 兼容旧名：私有工作面（.tmp/permvenv、out/evidence）
+BUILDDIR = WORK_ROOT / "m2" / "m3pilot"
+# 与 build_hybrid.sh 的 MATCHED_CFLAGS 完全一致：只有在这里 100% 的才会在混合构建里 100%
 CFLAGS = ["-O2", "-falign-functions=4", "-ffunction-sections"]
 
 M3_BEGIN = "# ---- M3 trivial 自动匹配（auto_match_trivial.py 生成，勿手改本段）----"

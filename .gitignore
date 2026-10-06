@@ -36,3 +36,6 @@ venv/
 # ---- editor / OS ----
 .DS_Store
 *.swp
+
+# ---- 生成的台账（由 make/tools 生成；事实源是 config/matched_symbols.txt 与 config/source_flags.tsv）----
+/config/match_meta.tsv

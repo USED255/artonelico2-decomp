@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""生成 routebjp/config/match_meta.tsv —— 「已 C 化符号」的机器可读来源台账。
+"""生成 config/match_meta.tsv —— 「已 C 化符号」的机器可读来源台账。
 
 为什么需要它：
   * `matched_symbols.txt` 是**唯一开关**（构建读它），但它只有「符号 [源] # 注释」；
@@ -12,7 +12,7 @@
   * routebjp/config/source_flags.tsv      —— per-source 额外编译标志
   * out/evidence/jp_m3_workqueue.tsv      —— 难度 category（class 列）
 
-产出：`routebjp/config/match_meta.tsv`
+产出：`config/match_meta.tsv`
   sym  src  flags  class  batch  evidence
 
 用法：python3 tools/build/gen_match_meta.py [--check]
@@ -26,11 +26,15 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
-PROJ = ROOT / "routebjp"
-MATCHED = PROJ / "config" / "matched_symbols.txt"
-FLAGS = PROJ / "config" / "source_flags.tsv"
-WORKQUEUE = ROOT / "out" / "evidence" / "jp_m3_workqueue.tsv"
-OUT = PROJ / "config" / "match_meta.tsv"
+sys.path.insert(0, str(ROOT / "tools" / "project"))
+from at2_paths import (  # noqa: E402  布局无关的路径解析（MATCHED_LIST/FLAGS_TSV/WORKQUEUE）
+    MATCHED_LIST as MATCHED,
+    FLAGS_TSV as FLAGS,
+    WORKQUEUE,
+    PROJECT_ROOT,
+)
+
+OUT = PROJECT_ROOT / "config" / "match_meta.tsv"
 
 STUB_BEGIN = "# ---- M3 桩（syscall/break/手写指令；auto_match_stub.py 生成，勿手改本段）----"
 M3_BEGIN = "# ---- M3 trivial 自动匹配（auto_match_trivial.py 生成，勿手改本段）----"

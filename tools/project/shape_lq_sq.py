@@ -42,11 +42,15 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent.parent
-PROJ = REPO / "routebjp"
-ASMDIR = PROJ / "asm" / "cod"
-WORKQUEUE = REPO / "out/evidence/jp_m3_workqueue.tsv"
-MATCHED = PROJ / "config" / "matched_symbols.txt"
+from at2_paths import (  # noqa: E402  布局无关的路径解析
+    PROJECT_ROOT as REPO,
+    PROJECT_ROOT as PROJ,
+    PRIVATE_ROOT,
+    WORK_ROOT,
+    ASMDIR,
+    WORKQUEUE,
+    MATCHED_LIST as MATCHED,
+)
 GCC = Path(os.environ.get("GCC", str(Path.home() / "eecc/ee-gcc3.2-040921/bin/ee-gcc")))
 AS = Path(os.environ.get("AS", str(Path.home() / "eecc/ps2binutils/mips-ps2-decompals-as")))
 OBJDIFF = Path(os.environ.get("OBJDIFF", str(Path.home() / "eecc/objdiff-cli")))

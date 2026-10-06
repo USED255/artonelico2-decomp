@@ -27,12 +27,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ghidra_draft as GD  # noqa: E402
 import m2c_draft as M2C  # noqa: E402
 
-ROOT = Path(__file__).resolve().parent.parent
-REPO = ROOT.parent
-GCC = str(Path.home() / "eecc" / "ee-gcc3.2-040921" / "bin" / "ee-gcc")
-AS = str(Path.home() / "eecc" / "ps2binutils" / "mips-ps2-decompals-as")
-OBJDIFF = str(Path.home() / "eecc" / "objdiff-cli")
-OUT = ROOT / "build" / "screen"
+from at2_paths import (  # noqa: E402  布局无关的路径解析（说明见 at2_paths.py 顶部）
+    PROJECT_ROOT as ROOT,
+    PRIVATE_ROOT,
+    EVIDENCE_ROOT,
+    WORK_ROOT,
+    MATCHED_LIST,
+    SRCDIR,
+    FLAGS_TSV,
+    ASMDIR,
+    WORKQUEUE,
+    GCC,
+    AS,
+    OBJDIFF,
+)
+
+REPO = PRIVATE_ROOT or ROOT
+OUT = WORK_ROOT / "screen"
 PREAMBLE = '.include "macro.inc"\n\n.set noat\n.set noreorder\n\n.section .text, "ax"\n'
 DEFAULT_FLAGS = ("Os,O2,O1,O3,O2 -G8,O1 -G8,O3 -G8,Os -G8,O2 -fno-common,O3 -fno-common,"
                  "G0,G4,O2 -fomit-frame-pointer,O1 -fomit-frame-pointer,O2 -fno-builtin,"
@@ -136,7 +147,7 @@ def main() -> int:
         # 复用历史草稿（build/m2c/batch/<sym>/<sym>.m2c.c）以省掉重新生成的时间；
         # 没有才现生成。注意：m2c_draft.py 若已更新，历史草稿可能略旧 —— 筛查只用来**找候选**，
         # 命中后仍要逐候选重新生成 + 复核，所以不影响正确性。
-        cached = ROOT / "build" / "m2c" / "batch" / sym / f"{sym}.m2c.c"
+        cached = WORK_ROOT / "m2c" / "batch" / sym / f"{sym}.m2c.c"
         try:
             if a.frontend == "m2c" and cached.is_file():
                 src = dr / f"{sym}.m2c.c"

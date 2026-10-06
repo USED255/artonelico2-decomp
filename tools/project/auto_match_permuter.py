@@ -38,14 +38,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ghidra_draft as GD  # noqa: E402
 import m2c_draft as M2C  # noqa: E402
 from auto_match_trivial import (  # noqa: E402
-    ROOT, MATCHED_LIST, SRCDIR, GCC, AS, OBJDIFF, CFLAGS, M3_BEGIN, M3_END,
+    ROOT, PRIVATE_ROOT, WORK_ROOT, EVIDENCE_ROOT, MATCHED_LIST, SRCDIR, FLAGS_TSV,
+    WORKQUEUE, GCC, AS, OBJDIFF, CFLAGS, M3_BEGIN, M3_END,
 )
 
-REPO = ROOT.parent
+REPO = PRIVATE_ROOT or ROOT            # 私有工作面（.tmp/permvenv 在这里）
 PERMUTER = Path(os.environ.get("PERMUTER", Path.home() / "eecc" / "decomp-permuter" / "permuter.py"))
 PYTHON = os.environ.get("PERMUTER_PYTHON", str(REPO / ".tmp" / "permvenv" / "bin" / "python"))
-WORK = ROOT / "build" / "m2" / "perm"
-FLAGS_TSV = ROOT / "config" / "source_flags.tsv"
+WORK = WORK_ROOT / "m2" / "perm"
+FLAGS_TSV = FLAGS_TSV
 PREAMBLE = '.include "macro.inc"\n\n.set noat\n.set noreorder\n\n.section .text, "ax"\n'
 OBJDUMP = str(Path.home() / "eecc" / "ps2binutils" / "mips-ps2-decompals-objdump")
 
