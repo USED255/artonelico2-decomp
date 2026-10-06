@@ -2,7 +2,7 @@
 """公开仓库自检（CI 的快速门禁；只依赖标准库）。
 
 四件事：
-  1. **完整性**：`PROVENANCE.json` 里每个文件的 sha256 必须与磁盘一致；树里不允许出现清单外的文件。
+  1. **发布记录自洽**：`PUBLISHED.json` 记录的报告/基线/工具链锁 sha256 必须与磁盘一致。
   2. **不可公开类别**：`*.s`（逐条转录桩）、`routeb/`、`docs/private/`、ROM/ISO、工具链压缩包等一律 FAIL。
   3. **报告不变量**：`progress/SLPS_258.19_report.json` 的 schema 与算术自洽（matched ≤ total 等）。
   4. **不回归**：报告相对 `progress/baseline.json` 不得回退（`--baseline`/`--report` 也可单独指定）。
@@ -60,37 +60,40 @@ def tracked_files() -> list[str] | None:
     return None
 
 
-def check_integrity() -> set[str]:
-    prov_path = ROOT / "PROVENANCE.json"
-    if not prov_path.is_file():
-        bad("缺少 PROVENANCE.json（公开仓库必须由导出器生成）")
-        return set()
-    meta = json.loads(prov_path.read_text(encoding="utf-8"))
-    files = meta.get("files", {})
-    for rel, digest in files.items():
-        p = ROOT / rel
-        if not p.is_file():
-            bad(f"清单文件缺失：{rel}")
-        elif sha256(p) != digest:
-            bad(f"清单文件内容与 PROVENANCE 不一致：{rel}")
-    ok(f"PROVENANCE 校验：{len(files)} 个清单文件")
+def check_published() -> None:
+    """发布记录自洽：PUBLISHED.json 里的报告/基线/工具链哈希必须与磁盘一致。"""
+    pub_path = ROOT / "PUBLISHED.json"
+    if not pub_path.is_file():
+        bad("缺少 PUBLISHED.json（发布记录；由 maintainers/tools/publish_report.py 维护）")
+        return
+    try:
+        pub = json.loads(pub_path.read_text(encoding="utf-8"))
+    except Exception as e:
+        bad(f"PUBLISHED.json 不是合法 JSON：{e}")
+        return
+    if pub.get("schema") != "at2-published/2":
+        bad(f"PUBLISHED.json 的 schema 异常：{pub.get('schema')!r}")
+    for key in ("report", "baseline"):
+        item = pub.get(key) or {}
+        rel, want = item.get("path"), item.get("sha256")
+        if not rel or not want:
+            bad(f"PUBLISHED.json 缺 {key}.path/sha256")
+            continue
+        f = ROOT / rel
+        if not f.is_file():
+            bad(f"发布记录指向的文件不存在：{rel}")
+        elif sha256(f) != want:
+            bad(f"{rel} 与 PUBLISHED.json 记录的 sha256 不一致（发布后被改动过？）")
+        else:
+            ok(f"发布记录一致：{rel}")
+    lock = ROOT / "toolchain.lock.json"
+    if pub.get("toolchain_lock_sha256") and lock.is_file():
+        if sha256(lock) != pub["toolchain_lock_sha256"]:
+            bad("toolchain.lock.json 与 PUBLISHED.json 记录的 sha256 不一致")
+        else:
+            ok("发布记录一致：toolchain.lock.json")
+    ok(f"发布记录自洽（source_revision={str(pub.get('source_revision'))[:12]}）")
 
-    allowed = set(files)          # PROVENANCE 覆盖全部内容：生成物 + public-src 人工撰写层
-    # 报告由报告生成器产出（不是导出器产出）：显式允许这两个路径，而不是放开整个 progress/ 前缀
-    allowed |= {"PROVENANCE.json",
-                "progress/SLPS_258.19_report.json", "progress/baseline.json"}
-    allowed |= set(meta.get("overlay_files", []) or [])
-    present = tracked_files()
-    if present is None:
-        present = [p.relative_to(ROOT).as_posix() for p in ROOT.rglob("*") if p.is_file()
-                   and ".git/" not in p.as_posix() and "__pycache__" not in p.parts]
-        ok(f"非 git 树：按文件系统清点 {len(present)} 个文件")
-    extra = [p for p in present if p not in allowed]
-    if extra:
-        bad(f"出现清单外文件 {len(extra)} 个（默认拒绝）：{extra[:8]}")
-    else:
-        ok(f"清单外文件检查通过（{len(present)} 个受控文件）")
-    return allowed
 
 
 def check_deny(allowed: set[str]) -> None:
@@ -169,31 +172,22 @@ def check_no_regression(base_path: Path, report_path: Path) -> None:
 
 
 def check_contrib(base: str) -> None:
-    """贡献模式（PR 用）：白名单内的新增/修改放行；删除、越权、二进制、忌语一律 FAIL。
+    """贡献模式（PR 用）：除只读路径外都可以改；删除、二进制、忌语一律 FAIL。
 
-    白名单与只读原因来自 `PROVENANCE.json`（由导出器写出）——公开侧不硬编码路径规则。
+    只读路径 = `progress/**` 与 `PUBLISHED.json`（CI/维护者产出的发布内容）。
     """
-    prov = ROOT / "PROVENANCE.json"
-    if not prov.is_file():
-        bad("缺少 PROVENANCE.json，无法判定可贡献范围")
-        return
-    meta = json.loads(prov.read_text(encoding="utf-8"))
-    globs = [c["glob"] for c in meta.get("contrib_paths", [])]
-    import_to = {c["glob"]: c["import_to"] for c in meta.get("contrib_paths", [])}
-    readonly = meta.get("readonly_paths", {})
-    max_bytes = int(meta.get("max_contrib_bytes", 1 << 20))
+    # 公开仓库现在是项目主仓库：除「CI/维护者产出的只读路径」外都可以贡献
+    readonly = {
+        "progress/": "进度报告由经过验证的构建产出（tools/publish_report.py 写入），不接受手工改动",
+        "PUBLISHED.json": "发布记录由 tools/publish_report.py 维护",
+    }
+    max_bytes = 1 << 20
 
-    def target(rel: str) -> str | None:
-        for g in globs:
-            if fnmatch.fnmatch(rel, g):
-                return import_to[g].replace("{name}", Path(rel).name).replace("{rel}", rel)
-        return None
-
-    def why(rel: str) -> str:
+    def why(rel: str) -> str | None:
         for prefix, reason in readonly.items():
             if rel == prefix or rel.startswith(prefix):
                 return reason
-        return "不在可贡献白名单内（见 CONTRIBUTING.md）"
+        return None
 
     cp = subprocess.run(["git", "-C", str(ROOT), "diff", "--name-status", f"{base}...HEAD"],
                         capture_output=True, text=True)
@@ -218,9 +212,9 @@ def check_contrib(base: str) -> None:
         if status.startswith("D"):
             bad(f"不接受删除：{rel}（生成物由导出器管理，删掉会在下一次导出中回来）")
             continue
-        tgt = target(rel)
-        if tgt is None:
-            bad(f"越权改动：{rel} —— {why(rel)}")
+        reason = why(rel)
+        if reason:
+            bad(f"只读路径不可改：{rel} —— {reason}")
             continue
         p = ROOT / rel
         if p.is_file():
@@ -232,7 +226,7 @@ def check_contrib(base: str) -> None:
             except UnicodeDecodeError:
                 bad(f"不是文本文件：{rel}（本仓库只收文本贡献）")
                 continue
-        ok(f"允许贡献：{rel} → 导入私有仓库 {tgt}")
+        ok(f"允许贡献：{rel}")
     if renames:
         ok(f"（重命名 {renames} 项已按上面的 FAIL 处理）")
 
@@ -252,8 +246,8 @@ def main() -> int:
     if args.pr:
         check_contrib(args.pr)
     else:
-        allowed = check_integrity()
-        check_deny(allowed)
+        check_published()
+        check_deny(set())
         check_report(ROOT / args.report)
         if (ROOT / args.baseline).is_file():
             check_no_regression(ROOT / args.baseline, ROOT / args.report)

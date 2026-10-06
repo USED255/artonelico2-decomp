@@ -120,7 +120,7 @@ jobs:
         if: env.HAS_ORIG == 'true'
         run: make check
 
-      - name: Build and check the payload hash (the ratchet)
+      - name: Build and check the payload (the payload check)
         if: env.HAS_ORIG == 'true'
         run: make build
 
@@ -128,7 +128,7 @@ jobs:
         if: env.HAS_ORIG == 'true'
         run: |
           BASE="${{ github.event.before }}"
-          case "$BASE" in ""|*0000000000000000000000000000000000000000) echo "First push. Skip the delta check. The full build checked the ratchet.";; *)
+          case "$BASE" in ""|*0000000000000000000000000000000000000000) echo "First push. Skip the delta check. The full build checked the payload.";; *)
             git fetch --quiet origin "$BASE" || true
             make delta BASE="$BASE"
           ;; esac
