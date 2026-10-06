@@ -1,0 +1,13 @@
+# 每源编译器表：<source-basename><TAB>game|cri
+#
+# 背景（docs/kb/reports/R17 §4.2）：
+#   本作是混合编译器工程 —— 游戏代码 = ee-gcc 3.2-ee-040921，CRI 中间件（ADXT 10.03 /
+#   ADXRT 3100 / ADXF 7.63，Build:Feb  9 2007）= ee-gcc 2.96-ee-001003-1。
+#   两个归档都已在 toolchain.lock.json 里锁定，CI 也已安装并导出 GCC_CRI。
+#   实测：recvx-decomp（MIT）的 CRI C 在 `ee-gcc 2.96 -O2 -G0` 下与日版逐字节一致
+#   （AIFF_GetInfo 908 B，两侧 sha1 4e205079…）。
+#
+# 语法：game 走 --gcc；cri 走 --gcc-cri；也可以直接写编译器绝对路径。
+# 只列非 game 的源即可（缺省 = game）。
+func_0031a9c0	cri	# CRI memcpy2 (ADXB)
+func_0031cbc8	cri	# CRI adxf_wait_1ms

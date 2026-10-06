@@ -12,6 +12,11 @@
   --objdir DIR    输出对象目录（stamp 写 DIR/<key>.stamp）
   --cflags  ...   基础标志（C）
   --flags-file    每源额外标志 TSV（<src-basename><TAB><flags>），键 = key
+  --cc-map        每源编译器 TSV（<key><TAB><tag>），tag ∈ game|cri|<绝对路径>；
+                  缺省时全部走 --gcc（向后兼容）。游戏代码 = ee-gcc 3.2-ee-040921，
+                  CRI 中间件 = ee-gcc 2.96-ee-001003-1（两个归档都在 toolchain.lock.json 里，
+                  CI 早已安装并导出 GCC_CRI）——见 docs/kb/reports/R17 §4.2。
+  --gcc-cri       cri 编译器的路径（tag=cri 时使用）
   --jobs N        并行度（默认 4）
 
 行为：
@@ -31,6 +36,7 @@ import concurrent.futures as cf
 import hashlib
 import os
 import re
+import struct
 import subprocess
 import sys
 from pathlib import Path
@@ -66,6 +72,52 @@ def force_text_align4(obj: Path) -> None:
         os.replace(tmp, obj)
 
 
+def fix_symtab_info(obj: Path) -> None:
+    """修正 ELF32 对象 `.symtab` 的 `sh_info`（= 第一个非 LOCAL 符号下标）。
+
+    背景（2026-10-06，CI PR #3）：`ee-gcc 2.96` 汇编出的对象把 `gcc2_compiled.` /
+    `__gnu_compiled_c` 两个 LOCAL 符号放在全局符号**之前**，但 `sh_info` 只数到 8，
+    而实际有 10 个 LOCAL ⇒ GNU ld 报
+    `.symtab local symbol at index 8 (>= sh_info of 8)` / `error adding symbols: bad value`，
+    整个混合构建在链接期挂掉（M1 基线仍然绿，所以只有全量构建能发现）。
+    这里按 ELF 规范重算 `sh_info`；只在不一致时改写，幂等。
+    """
+    try:
+        data = bytearray(obj.read_bytes())
+    except Exception:
+        return
+    if len(data) < 0x34 or data[:4] != b"\x7fELF" or data[4] != 1:
+        return
+    e_shoff, = struct.unpack_from("<I", data, 0x20)
+    e_shentsize, e_shnum = struct.unpack_from("<HH", data, 0x2E)
+    if not e_shoff or not e_shentsize or not e_shnum:
+        return
+    changed = False
+    for i in range(e_shnum):
+        o = e_shoff + i * e_shentsize
+        if o + 40 > len(data):
+            break
+        (sh_type, sh_off, sh_size, sh_info,
+         sh_entsize) = (struct.unpack_from("<I", data, o + 4)[0],
+                        struct.unpack_from("<I", data, o + 16)[0],
+                        struct.unpack_from("<I", data, o + 20)[0],
+                        struct.unpack_from("<I", data, o + 28)[0],
+                        struct.unpack_from("<I", data, o + 36)[0])
+        if sh_type != 2 or not sh_entsize:          # SHT_SYMTAB
+            continue
+        n = sh_size // sh_entsize
+        first_global = n
+        for k in range(n):
+            if data[sh_off + k * sh_entsize + 12] >> 4:   # st_info >> 4 != STB_LOCAL
+                first_global = k
+                break
+        if sh_info != first_global:
+            struct.pack_into("<I", data, o + 28, first_global)
+            changed = True
+    if changed:
+        obj.write_bytes(bytes(data))
+
+
 def sha1_file(p: Path) -> str:
     h = hashlib.sha1()
     with p.open("rb") as f:
@@ -88,6 +140,8 @@ def main() -> int:
     ap.add_argument("--sources", required=True, help="TSV：key<TAB>kind<TAB>srcfile")
     ap.add_argument("--objdir", required=True)
     ap.add_argument("--gcc", required=True)
+    ap.add_argument("--gcc-cri", default="", help="CRI 段编译器（tag=cri）；未提供且用到 cri 时报错")
+    ap.add_argument("--cc-map", default="", help="每源编译器 TSV：<key><TAB><tag>（tag=game|cri|路径）")
     ap.add_argument("--as", dest="as_", required=True)
     ap.add_argument("--include", default="include")
     ap.add_argument("--cflags", default="")
@@ -108,6 +162,34 @@ def main() -> int:
             if line:
                 a = line.split()
                 extra[a[0]] = " ".join(a[1:])
+
+    # 每源编译器（CRI 段用 ee-gcc 2.96，游戏代码用 3.2；见 R17 §4.2）
+    cc_map = {}
+    if args.cc_map and Path(args.cc_map).is_file():
+        for line in Path(args.cc_map).read_text(encoding="utf-8").splitlines():
+            line = line.split("#", 1)[0].strip()
+            if not line:
+                continue
+            a = line.split()
+            if len(a) < 2:
+                print(f"FAIL: cc-map 行格式不对: {line!r}", file=sys.stderr)
+                return 2
+            tag = a[1]
+            if tag == "cri":
+                if not args.gcc_cri:
+                    print("FAIL: cc-map 用到 cri，但没有 --gcc-cri", file=sys.stderr)
+                    return 2
+                cc_map[a[0]] = args.gcc_cri
+            elif tag == "game":
+                cc_map[a[0]] = args.gcc
+            else:
+                cc_map[a[0]] = tag          # 允许直接写绝对路径
+    _ver_cache: dict[str, str] = {}
+
+    def cc_version(cc: str) -> str:
+        if cc not in _ver_cache:
+            _ver_cache[cc] = tool_version(cc)
+        return _ver_cache[cc]
 
     global OBJCOPY, READELF
     bindir = Path(args.as_).parent
@@ -142,22 +224,23 @@ def main() -> int:
             print(f"FAIL: 缺少替换源 {src}", file=sys.stderr)
             return 2
         ex = extra.get(key, "")
-        ver = cc_ver if kind == "cc" else as_ver
+        gcc = (cc_map.get(key, args.gcc) if kind == "cc" else args.gcc)
+        ver = cc_version(gcc) if kind == "cc" else as_ver
         base = " ".join(base_cflags if kind == "cc" else base_asflags)
-        # stamp 必须覆盖**基础标志**：MATCHED_CFLAGS 被覆盖（负面对照）时要失效重建
+        # stamp 必须覆盖**基础标志**与**每源编译器**：MATCHED_CFLAGS/编译器被换掉时要失效重建
         # al4：2026-10-04 起 cc 对象统一把 .text* 段对齐降到 4（见 build 里的 objcopy），
         #      版本串加后缀让旧缓存失效重建。
-        want = f"{kind}|{ver}|al4|{base}|{ex}|{sha1_file(src)}"
+        want = f"{kind}|{ver}|al4|{base}|{ex}|{gcc}|{sha1_file(src)}"
         stamp = objdir / f"{key}.stamp"
         obj = objdir / f"{key}.o"
         if not args.no_cache and obj.is_file() and stamp.is_file() and stamp.read_text() == want:
             cached += 1
             continue
-        todo.append((key, kind, src, ex, want, obj, stamp))
+        todo.append((key, kind, src, ex, want, obj, stamp, gcc))
 
     def build(item):
-        key, kind, src, ex, want, obj, stamp = item
-        if kind == "cc":            cmd = [args.gcc, *base_cflags, *ex.split(), "-I", args.include, "-c", "-o", str(obj), str(src)]
+        key, kind, src, ex, want, obj, stamp, gcc = item
+        if kind == "cc":            cmd = [gcc, *base_cflags, *ex.split(), "-I", args.include, "-c", "-o", str(obj), str(src)]
         else:
             cmd = [args.as_, *base_asflags, "-I", args.include, "-o", str(obj), str(src)]
         r = subprocess.run(cmd, capture_output=True, text=True)
@@ -168,6 +251,9 @@ def main() -> int:
             #    `.text.<fn>` 段对齐到 8，而原汇编块只要求 4 对齐 → 链接器插入填充 → 载荷整体位移、棘轮变红。
             #    这里统一把该对象所有 `.text*` 段的对齐强制为 4（与 splat 的 `.align 2` 一致）。
             force_text_align4(obj)
+            # ee-gcc 2.96（CRI 段）还会写出 `.symtab sh_info` 与 LOCAL 符号数不一致的对象，
+            # GNU ld 直接拒绝；按 ELF 规范重算（见 fix_symtab_info 的 docstring）。
+            fix_symtab_info(obj)
         stamp.write_text(want, encoding="utf-8")
         return None
 
