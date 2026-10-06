@@ -95,6 +95,7 @@ func_00104488    # wrapper_o2_tail
 func_0010449c    # permuter
 func_00104a68    # ghidra_draft:-O1
 func_00104a8c    # permuter
+func_00105670    # permuter
 func_00105e3c    # ghidra_draft:-O2
 func_001062a8    # permuter
 func_00106540    # wrapper_o2_tail
@@ -412,6 +413,7 @@ func_0016a124    # permuter
 func_0016a208    # ghidra_draft:-O2
 func_0016a470    # permuter
 func_0016c68c    # ghidra_draft:-O2
+func_0016d5a4    # permuter
 func_0016df98    # empty
 func_0016dfa0    # empty
 func_0016e100    # llm_draft
@@ -779,6 +781,7 @@ func_001dd9e4    # ghidra_draft:-O2
 func_001dd9f4    # ghidra_draft:-O2
 func_001de74c    # wrapper_o2_tail
 func_001deb30    # permuter
+func_001df944    # permuter
 func_001df970    # ghidra_draft:-O2
 func_001df9a4    # permuter
 func_001dfb10    # permuter
@@ -1200,6 +1203,7 @@ func_00247b5c    # permuter
 func_00247eec    # permuter
 func_00247fbc    # permuter
 func_002480b4    # permuter
+func_00248114    # permuter
 func_00248238    # empty
 func_00248694    # ghidra_draft:-O2
 func_002486b0    # empty
@@ -1826,6 +1830,7 @@ func_002ee450    # ret_const
 func_002eefe0    # wrapper_o2_tail
 func_002eeff8    # ghidra_draft:-O1
 func_002ef010    # mem_multi_store
+func_002efa80    # permuter
 func_002efbf0    # ptr_add_store
 func_002efca8    # wrapper_o2_tail
 func_002efcc0    # ghidra_draft:-O1
@@ -1892,6 +1897,7 @@ func_00300228    # ghidra_draft:-O2
 func_00300248    # ghidra_draft:-O2
 func_00300268    # ghidra_draft:-O2
 func_00300588    # store_arg0
+func_003005c0    # permuter
 func_00300608    # store_arg0
 func_00301240    # ret_const
 func_003012c8    # ret_const
@@ -1919,6 +1925,7 @@ func_00305568    # ret_const
 func_00305668    # ret_const
 func_003056e0    # ret_data_addr
 func_00305ac0    # ghidra_draft:-O1
+func_00305ad0    # permuter
 func_00305b40    # idx_load
 func_00305b50    # store_arg0
 func_00305c48    # ghidra_draft:-O2
@@ -2320,6 +2327,7 @@ func_00363260    # ghidra_draft:-O2
 func_003632a0    # ghidra_draft:-O2
 func_003636f0    # permuter
 func_00363df8    # permuter
+func_00365ac8    # ghidra_draft:-O2-fno-optimize-sibling-calls
 func_00366140    # ghidra_draft:-O2
 func_00366168    # ret_const
 func_003688d0    # wrapper_o2_tail

@@ -50,6 +50,7 @@ func_00103b78	-O1
 func_0010449c	-Os
 func_00104a68	-O1
 func_00104a8c	-Os
+func_00105670	-Os
 func_00107624	-Os
 func_00107964	-Os
 func_00107e48	-Os
@@ -161,6 +162,7 @@ func_00165bfc	-O2
 func_00166f9c	-Os
 func_001679e4	-Os
 func_0016a198	-Os
+func_0016d5a4	-Os
 func_0016e100	-Os
 func_00171da0	-O1
 func_00174474	-Os
@@ -318,7 +320,6 @@ func_001de6e0	-Os
 func_001de94c	-Os
 func_001deb30	-Os
 func_001deec4	-Os
-func_001df944	-Os
 func_001dfb10	-Os
 func_001dfce4	-Os
 func_001e0274	-O2
@@ -698,6 +699,7 @@ func_00247724	-Os
 func_00247a80	-O1
 func_00247b28	-Os
 func_00247eec	-O1
+func_00248114	-Os
 func_0024a1d4	-O2
 func_0024a3ac	-O2
 func_0024c3b0	-Os
@@ -955,6 +957,7 @@ func_002ecf58	-Os
 func_002eefc0	-O2
 func_002eeff8	-O1
 func_002ef0d8	-O2
+func_002efa80	-O3
 func_002efcc0	-O1
 func_002efe20	-O1
 func_002efef8	-O3
@@ -982,6 +985,7 @@ func_002fd350	-O2 -fno-schedule-insns2
 func_002fd738	-O1
 func_002fddf8	-O1
 func_002fe338	-O1
+func_003005c0	-O3
 func_003005f0	-O2
 func_003013a8	-O1
 func_003016e8	-O3
@@ -1005,6 +1009,7 @@ func_00304e40	-O3
 func_00305a50	-O3
 func_00305a60	-O3
 func_00305ac0	-O1
+func_00305ad0	-O3
 func_003060f8	-O1
 func_00306968	-O3
 func_00306978	-O3
@@ -1071,6 +1076,7 @@ func_00346750	-O3
 func_00346760	-O3
 func_0035f5c0	-O2
 func_00361978	-O2
+func_00365ac8	-O2 -fno-optimize-sibling-calls
 iopldfl_7	-O1
 iopsmem_14	-O1
 loadcore_7	-O3
