@@ -22,7 +22,7 @@
 * `AT2_EVIDENCE_ROOT` —— 证据目录：`<项目根>/out/evidence` → `<项目根>/../at2/out/evidence`。
 * `AT2_WORK_ROOT` —— 批量工作目录：`<项目根>/routebjp/build` → `<项目根>/../at2/routebjp/build`
   → `<项目根>/build`。
-* `AT2_PRIVATE_ROOT` —— 私有仓库根：默认 `<项目根>/../at2`（存在才算）。
+* `AT2_PRIVATE_ROOT` —— 私有仓库根：默认沿项目根的祖先逐级找 `<祖先>/at2`（要求含 `routebjp/` 或 `out/`）。
 
 自检：`python3 tools/project/at2_paths.py`
 """
@@ -54,6 +54,26 @@ def _first_existing(*cands: Path) -> Path | None:
     return None
 
 
+def _find_private_root(project_root: Path) -> Path | None:
+    """定位私有仓库根（受限材料与工作状态）。
+
+    不能只试 `<项目根>/../at2`：任务工作树位于 `<工作区>/worktrees/<repo>-<slug>`，
+    它的上一级是 `worktrees/` 而不是工作区根，于是私有根解析失败、证据目录落到工作树里
+    （2026-10-06 实测：工作树 `make check` 因此多 1 条 warn，主检出 0 条）。
+
+    这里沿祖先逐级试 `<祖先>/at2`，并要求它**看起来像**私有仓库（有 `routebjp/` 或 `out/`），
+    避免把任意同名目录当私有根。
+    """
+    for anc in [project_root, *project_root.parents]:
+        cand = anc / "at2"
+        try:
+            if cand.is_dir() and ((cand / "routebjp").is_dir() or (cand / "out").is_dir()):
+                return cand
+        except OSError:
+            continue
+    return None
+
+
 _HERE = Path(__file__).resolve().parent
 
 # ---- 项目根（源码/配置/汇编树/include）----
@@ -63,7 +83,7 @@ PROJECT_ROOT: Path = Path(_env_proj).resolve() if _env_proj else _find_project_r
 # ---- 私有仓库根（受限材料与工作状态）----
 _env_priv = os.environ.get("AT2_PRIVATE_ROOT")
 PRIVATE_ROOT: Path | None = (
-    Path(_env_priv).resolve() if _env_priv else _first_existing(PROJECT_ROOT.parent / "at2")
+    Path(_env_priv).resolve() if _env_priv else _find_private_root(PROJECT_ROOT)
 )
 
 # ---- 证据目录（工作队列、难度画像等派生证据）----

@@ -69,6 +69,45 @@ if not AP.WORKQUEUE.is_file():
 if AP.WORK_ROOT is None or not Path(AP.WORK_ROOT).is_dir():
     warnings.append(f"批量工作目录不在：{AP.WORK_ROOT}")
 
+def test_private_root_from_worktree() -> list[str]:
+    """回归：**任务工作树**里也必须能解析到私有仓库根。
+
+    2026-10-06 的真实坑：旧实现只试 `<项目根>/../at2`，而工作树在 `<工作区>/worktrees/<repo>-<slug>`，
+    上一级是 `worktrees/` ⇒ 私有根落空、证据目录错误地落到工作树里（`make check` 多 1 条 warn）。
+    这里造一个合成工作区、以子进程导入（环境变量覆盖项目根）来断言解析结果。
+    """
+    import os
+    import subprocess
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as td:
+        ws = Path(td) / "ws"
+        (ws / "at2" / "routebjp").mkdir(parents=True)
+        (ws / "at2" / "out" / "evidence").mkdir(parents=True)
+        wtree = ws / "worktrees" / "at2-public-x"
+        wtree.mkdir(parents=True)
+        env = dict(os.environ, AT2_PROJECT_ROOT=str(wtree), AT2_PRIVATE_ROOT="", AT2_EVIDENCE_ROOT="")
+        code = ("import sys; sys.path.insert(0, sys.argv[1]); import at2_paths as A;"
+                "print(A.PRIVATE_ROOT); print(A.EVIDENCE_ROOT)")
+        r = subprocess.run([sys.executable, "-c", code, str(ROOT / "tools" / "project")],
+                           env=env, capture_output=True, text=True)
+        if r.returncode != 0:
+            return [f"工作树路径回归：子进程失败：{r.stderr.strip()[:200]}"]
+        lines = [x.strip() for x in r.stdout.splitlines() if x.strip()]
+        want_priv = str(ws / "at2")
+        want_ev = str(ws / "at2" / "out" / "evidence")
+        bad: list[str] = []
+        got_priv = lines[0] if lines else "?"
+        got_ev = lines[1] if len(lines) > 1 else "?"
+        if got_priv != want_priv:
+            bad.append(f"工作树路径回归：PRIVATE_ROOT = {got_priv}，应为 {want_priv}")
+        if got_ev != want_ev:
+            bad.append(f"工作树路径回归：EVIDENCE_ROOT = {got_ev}，应为 {want_ev}")
+        return bad
+
+
+problems.extend(test_private_root_from_worktree())
+
 for w in warnings:
     print(f"[warn ] {w}")
 if problems:
