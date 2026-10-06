@@ -237,13 +237,18 @@ def check_contrib(base: str) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--check", action="store_true", help="完整性 + 类别 + 报告不变量（默认动作）")
+    ap.add_argument("--compare-only", action="store_true",
+                    help="只比数字：报告 schema + 相对基线不回退（用 CI 刚生成的报告，不校验已提交副本的哈希）")
     ap.add_argument("--pr", metavar="BASE", default="",
                     help="贡献模式：与 BASE（如 pull_request.base.sha）比较，只允许白名单内的新增/修改")
     ap.add_argument("--report", default="progress/SLPS_258.19_report.json")
     ap.add_argument("--baseline", default="progress/baseline.json")
     args = ap.parse_args()
 
-    if args.pr:
+    if args.compare_only:
+        check_report(ROOT / args.report)
+        check_no_regression(ROOT / args.baseline, ROOT / args.report)
+    elif args.pr:
         check_contrib(args.pr)
     else:
         check_published()

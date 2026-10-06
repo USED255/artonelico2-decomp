@@ -169,7 +169,7 @@ jobs:
 
       - name: The report must not be worse than the baseline
         if: env.HAS_ORIG == 'true'
-        run: python3 tools/check/check_public_repo.py --baseline progress/baseline.json --report progress/SLPS_258.19_report.json
+        run: python3 tools/check/check_public_repo.py --compare-only --baseline progress/baseline.json --report progress/SLPS_258.19_report.json
 
       # The steps above must all pass to reach this step. A failed run writes no
       # report artifact. Therefore decomp.dev never receives an unverified number.
