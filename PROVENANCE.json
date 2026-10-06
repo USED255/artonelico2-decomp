@@ -1,13 +1,15 @@
 {
  "generated_by": "at2/tools/export/export_public.py",
- "generated_at": "2026-10-06T00:02:06+0800",
+ "generated_at": "2026-10-06T09:25:32+0800",
  "source_repo": "at2 (private)",
- "source_commit": "96295f044191633ab1343a238ba0cb9bac436f36",
+ "source_commit": "73d6d5fafd8586e12aa4c4f42662bc35d7b31f23",
  "layout": "flat",
+ "overlay_src": "public-src/",
  "policy": "docs/PUBLICATION-POLICY.md",
  "counts": {
-  "generated": 2732,
-  "overlay": 10
+  "generated": 2731,
+  "overlay": 15,
+  "total": 2746
  },
  "transforms": {
   "flat_paths": [
@@ -38,6 +40,15 @@
   ]
  },
  "files": {
+  ".github/workflows/matching-gate.yml": "38c1a09fdb9cd70b4d8cb7a9023521d014a5945a76100196d510041a66578d40",
+  ".github/workflows/validate.yml": "00a1342c2d69b2b1585f012adfbe5df2d58ee341bc50c6a553902ad1f3f49bf0",
+  ".gitignore": "39cc531b36111876add20174bb856f4acb4922b2004aa59d3bdd4be237eedbc8",
+  "CONTRIBUTING.md": "f987424e63a7c05f84ad00579e6ee489eaa944245e050dbf3abe975cf73553eb",
+  "CONTRIBUTING.zh-CN.md": "f1388a8c48629bd724c42fa2d9b96591e0405edd654b4f08c05089cec635da0f",
+  "LICENSE": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+  "Makefile": "9464ea67b6cae2cba5975a840fd110a86a2b9c6e2330cd37937ff6c13ccdf642",
+  "README.md": "6b46e6a879bc33c27cee5e9809ac896651ad52376d96c1cd7ea01ad5f640f673",
+  "README.zh-CN.md": "fc5f1f97ed8e421ff08aa58a80f115f5afc2ddebb7608c86202f72c77b544c71",
   "build.sh": "8ea67755e3717fb30fb45d3e8e1e5cb69e8bf98a361ff77d8a1f59ce7c4104ae",
   "build_hybrid.sh": "680ca18ffb603060e1176fca6703a5947d074d7793443903eb44fa1428f1b60d",
   "build_m2.sh": "4b02bc4a11ba66d4e5a27f723b722cc7ef1ffcd1f4b1ec9b6a79f879b67be9bf",
@@ -46,7 +57,11 @@
   "config/reloc_addrs.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "config/source_flags.tsv": "7be111ccfd4160f376007cc89f6d81b69a6cd0443ad86260871abcfee731f597",
   "config/symbol_addrs.txt": "de672e0b6641026f8486705ec8c3e71c1fbcffa6dfde15070d9de6d0c60653dc",
-  "docs/PUBLICATION-POLICY.md": "aeabf9361a2ca50d56c84e9a3c2f213ff749d5bd341f9e2f2b8d1ada089f07e4",
+  "configure.py": "583d104d993cd15066c788f3bee85b67306599cdaba11ed3b7a4e06593d7e90f",
+  "docs/BUILD.md": "a8d2b8776e48a1391564163aff5313a2da6eee6488a2fde8bff5fab7cc8c8fd4",
+  "docs/BUILD.zh-CN.md": "94f1dd1a8db0b62b32eecf1dfef05f257d53f07c38544c7c51596411c2dc1144",
+  "docs/PUBLICATION-POLICY.md": "d3192fbbecb531e7153ade6e8a0ab6315c5a9a703ec9336cdccc8a5d5e5ba8ce",
+  "docs/PUBLICATION-POLICY.zh-CN.md": "7c6467401d11f52f5e476fddaef37ba6e578d65fc1566a1b281ca909e5f694f3",
   "splat.yaml": "8bf6d829650d05bdbc1dca5c47d33dfc2df1d76a8a5c8baf4c77f9990180389b",
   "src/matched/LibcStdio_19.c": "6eb7e675fae387f686518980ffe4a3946e7cb21affaefd1240b03574fe295089",
   "src/matched/LibcStdio_31.c": "b77932a147db2ed450ea25b9b0fa3d3d5bcadc645fa2341d6c75e95beff21c59",
@@ -2737,6 +2752,7 @@
   "src/matched/iopsmem_14.c": "bd96483e45359018b1584e89f4c4c449bb1ab9aac54a8876ee1aee8efcb043e1",
   "src/matched/loadcore_7.c": "aeb410132030a70825bf4fdb6d314758ab31322ae4f6a76063f8cba14de01474",
   "src/matched/sifcmd_30.c": "06a9227e6263cbc64fcb4de03a4a3053ff21eaef0e80eae54a55304c1a388381",
+  "toolchain.lock.json": "0756711b4d0377fd55956314d9ba7a147d98ff46289f97dbe4524751ddd85670",
   "tools/build/decomp_build.py": "333c75c2cf694ca10f1ff841575249841d68db38b1e271d2f19a10441efa6d7c",
   "tools/build/export_symbols.py": "bb26b7faa13a28218fe7edabf6df8b76f98aaeba46acbf06e59907d2426f84af",
   "tools/build/gen_match_meta.py": "7b0b93744584bfb676d7f7472d3e642b596c649a60d9f52bd045c27415700804",
@@ -2744,7 +2760,7 @@
   "tools/build/gen_splat_yaml.py": "bd0f74ae6b92df21ee05c39baeb6bf84ee715e98ed9d1cb0d28faf03a57c997f",
   "tools/build/gen_symbol_addrs.py": "7a0675c7dd4d56b30efb846ff8a651ca1b0ddb34278f6411c25409c5b4d35e52",
   "tools/build/m2_extract.py": "2e0176abddd3be73ae49ca4f99bfe9b0653aca36895c10678d27a621b42c93e3",
-  "tools/check/check_public_repo.py": "0a843157a90408f88402cd02ec6be58ea3eb9b273df019476f6428675e5acff0",
+  "tools/check/check_public_repo.py": "1dd094247ca47a5f51b0a04912e4940015a53af86aac0f2ed37940a32a475013",
   "tools/project/auto_match_ghidra.py": "dd85b792ffdd8ea8c444ce2ddf838fcba9ecc60ff212afa22070a93c39528b0c",
   "tools/project/auto_match_m2c.py": "8f746a9210f6cb7c133e109c6c22cb8e27a756dfca9e7d77426cfe7bd3df5284",
   "tools/project/auto_match_permuter.py": "fc9f5af2d689a15888f2ae4b385c6fe7ad06bafd5bac15e4b64b25aed64286a6",

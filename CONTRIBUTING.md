@@ -1,22 +1,40 @@
 # Contributing
 
-**This repository is generated.** Its content is exported from a private working repository by
-`tools/export/export_public.py` (see `PROVENANCE.json` for the source revision).
+[English](CONTRIBUTING.md) | [简体中文](CONTRIBUTING.zh-CN.md)
+
+This repository is generated. A private exporter writes it from a working
+repository. The file `PROVENANCE.json` shows the source revision.
 
 Therefore:
 
-- Pull requests and direct edits here will be overwritten by the next export — please don't open them.
-- If you want to report a problem with the *published* content (a broken build instruction, a missing file,
-  a policy violation), open an issue instead.
+- Do not open a pull request. The next export replaces your change.
+- Report a problem in an issue. Do not send a patch.
 
-## Reporting a policy problem
+## Report a policy problem
 
-The publication rules are in [docs/PUBLICATION-POLICY.md](docs/PUBLICATION-POLICY.md). If you believe this
-repository contains something it must not contain (game assets, a ROM, proprietary toolchain binaries,
-third-party material), please open an issue — that is treated as a blocker and the offending content is
-removed before anything else.
+Read [docs/PUBLICATION-POLICY.md](docs/PUBLICATION-POLICY.md). Open an issue if
+this repository contains material that it must not contain. We treat that report
+as a blocker. We remove the material first.
 
-## Scope
+## Writing style
 
-This repository publishes **the decompilation product and its progress**. Development, experiments and
-internal notes live elsewhere; they are not mirrored here.
+All English documents in this repository use the **ASD-STE100** style. ASD-STE100
+is Simplified Technical English. Follow these rules:
+
+1. Write one idea in one sentence.
+2. Keep a procedure sentence below 20 words. Keep a description sentence below
+   25 words.
+3. Write a maximum of six sentences in one paragraph.
+4. Use the active voice. Use the imperative for instructions.
+5. Use simple tenses. Do not use contractions. Do not use a semicolon.
+6. Do not write "e.g.", "i.e.", or "etc.". Write "for example", "that is", or
+   "and more".
+7. Use one word for one meaning. Use the same word for the same thing.
+8. Do not use idioms, slang, or vague words.
+9. Obey the approved dictionary of ASD-STE100 when you can.
+
+The ASD-STE100 dictionary has a copyright. We do not copy it into this
+repository. The standard is at <https://www.asd-ste100.org/>.
+
+Chinese documents follow the same principles: short sentences, the active voice,
+one term for one meaning, and no spoken language.

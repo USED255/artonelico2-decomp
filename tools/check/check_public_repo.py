@@ -75,12 +75,10 @@ def check_integrity() -> set[str]:
             bad(f"清单文件内容与 PROVENANCE 不一致：{rel}")
     ok(f"PROVENANCE 校验：{len(files)} 个清单文件")
 
-    allowed = set(files)
-    allowed |= {".github/workflows/validate.yml", ".github/workflows/matching-gate.yml",
-                "README.md", "LICENSE", "CONTRIBUTING.md", ".gitignore", "Makefile", "configure.py",
-                "toolchain.lock.json", "docs/BUILD.md", "PROVENANCE.json"}
+    allowed = set(files)          # PROVENANCE 覆盖全部内容：生成物 + public-src 人工撰写层
     # 报告由报告生成器产出（不是导出器产出）：显式允许这两个路径，而不是放开整个 progress/ 前缀
-    allowed |= {"progress/SLPS_258.19_report.json", "progress/baseline.json"}
+    allowed |= {"PROVENANCE.json",
+                "progress/SLPS_258.19_report.json", "progress/baseline.json"}
     allowed |= set(meta.get("overlay_files", []) or [])
     present = tracked_files()
     if present is None:
