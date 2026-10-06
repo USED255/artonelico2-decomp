@@ -49,13 +49,7 @@ make check                       # repository checks
 
 ## 5. What happens after CI
 
-A maintainer reviews your change. Then a maintainer merges it. Your change takes
-effect in this repository, and your name stays in the history.
-
-Some material cannot be published. It lives in a private companion repository:
-the retail executable, the disassembly, and the Sony toolchain. CI gets them
-there when it must run a real build. Your contribution never needs to touch
-them.
+A maintainer reviews your change and merges it. Your name stays in the history.
 
 ## 6. Path rules
 
@@ -101,8 +95,8 @@ Simplified Technical English. Follow these rules:
 The ASD-STE100 dictionary has a copyright. We do not copy it into this
 repository. The standard is at <https://www.asd-ste100.org/>.
 
-Chinese documents follow the same principles: short sentences, the active voice,
-one term for one meaning, and no spoken language.
+Documents in other languages follow the same principles: short sentences, the
+active voice, one term for one meaning, and no spoken language.
 
 ## 8. Licence
 

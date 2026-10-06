@@ -1,7 +1,5 @@
 # 魔塔大陆2：响彻世界的少女的创造诗 —— 匹配反编译
 
-> 术语：本文用「**载荷校验 / 基线重建 / 混合构建 / 逐函数比对**」，对应旧说法「棘轮 / M1 / M2.5 / M2」。
-
 [English](README.md) | [简体中文](README.zh-CN.md)
 
 本仓库包含 PS2 游戏 **《魔塔大陆2：响彻世界的少女的创造诗》**（`Ar tonelico II`，日版零售 `SLPS_258.19`）的**逆向 C 源码**。
@@ -9,19 +7,16 @@
 `src/matched/` 下的源码用**原版编译器工具链**编译。构建过程把结果与零售二进制**逐字节**比较。
 两个字节序列相同时，该函数判定为**已匹配**。
 
-> **这里是项目的公开仓库。** 源码、配置、工具、CI 都在本仓库；**欢迎贡献**（见 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)）。
-> 原版可执行文件、反汇编与 Sony 工具链留在私有伴生仓库，见 [docs/PUBLICATION-POLICY.zh-CN.md](docs/PUBLICATION-POLICY.zh-CN.md)。
+> **欢迎贡献**（见 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)）。
 
 ## 进度
 
-当前数字在 `progress/SLPS_258.19_report.json` 里：
+截至 2026-10-05（[progress/baseline.json](progress/baseline.json)，构建版本 `c0c0541`）：
 
-- 已匹配函数数，
-- 已匹配代码字节数，
-- 函数总数与代码字节总数。
+- 已匹配函数：**2,688 / 10,923（24.61%）**
+- 已匹配代码：**119,076 / 2,276,780 字节（5.23%）**
 
-`progress/baseline.json` 是已接受的基线。比基线更差的报告，CI **不会**发布。
-进度历史：<https://decomp.dev/>。
+逐条转录的汇编桩**不计入**「已匹配」。比基线更差的报告，CI 不会发布。进度历史：<https://decomp.dev/>。
 
 ## 目录
 
@@ -48,16 +43,6 @@ python3 configure.py --game /path/to/SLPS_258.19
 make build      # 汇编、链接、校验载荷哈希
 make report     # 生成进度报告
 ```
-
-## CI 如何验证结果
-
-CI 跑三项检查：
-
-1. **载荷哈希**：链接出的可执行文件必须与零售载荷一致，sha1 为 `7cc42d275750600d1f232b2632447f77205f3fc0`。
-2. **逐函数匹配**：`src/matched/` 里**本次改动**的每个文件，必须 100% 匹配它对应的原函数。
-3. **不回退**：新报告不得比基线更差。
-
-任何一项不过，CI 立即停止，**不产出**进度报告。
 
 ## 法律
 

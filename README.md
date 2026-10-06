@@ -9,22 +9,17 @@ The source in `src/matched/` compiles with the original compiler toolchain.
 The build compares the result with the retail binary byte by byte. A function is
 **matched** when the two byte sequences are equal.
 
-> **This is the project repository.** The source, the configuration, the tools, and the
-> CI all live here. **Contributions are welcome** — read [CONTRIBUTING.md](CONTRIBUTING.md).
-> We keep the retail executable, the disassembly, and the Sony toolchain in a private
-> companion repository. Read [docs/PUBLICATION-POLICY.md](docs/PUBLICATION-POLICY.md).
+> **Contributions are welcome** — read [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Status
 
-The file `progress/SLPS_258.19_report.json` contains the current numbers:
+As of 2026-10-05 ([progress/baseline.json](progress/baseline.json), build `c0c0541`):
 
-- matched functions,
-- matched code bytes,
-- total functions and total code bytes.
+- Matched functions: **2,688 / 10,923 (24.61%)**
+- Matched code: **119,076 / 2,276,780 bytes (5.23%)**
 
-The file `progress/baseline.json` contains the accepted baseline. CI does not
-publish a report that is worse than the baseline.
-Progress history: <https://decomp.dev/>.
+We do not count the assembly stubs that we copied. CI does not publish a report
+that is worse than the baseline. Progress history: <https://decomp.dev/>.
 
 ## Layout
 
@@ -52,18 +47,6 @@ python3 configure.py --game /path/to/SLPS_258.19
 make build      # assemble, link, and check the payload hash
 make report     # write the progress report
 ```
-
-## How CI verifies the result
-
-CI runs three checks:
-
-1. **Payload hash.** The linked executable must equal the retail payload.
-   The sha1 value is `7cc42d275750600d1f232b2632447f77205f3fc0`.
-2. **Function match.** Each changed file in `src/matched/` must match its
-   original function 100%.
-3. **No regression.** The new report must not be worse than the baseline.
-
-If one check fails, CI stops and publishes no progress report.
 
 ## Legal
 
