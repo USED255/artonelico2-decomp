@@ -9,8 +9,8 @@
 `src/matched/` 下的源码用**原版编译器工具链**编译。构建过程把结果与零售二进制**逐字节**比较。
 两个字节序列相同时，该函数判定为**已匹配**。
 
-> **欢迎贡献。** 本仓库是生成物：由私有导出器从工作仓库写出，维护者会把接受的改动导入上游工作仓库。
-> 步骤见 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)。
+> **这里是项目的公开仓库。** 源码、配置、工具、CI 都在本仓库；**欢迎贡献**（见 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)）。
+> 原版可执行文件、反汇编与 Sony 工具链留在私有伴生仓库，见 [docs/PUBLICATION-POLICY.zh-CN.md](docs/PUBLICATION-POLICY.zh-CN.md)。
 
 ## 进度
 

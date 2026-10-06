@@ -9,9 +9,10 @@ The source in `src/matched/` compiles with the original compiler toolchain.
 The build compares the result with the retail binary byte by byte. A function is
 **matched** when the two byte sequences are equal.
 
-> **Contributions are welcome.** This repository is generated: a private exporter
-> writes it from a working repository, and a maintainer imports an accepted change
-> there. Read [CONTRIBUTING.md](CONTRIBUTING.md) for the steps.
+> **This is the project repository.** The source, the configuration, the tools, and the
+> CI all live here. **Contributions are welcome** — read [CONTRIBUTING.md](CONTRIBUTING.md).
+> We keep the retail executable, the disassembly, and the Sony toolchain in a private
+> companion repository. Read [docs/PUBLICATION-POLICY.md](docs/PUBLICATION-POLICY.md).
 
 ## Status
 

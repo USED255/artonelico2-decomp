@@ -2,8 +2,7 @@
 
 [English](PUBLICATION-POLICY.md) | [简体中文](PUBLICATION-POLICY.zh-CN.md)
 
-This repository is public. A private exporter applies the rules below. CI checks
-the result. The rules have two parts: what we publish, and what we never publish.
+This repository is public. The rules below have two parts: what we publish, and what we never publish.
 
 ## 1. Material that we publish
 
@@ -33,6 +32,7 @@ We treat that report as a blocker. We remove the material before any other work.
 
 ## 4. Note
 
-- This policy applies to this public repository only.
-- The private working repository is not public. It has no publication limit.
+- This policy applies to this repository.
+- Material that we cannot publish stays in a private companion repository. It
+  holds the retail executable, the disassembly, and the Sony toolchain.
 - You must own the game. This repository gives you no game data.

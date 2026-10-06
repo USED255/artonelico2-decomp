@@ -50,7 +50,7 @@ make check                       # repository checks; the retail executable is n
 
 | Workflow | When it runs | What it does |
 | --- | --- | --- |
-| `validate` | Each push, each pull request, and a manual start | On a push it runs in **strict mode**: the public tree must equal the exporter output. On a pull request it runs in **contribution mode**: it allows an addition or a change in the contribution paths only. Read [CONTRIBUTING.md](../CONTRIBUTING.md). |
+| `validate` | Each push, each pull request, and a manual start | On a push it checks the publication record (`PUBLISHED.json`), the forbidden material, the report schema, and the baseline. On a pull request it allows any change **except** the publication content (`progress/**` and `PUBLISHED.json`). Read [CONTRIBUTING.md](../CONTRIBUTING.md). |
 | `matching-gate` | A push to the default branch, an internal pull request, or a manual start | Gets the retail executable and the toolchain from a private companion repository. Then it runs `make build`, `make delta`, and `make report`. It publishes the artifact **only** when all checks pass. |
 
 The `matching-gate` workflow needs the secret `ORIG_DEPLOY_KEY` and the variable

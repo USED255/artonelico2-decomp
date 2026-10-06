@@ -49,19 +49,13 @@ make check                       # repository checks
 
 ## 5. What happens after CI
 
-A maintainer reviews your change. Then the maintainer:
+A maintainer reviews your change. Then a maintainer merges it. Your change takes
+effect in this repository, and your name stays in the history.
 
-1. imports your commit into the working repository (your name stays on it),
-2. merges your pull request,
-3. runs the exporter again.
-
-The step is necessary, because a private working repository is the source of
-this public repository. That private repository holds material that we cannot
-publish. It has the retail executable, the disassembly, and other restricted
-files. The exporter copies the publishable part here.
-
-You do not do anything for this step. Your pull request shows as **Merged**, and
-your authorship stays in both histories.
+Some material cannot be published. It lives in a private companion repository:
+the retail executable, the disassembly, and the Sony toolchain. CI gets them
+there when it must run a real build. Your contribution never needs to touch
+them.
 
 ## 6. Path rules
 
@@ -77,16 +71,15 @@ These paths are **read-only**. A change there fails the `validate` check:
 
 | Path | Why |
 | --- | --- |
-| `config/` | The match ledger and the configuration come from the private pipeline. A maintainer adds the ledger entry for your new function. |
-| `progress/` | CI writes the progress report. |
-| `splat.yaml` | The exporter writes it. |
-| `build.sh`, `build_hybrid.sh`, `build_m2.sh` | The exporter writes them, with a path change for this layout. |
-| `PROVENANCE.json` | The exporter writes it. |
+| `progress/` | The progress report comes from a verified build. |
+| `PUBLISHED.json` | The release record. `tools/publish_report.py` writes it after a verified build. |
 
-If you must change a read-only path, open an issue. We will change it upstream.
+You can change all other paths. The maintainers ask you to open an issue first
+for `config/`, `splat.yaml`, and the build scripts, because a change there can
+affect the whole build.
 
 **A note about a new function.** You do not add a `config/matched_symbols.txt`
-entry. A maintainer adds it during the import.
+entry. A maintainer adds it for you.
 
 ## 7. Writing style
 

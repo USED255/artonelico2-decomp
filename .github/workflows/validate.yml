@@ -1,7 +1,7 @@
 # Fast checks. No secret is necessary.
 #
 # Two modes:
-#   push / manual   -> strict mode. The public tree must equal the exporter output.
+#   push / manual   -> repository checks + publication record.
 #   pull_request    -> contribution mode. A pull request may add or change files
 #                      in the contribution paths only. See CONTRIBUTING.md.
 name: validate
@@ -26,7 +26,7 @@ jobs:
         with:
           python-version: '3.13'
 
-      - name: Strict check (the public tree must equal the exporter output)
+      - name: Repository checks (publication record, report, baseline)
         if: github.event_name != 'pull_request'
         run: make check
 

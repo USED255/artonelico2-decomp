@@ -47,7 +47,7 @@ make check                       # 仓库自检；不需要原版可执行文件
 
 | workflow | 何时跑 | 做什么 |
 | --- | --- | --- |
-| `validate` | 每次 push、每个 PR、手动触发 | push 走**严格模式**：公开树必须等于导出结果；PR 走**贡献模式**：只允许白名单路径内的新增/修改。见 [CONTRIBUTING.zh-CN.md](../CONTRIBUTING.zh-CN.md) |
+| `validate` | 每次 push、每个 PR、手动触发 | push 校验**发布记录**（`PUBLISHED.json`）、禁止材料、报告 schema 与基线；PR 允许任何改动，**只读** `progress/**` 与 `PUBLISHED.json`。见 [CONTRIBUTING.zh-CN.md](../CONTRIBUTING.zh-CN.md) |
 | `matching-gate` | 默认分支 push、同仓库 PR、手动触发 | 从私有伴生仓库取原版可执行文件与工具链，跑 `make build` / `make delta` / `make report`；**全部通过才发布 artifact** |
 
 `matching-gate` 需要 secret `ORIG_DEPLOY_KEY` 与变量 `PRIVATE_ORIG_REPO`。
