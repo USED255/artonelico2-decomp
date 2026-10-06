@@ -36,6 +36,7 @@ import concurrent.futures as cf
 import hashlib
 import os
 import re
+import struct
 import subprocess
 import sys
 from pathlib import Path
@@ -69,6 +70,52 @@ def force_text_align4(obj: Path) -> None:
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode == 0 and tmp.is_file():
         os.replace(tmp, obj)
+
+
+def fix_symtab_info(obj: Path) -> None:
+    """修正 ELF32 对象 `.symtab` 的 `sh_info`（= 第一个非 LOCAL 符号下标）。
+
+    背景（2026-10-06，CI PR #3）：`ee-gcc 2.96` 汇编出的对象把 `gcc2_compiled.` /
+    `__gnu_compiled_c` 两个 LOCAL 符号放在全局符号**之前**，但 `sh_info` 只数到 8，
+    而实际有 10 个 LOCAL ⇒ GNU ld 报
+    `.symtab local symbol at index 8 (>= sh_info of 8)` / `error adding symbols: bad value`，
+    整个混合构建在链接期挂掉（M1 基线仍然绿，所以只有全量构建能发现）。
+    这里按 ELF 规范重算 `sh_info`；只在不一致时改写，幂等。
+    """
+    try:
+        data = bytearray(obj.read_bytes())
+    except Exception:
+        return
+    if len(data) < 0x34 or data[:4] != b"\x7fELF" or data[4] != 1:
+        return
+    e_shoff, = struct.unpack_from("<I", data, 0x20)
+    e_shentsize, e_shnum = struct.unpack_from("<HH", data, 0x2E)
+    if not e_shoff or not e_shentsize or not e_shnum:
+        return
+    changed = False
+    for i in range(e_shnum):
+        o = e_shoff + i * e_shentsize
+        if o + 40 > len(data):
+            break
+        (sh_type, sh_off, sh_size, sh_info,
+         sh_entsize) = (struct.unpack_from("<I", data, o + 4)[0],
+                        struct.unpack_from("<I", data, o + 16)[0],
+                        struct.unpack_from("<I", data, o + 20)[0],
+                        struct.unpack_from("<I", data, o + 28)[0],
+                        struct.unpack_from("<I", data, o + 36)[0])
+        if sh_type != 2 or not sh_entsize:          # SHT_SYMTAB
+            continue
+        n = sh_size // sh_entsize
+        first_global = n
+        for k in range(n):
+            if data[sh_off + k * sh_entsize + 12] >> 4:   # st_info >> 4 != STB_LOCAL
+                first_global = k
+                break
+        if sh_info != first_global:
+            struct.pack_into("<I", data, o + 28, first_global)
+            changed = True
+    if changed:
+        obj.write_bytes(bytes(data))
 
 
 def sha1_file(p: Path) -> str:
@@ -204,6 +251,9 @@ def main() -> int:
             #    `.text.<fn>` 段对齐到 8，而原汇编块只要求 4 对齐 → 链接器插入填充 → 载荷整体位移、棘轮变红。
             #    这里统一把该对象所有 `.text*` 段的对齐强制为 4（与 splat 的 `.align 2` 一致）。
             force_text_align4(obj)
+            # ee-gcc 2.96（CRI 段）还会写出 `.symtab sh_info` 与 LOCAL 符号数不一致的对象，
+            # GNU ld 直接拒绝；按 ELF 规范重算（见 fix_symtab_info 的 docstring）。
+            fix_symtab_info(obj)
         stamp.write_text(want, encoding="utf-8")
         return None
 
