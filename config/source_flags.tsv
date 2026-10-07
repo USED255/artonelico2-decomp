@@ -29,6 +29,7 @@ baseelf_73	-Os
 baseelf_76	-O1
 baseelf_85	-O1
 eepatch_22	-O2
+eetlb_4	-O1
 eetty_6	-O3
 fileio_10	-O1
 fileio_12	-O1
@@ -947,6 +948,7 @@ func_0029b4f4	-O1
 func_0029b7f0	-Os
 func_0029b844	-O2
 func_0029b944	-Os
+func_0029bb10	-Os
 func_0029bcc8	-O1
 func_0029be00	-O2 -fno-optimize-sibling-calls
 func_0029bf18	-O2
@@ -1150,6 +1152,7 @@ func_003434d8	-O3
 func_00346738	-O1
 func_00346750	-O3
 func_00346760	-O3
+func_0035da00	-Os
 func_0035ee30	-O2
 func_0035f5c0	-O2
 func_00361978	-O2
