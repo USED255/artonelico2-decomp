@@ -260,6 +260,7 @@ func_00140c00    # permuter
 func_00140c1c    # permuter
 func_00140c3c    # permuter
 func_00140c5c    # llm_draft
+func_00140d0c    # llm_draft
 func_00140dcc    # store_data
 func_00140dd8    # ret_data_load
 func_00140df4    # store_data_const
@@ -2005,6 +2006,7 @@ func_002f9f78    # ghidra_draft:-O2
 func_002fa298    # ret_load_arg0
 func_002fb078    # mem_multi_store
 func_002fb180    # ghidra_draft:-O2
+func_002fb2e0    # llm_draft
 func_002fbc78    # ghidra_draft:-O2
 func_002fc100    # ghidra_draft:-O1
 func_002fc118    # mem_multi_store
