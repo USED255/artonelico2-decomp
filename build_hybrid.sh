@@ -47,6 +47,10 @@ RESIDUAL="${HYBRID_RESIDUAL:-auto}"
 LDS="$OUT/SLPS_258.19.ld"                        # hybrid 链接脚本
 LIST="$HERE/config/matched_symbols.txt"
 SRCDIR="$HERE/src/matched"
+# 跳转表修补表（<符号>\t<jtbl_符号>）：只在文件存在且非空时启用。C 侧真 `switch` 自产的
+# `.rodata` 表会被改指到 splat 既有符号，`jtbl_patch.py` 见 tools/project/。
+JTBLTABLES="${JTBLTABLES:-$HERE/config/jtbl_tables.tsv}"
+[ -s "$JTBLTABLES" ] || JTBLTABLES=""
 EXPECT_SHA1="7cc42d275750600d1f232b2632447f77205f3fc0"   # 日版零售载荷 sha1（棘轮期望）
 # 先确认参考载荷本身没被换掉，再用它做比对
 [ "$(sha1sum "$ROM" | cut -d' ' -f1)" = "$EXPECT_SHA1" ] || { echo "FAIL: $ROM 不是预期的日版载荷（sha1 不符）"; exit 1; }
@@ -107,6 +111,7 @@ python3 "$HERE/tools/project/compile_sources.py" \
     --sources "$SRCTSV" --objdir "$OUT/obj" \
     --gcc "$GCC" --gcc-cri "$GCC_CRI" --cc-map "$CCMAP" --as "$AS" --include include \
     --cflags "$MATCHED_CFLAGS" --flags-file "$FLAGSFILE" \
+    ${JTBLTABLES:+--jtbl-tables "$JTBLTABLES"} \
     --jobs "${JOBS:-4}" ${HYBRID_NO_CACHE:+--no-cache} --label "源" || exit 1
 n_cri=$(grep -cv '^[[:space:]]*\(#\|$\)' "$CCMAP" 2>/dev/null || echo 0)
 echo "  源文件数 = ${#compiled[@]}（per-source 编译器表：${n_cri} 条 CRI）"
@@ -231,18 +236,52 @@ def sym_bindings(obj):
             res.append((p[7].split('@')[0], p[4], sec_of.get(p[6], '?'), size))
     return res
 
+def text_referenced(obj):
+    """被 `.text*` 段的重定位引用到的名字（节符号名 + 普通符号名）。
+
+    2026-10-07（jtbl 池）：`tools/project/jtbl_patch.py` 把 C 自产跳转表的 `%hi/%lo`
+    重定位改指到既有的 `jtbl_*` 符号后，C 对象里的 `.rodata` 就**没有任何 `.text*`
+    重定位指向**了 ⇒ 它必然被 `/DISCARD/` 丢掉，不可能改变代码生成 ⇒ 可以放行。
+    只统计 `.rel.text*`（`.rel.rodata` 是反过来引用 `.text`，不算）。
+    """
+    out = subprocess.run([readelf, '-rW', obj], capture_output=True, text=True,
+                         env=dict(os.environ, LC_ALL='C')).stdout
+    refs, cur = set(), None
+    for line in out.splitlines():
+        if 'R_MIPS_' not in line:
+            m = re.search(r'\.rel\.[\w.]+', line)
+            if m:
+                cur = m.group(0)
+            continue
+        p = line.split()
+        if len(p) >= 5 and cur and cur.startswith('.rel.text'):
+            refs.add(p[4])
+    return refs
+
 def bad_sections(obj):
     """C 对象里「不允许」的段。
     P2a（2026-10-03）：`.sdata*` / `.sbss*` **可以有条件放行** —— C 侧在这些段里 **weak 定义**
     小数据符号，用来拿到 `%gp_rel` 代码生成；这些段不在 hybrid 链接脚本里，会被 /DISCARD/ 丢掉，
     真实存储与地址仍由原 asm 数据对象提供（强定义胜出）。
     条件：该段内定义的**每一个符号都必须是 WEAK**，否则就是「C 自产数据」→ 仍然拒绝。
+    2026-10-07（jtbl，[P-52]）：任何非 `.text` 可分配段，只要**没有任何 `.text*` 重定位指向它**
+    （节符号或段内符号都没有被提到），同样放行 —— 它会被 /DISCARD/ 丢掉，且没有代码依赖它。
+    负面对照：字符串字面量所在 `.rodata` 会被 `.text` 的 `%hi/%lo` 引用 ⇒ 仍然拒绝。
     """
     bad = []
     binds = sym_bindings(obj)          # [(name, bind, secname, size)]
+    refs = text_referenced(obj)
+    dead = set()
     for (n, s, f) in sections(obj):
         if not ('A' in f and s > 0 and not n.startswith('.text')):
             continue
+        if n not in refs and not any(x[0] in refs for x in binds if x[2] == n):
+            dead.add(n)
+    for (n, s, f) in sections(obj):
+        if not ('A' in f and s > 0 and not n.startswith('.text')):
+            continue
+        if n in dead:
+            continue          # 无 .text* 引用 ⇒ 必被 /DISCARD/ 丢掉，安全
         if n.startswith(('.sdata', '.sbss')):
             # 只放行「整段都是 weak 定义」的小数据段：段大小必须等于其中 weak 符号大小之和。
             # 字符串字面量等没有具名符号（或只有 LOCAL 符号）⇒ 大小对不上 ⇒ 拒绝（P-24 的补丁）。
