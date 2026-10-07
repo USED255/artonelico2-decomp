@@ -1715,6 +1715,7 @@ func_0029dff0    # permuter
 func_0029e068    # store_arg0
 func_0029e070    # mem_pair
 func_0029e8f4    # permuter
+func_0029e9b0    # llm_draft
 func_0029ea60    # permuter
 func_0029ea9c    # ret_load_arg0
 func_0029eaa4    # ret_load_arg0
