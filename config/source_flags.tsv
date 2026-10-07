@@ -196,6 +196,7 @@ func_00177760	-Os
 func_00178d84	-Os
 func_0017cc1c	-Os
 func_0017e158	-Os
+func_0017e6a8	-Os
 func_00180624	-Os
 func_001806cc	-Os
 func_00180710	-Os
@@ -839,6 +840,7 @@ func_00272754	-O1
 func_002727ac	-O2
 func_002728a8	-Os
 func_00272a50	-O2
+func_00272af4	-Os
 func_00272e08	-Os
 func_00273304	-Os
 func_00273970	-O2
@@ -963,6 +965,7 @@ func_0029eabc	-O2
 func_0029ece4	-Os
 func_0029ed80	-O1
 func_002a02a0	-O2
+func_002a0b60	-Os
 func_002a0d18	-O2
 func_002a1734	-Os
 func_002a19a4	-O2
