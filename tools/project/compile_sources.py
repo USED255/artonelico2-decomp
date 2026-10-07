@@ -41,6 +41,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+try:                                   # jtbl 跳转表修补（同目录；缺失时退化为不支持）
+    import jtbl_patch as JTBL          # noqa: E402
+except Exception:                      # pragma: no cover
+    JTBL = None
+
 
 OBJCOPY: str | None = None
 READELF: str | None = None
@@ -147,6 +153,9 @@ def main() -> int:
     ap.add_argument("--cflags", default="")
     ap.add_argument("--asflags", default="-EL -march=r5900")
     ap.add_argument("--flags-file", default="")
+    ap.add_argument("--jtbl-tables", default="",
+                    help="每源跳转表 TSV：<key><TAB><jtbl_符号>；编译后用 jtbl_patch 把 C 自产表的引用"
+                         "改指到既有数据符号（见 tools/project/jtbl_patch.py）")
     ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--no-cache", action="store_true")
     ap.add_argument("--label", default="源")
@@ -162,6 +171,16 @@ def main() -> int:
             if line:
                 a = line.split()
                 extra[a[0]] = " ".join(a[1:])
+
+    # 跳转表 TSV（<key>\t<jtbl_符号>）：编译后把 C 自产 `.rodata` 表的引用改指到既有数据符号。
+    jtbl = {}
+    if args.jtbl_tables and Path(args.jtbl_tables).is_file():
+        for line in Path(args.jtbl_tables).read_text(encoding="utf-8").splitlines():
+            line = line.split("#", 1)[0].strip()
+            if line:
+                a = line.split()
+                if len(a) >= 2:
+                    jtbl[a[0]] = a[1]
 
     # 每源编译器（CRI 段用 ee-gcc 2.96，游戏代码用 3.2；见 R17 §4.2）
     cc_map = {}
@@ -231,6 +250,8 @@ def main() -> int:
         # al4：2026-10-04 起 cc 对象统一把 .text* 段对齐降到 4（见 build 里的 objcopy），
         #      版本串加后缀让旧缓存失效重建。
         want = f"{kind}|{ver}|al4|{base}|{ex}|{gcc}|{sha1_file(src)}"
+        if jtbl.get(key):
+            want += f"|jtbl={jtbl[key]}"
         stamp = objdir / f"{key}.stamp"
         obj = objdir / f"{key}.o"
         if not args.no_cache and obj.is_file() and stamp.is_file() and stamp.read_text() == want:
@@ -254,6 +275,15 @@ def main() -> int:
             # ee-gcc 2.96（CRI 段）还会写出 `.symtab sh_info` 与 LOCAL 符号数不一致的对象，
             # GNU ld 直接拒绝；按 ELF 规范重算（见 fix_symtab_info 的 docstring）。
             fix_symtab_info(obj)
+            # jtbl（2026-10-07）：真 `switch` 会自产 `.rodata` 跳转表；把它的引用改指到 splat 既有的
+            # `jtbl_*` 符号，`.rodata` 随即变成无人引用的段（被 /DISCARD/ 丢掉）⇒ 代码字节与原版一致。
+            table = jtbl.get(key)
+            if table:
+                if JTBL is None:
+                    return (key, ["需要 jtbl_patch 模块，但导入失败"])
+                ok, msg = JTBL.patch(obj, table, obj)
+                if not ok:
+                    return (key, ["jtbl 修补失败：%s" % msg])
         stamp.write_text(want, encoding="utf-8")
         return None
 

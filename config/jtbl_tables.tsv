@@ -1,0 +1,5 @@
+# 跳转表修补表：<符号>\t<jtbl_符号>（build_hybrid.sh → compile_sources.py --jtbl-tables）
+# 语义：该符号的 C 源用真 `switch`，编译后由 tools/project/jtbl_patch.py 把自产
+#       `.rodata` 跳转表的 %hi/%lo 引用改指到 splat 既有符号；`.rodata` 随即可被 /DISCARD/ 丢掉。
+func_001d7154	jtbl_00965B58
+func_001d71a4	jtbl_00965B78

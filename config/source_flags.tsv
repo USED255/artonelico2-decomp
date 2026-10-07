@@ -334,6 +334,8 @@ func_001d1204	-Os
 func_001d2a40	-O2
 func_001d6338	-O1
 func_001d6704	-Os
+func_001d7154	-Os
+func_001d71a4	-Os
 func_001d7614	-Os
 func_001d79b8	-O2
 func_001d7aac	-Os
