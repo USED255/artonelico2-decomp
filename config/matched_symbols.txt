@@ -69,6 +69,8 @@ baseelf_85    # wrapper_o1_jal
 baseelf_94    # permuter
 fileio_10    # llm_draft
 fileio_12    # llm_draft
+fileio_21    # llm_draft
+fileio_25    # llm_draft
 fileio_28    # llm_draft
 func_0010054c    # wrapper_o2_tail
 func_00100610    # wrapper_o2_tail
@@ -109,6 +111,7 @@ func_00107e30    # ghidra_draft:-O2
 func_00107e48    # ghidra_draft:-Os
 func_00107f6c    # ghidra_draft:-O2
 func_00107f88    # ghidra_draft:-O2
+func_00107fa4    # llm_draft
 func_00108254    # ghidra_draft:-O2
 func_00108324    # permuter
 func_001084c4    # ghidra_draft:-O2
@@ -2007,6 +2010,7 @@ func_0030ed50    # ghidra_draft:-O3
 func_0030ee98    # permuter
 func_0030fcf8    # ghidra_draft:-O1
 func_00310050    # ret_const
+func_00310448    # permuter
 func_00312450    # ghidra_draft:-O2
 func_00312658    # empty
 func_00312660    # empty
@@ -2398,6 +2402,7 @@ glue_10    # ret_const
 glue_4    # ret_const
 glue_5    # llm_draft
 glue_8    # ret_const
+iopldfl_16    # llm_draft
 iopldfl_7    # wrapper_o1_jal
 iopsmem_14    # wrapper_o1_jal
 # ---- M3 段结束 ----
