@@ -306,6 +306,7 @@ func_001a2e9c	-O1
 func_001a2ec4	-Os
 func_001a302c	-O1
 func_001a30f8	-O1
+func_001a3e10	-Os
 func_001a3e9c	-Os
 func_001a4d8c	-O2
 func_001a4e00	-O2
@@ -864,6 +865,7 @@ func_002756d8	-Os
 func_00276b2c	-O2
 func_00276c30	-O2
 func_00279780	-Os
+func_0027a99c	-Os
 func_0027a9f4	-Os
 func_0027b0dc	-O2
 func_0027b2ec	-O1
@@ -1079,6 +1081,7 @@ func_002fd350	-O2 -fno-schedule-insns2
 func_002fd738	-O1
 func_002fddf8	-O1
 func_002fe338	-O1
+func_002fe500	-Os
 func_00300590	-O3
 func_003005c0	-O3
 func_003005d8	-Os
