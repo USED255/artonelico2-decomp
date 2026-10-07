@@ -1741,6 +1741,7 @@ func_002de0f0    # ret_data_addr
 func_002de130    # ret_data_addr
 func_002de140    # ret_data_addr
 func_002de180    # ret_data_addr
+func_002de1a0    # llm_draft
 func_002de1b8    # wrapper_o2_tail
 func_002de2f8    # wrapper_o2_tail
 func_002de4f0    # wrapper_o2_tail
@@ -1875,6 +1876,7 @@ func_002ecb40    # permuter
 func_002ecda0    # mem_pair
 func_002ece68    # llm_draft
 func_002ece80    # llm_draft
+func_002ecf40    # llm_draft
 func_002ecf58    # llm_draft
 func_002ede88    # ghidra_draft:-O2
 func_002ee450    # ret_const
