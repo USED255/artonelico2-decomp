@@ -68,6 +68,7 @@ baseelf_73    # llm_draft
 baseelf_76    # permuter
 baseelf_85    # wrapper_o1_jal
 baseelf_94    # permuter
+eetlb_4    # llm_draft
 fileio_10    # llm_draft
 fileio_12    # llm_draft
 fileio_21    # llm_draft
@@ -1646,6 +1647,7 @@ func_0029b7f0    # ghidra_draft:-Os
 func_0029b944    # llm_draft
 func_0029b964    # ghidra_draft:-O2
 func_0029ba10    # ghidra_draft:-O2
+func_0029bb10    # llm_draft
 func_0029bc88    # ghidra_draft:-O2
 func_0029bcc8    # ghidra_draft:-O1
 func_0029bcec    # wrapper_o2_tail
@@ -2386,6 +2388,7 @@ func_0035d7c8    # permuter
 func_0035d888    # ghidra_draft:-O2
 func_0035d8a8    # ghidra_draft:-O2
 func_0035d9e8    # wrapper_o2_tail
+func_0035da00    # llm_draft
 func_0035ee30    # llm_draft
 func_0035f128    # ret_data_load
 func_00360268    # ghidra_draft:-O2
