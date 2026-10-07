@@ -16,6 +16,7 @@ baseelf_139	-O1
 baseelf_148	-O2
 baseelf_149	-O2
 baseelf_16	-O1
+baseelf_17	-O1
 baseelf_171	-O2
 baseelf_186	-O1
 baseelf_203	-O2
@@ -191,6 +192,7 @@ func_00165bfc	-O2
 func_00166f9c	-Os
 func_001679e4	-Os
 func_0016a198	-Os
+func_0016a4c8	-Os
 func_0016d5a4	-Os
 func_0016d5e0	-Os
 func_0016dfa8	-Os
@@ -1111,6 +1113,7 @@ func_003030d8	-O3
 func_003030f0	-O3
 func_00303108	-O3
 func_00303148	-Os
+func_00303d28	-Os
 func_00303e48	-O3
 func_00303e60	-O3
 func_00303e78	-O3
