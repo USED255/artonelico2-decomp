@@ -2064,6 +2064,7 @@ func_003016e8    # ghidra_draft:-O3
 func_00301718    # ret_data_addr
 func_00302e28    # ghidra_draft:-O2
 func_00303148    # llm_draft
+func_00303820    # llm_draft
 func_00303d18    # store_ret_const
 func_00303d28    # llm_draft
 func_00304030    # ghidra_draft:-O2
@@ -2353,6 +2354,7 @@ func_00330c38    # ret_data_addr
 func_00330e80    # mem_pair
 func_00332548    # ghidra_draft:-O2
 func_00332b70    # ret_load_arg0
+func_00332b78    # llm_draft
 func_00332ba8    # permuter
 func_003341b0    # ghidra_draft:-O1
 func_003341c0    # ghidra_draft:-O1
