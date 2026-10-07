@@ -1435,6 +1435,7 @@ func_00264894    # llm_draft
 func_002648c4    # permuter
 func_00264c74    # ghidra_draft:-O2
 func_00265688    # permuter
+func_00265728    # llm_draft
 func_00265bb4    # llm_draft
 func_00265eec    # ghidra_draft:-O2
 func_00265f04    # ghidra_draft:-O1
