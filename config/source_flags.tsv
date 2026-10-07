@@ -154,6 +154,7 @@ func_0014cfc8	-Os
 func_0014d0f8	-Os
 func_0014d540	-Os
 func_0014d5ac	-O2
+func_0014e170	-Os
 func_0014e6c4	-Os
 func_0014e800	-Os
 func_0014e9a8	-Os
@@ -463,6 +464,7 @@ func_001e9b50	-O1
 func_001e9c04	-O1
 func_001e9f1c	-O1
 func_001e9f40	-O1
+func_001e9ffc	-Os
 func_001ea3f8	-O2
 func_001ea420	-O2
 func_001ea8a0	-O1
