@@ -882,6 +882,7 @@ func_001e88cc    # ghidra_draft:-O2
 func_001e88e0    # ret_const
 func_001e88e8    # ret_const
 func_001e8c34    # permuter
+func_001e9064    # llm_draft
 func_001e9900    # ghidra_draft:-O1
 func_001e9924    # ghidra_draft:-O2
 func_001e9b50    # ghidra_draft:-O1
@@ -967,6 +968,7 @@ func_001fcd78    # ghidra_draft:-O1
 func_001fde54    # const_store
 func_002008f0    # ghidra_draft:-O1
 func_00202bcc    # permuter
+func_002038bc    # llm_draft
 func_002038f4    # const_store
 func_00203960    # permuter
 func_00203f30    # ret_bool

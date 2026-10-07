@@ -426,6 +426,7 @@ func_001e8c34	-O1
 func_001e8d80	-O1
 func_001e8dbc	-O1
 func_001e8df4	-O1
+func_001e9064	-O1
 func_001e9900	-O1
 func_001e9b50	-O1
 func_001e9c04	-O1
@@ -532,6 +533,7 @@ func_002008f0	-O1
 func_00200c5c	-O1
 func_00200d94	-O1
 func_00200f78	-O1
+func_002038bc	-O1
 func_00203900	-O1
 func_00203960	-O1
 func_00203fe0	-O1
