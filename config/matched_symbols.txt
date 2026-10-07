@@ -589,6 +589,7 @@ func_0019320c    # permuter
 func_0019327c    # permuter
 func_001936e0    # ret_const
 func_00193a58    # store_arg0
+func_00193b38    # llm_draft
 func_00193b94    # ghidra_draft:-O1
 func_00193c04    # permuter
 func_00193c44    # permuter
@@ -1401,6 +1402,7 @@ func_00264894    # llm_draft
 func_002648c4    # permuter
 func_00264c74    # ghidra_draft:-O2
 func_00265688    # permuter
+func_00265bb4    # llm_draft
 func_00265eec    # ghidra_draft:-O2
 func_00265f04    # ghidra_draft:-O1
 func_00266648    # permuter
