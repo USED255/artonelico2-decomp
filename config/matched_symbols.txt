@@ -156,6 +156,7 @@ func_0011a848    # llm_draft
 func_0011b1a8    # wrapper_o1_jal
 func_0011e430    # ret_const
 func_0011e6b4    # ghidra_draft:-O2
+func_0011ed64    # llm_draft
 func_0011eddc    # permuter
 func_0011f004    # ghidra_draft:-O2
 func_0011f1ac    # ghidra_draft:-O2
@@ -2413,6 +2414,8 @@ func_00363df8    # permuter
 func_00365ac8    # ghidra_draft:-O2-fno-optimize-sibling-calls
 func_00366140    # ghidra_draft:-O2
 func_00366168    # ret_const
+func_00366170    # llm_draft
+func_00366ee0    # llm_draft
 func_003688d0    # wrapper_o2_tail
 func_00369690    # ghidra_draft:-O2
 func_00369948    # ghidra_draft:-O2
