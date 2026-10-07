@@ -600,6 +600,7 @@ func_00192f68    # ret_const
 func_00192f70    # ret_const
 func_001930e4    # llm_draft
 func_0019310c    # ret_const
+func_00193114    # llm_draft
 func_00193180    # ghidra_draft:-O2
 func_001931a0    # ghidra_draft:-O1
 func_001931c4    # ghidra_draft:-O1
@@ -2114,6 +2115,7 @@ func_0030eb48    # mem_multi_store
 func_0030ec78    # ghidra_draft:-O1
 func_0030ed50    # ghidra_draft:-O3
 func_0030ee98    # permuter
+func_0030eec0    # llm_draft
 func_0030fcf8    # ghidra_draft:-O1
 func_00310050    # ret_const
 func_00310448    # permuter
