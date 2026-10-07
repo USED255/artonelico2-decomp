@@ -374,6 +374,7 @@ func_0014ef20    # ghidra_draft:-O2
 func_0014f01c    # llm_draft
 func_0014f124    # ghidra_draft:-O2
 func_0014f15c    # llm_draft
+func_0014f1e0    # llm_draft
 func_0014f228    # ghidra_draft:-O2
 func_0014f260    # llm_draft
 func_0014f3d0    # ghidra_draft:-O2
