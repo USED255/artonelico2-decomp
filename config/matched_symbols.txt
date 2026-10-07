@@ -420,6 +420,7 @@ func_00154b20    # ghidra_draft:-Os
 func_00155894    # ghidra_draft:-O2
 func_00155934    # ghidra_draft:-O2
 func_00155958    # ghidra_draft:-O2
+func_00155ddc    # llm_draft
 func_001562a8    # permuter
 func_00156334    # ghidra_draft:-O2
 func_00156d30    # permuter
