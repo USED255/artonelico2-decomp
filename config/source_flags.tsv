@@ -188,6 +188,7 @@ func_00154b20	-Os
 func_0015598c	-O2
 func_001559e4	-O2
 func_00155a24	-O2
+func_00155ddc	-Os
 func_00156e20	-O2
 func_0015761c	-Os
 func_00157a10	-O1
