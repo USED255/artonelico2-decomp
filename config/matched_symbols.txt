@@ -69,6 +69,7 @@ baseelf_73    # llm_draft
 baseelf_76    # permuter
 baseelf_85    # wrapper_o1_jal
 baseelf_94    # permuter
+eepatch_16    # llm_draft
 eetlb_4    # llm_draft
 fileio_10    # llm_draft
 fileio_12    # llm_draft
@@ -281,6 +282,7 @@ func_00144dc0    # permuter
 func_00145280    # permuter
 func_00145324    # mem_pair
 func_0014536c    # ghidra_draft:-O2
+func_001454b8    # llm_draft
 func_001457e0    # permuter
 func_001458a0    # ghidra_draft:-O2
 func_00145d04    # permuter
@@ -544,6 +546,7 @@ func_0018eee4    # permuter
 func_0018ef6c    # permuter
 func_0018f0f0    # permuter
 func_0018f82c    # llm_draft
+func_0018f9cc    # llm_draft
 func_0018fef4    # ret_data_load
 func_0018ff08    # ret_const
 func_0018ffc8    # permuter

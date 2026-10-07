@@ -29,6 +29,7 @@ baseelf_70	-O1
 baseelf_73	-Os
 baseelf_76	-O1
 baseelf_85	-O1
+eepatch_16	-Os
 eepatch_22	-O2
 eetlb_4	-O1
 eetty_6	-O3
@@ -130,6 +131,7 @@ func_00142d00	-Os
 func_0014432c	-O2
 func_00144d4c	-O2
 func_00145454	-Os
+func_001454b8	-Os
 func_001457e0	-O1
 func_00145d04	-Os
 func_00145e6c	-Os
@@ -254,6 +256,7 @@ func_0018f090	-O2
 func_0018f0f0	-Os
 func_0018f5f4	-O1
 func_0018f82c	-Os
+func_0018f9cc	-Os
 func_0018fa54	-Os
 func_0018fca0	-Os
 func_0018fd58	-Os
