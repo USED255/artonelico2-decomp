@@ -815,6 +815,7 @@ func_001d895c    # permuter
 func_001d89d4    # permuter
 func_001d8a28    # ghidra_draft:-O2
 func_001d8a44    # permuter
+func_001d936c    # llm_draft
 func_001d9628    # permuter
 func_001d9644    # ghidra_draft:-O2
 func_001d98b8    # permuter
@@ -1729,6 +1730,7 @@ func_0029ead4    # ret_load_arg0
 func_0029eadc    # ret_load_arg0
 func_0029eb04    # ret_load_arg0
 func_0029eb14    # permuter
+func_0029ec54    # llm_draft
 func_0029ecd4    # ret_bool
 func_0029ece4    # permuter
 func_0029ed80    # permuter
