@@ -81,6 +81,7 @@ func_001157f0	-Os
 func_00119bf8	-Os
 func_0011a848	-Os
 func_0011b1a8	-O1
+func_0011ed64	-Os
 func_0011eddc	-O1
 func_0011efb0	-Os
 func_0011f388	-O2
@@ -1159,6 +1160,8 @@ func_0035ee30	-O2
 func_0035f5c0	-O2
 func_00361978	-O2
 func_00365ac8	-O2 -fno-optimize-sibling-calls
+func_00366170	-Os
+func_00366ee0	-Os
 glue_5	-O3
 iopldfl_16	-O1
 iopldfl_7	-O1
