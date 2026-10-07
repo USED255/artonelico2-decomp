@@ -55,6 +55,7 @@ baseelf_110    # permuter
 baseelf_112    # permuter
 baseelf_139    # llm_draft
 baseelf_16    # permuter
+baseelf_17    # llm_draft
 baseelf_186    # permuter
 baseelf_191    # permuter
 baseelf_202    # permuter
@@ -441,6 +442,7 @@ func_0016a040    # ghidra_draft:-O2
 func_0016a124    # permuter
 func_0016a208    # ghidra_draft:-O2
 func_0016a470    # permuter
+func_0016a4c8    # llm_draft
 func_0016c68c    # ghidra_draft:-O2
 func_0016d5a4    # permuter
 func_0016d5e0    # llm_draft
@@ -2025,6 +2027,7 @@ func_00301718    # ret_data_addr
 func_00302e28    # ghidra_draft:-O2
 func_00303148    # llm_draft
 func_00303d18    # store_ret_const
+func_00303d28    # llm_draft
 func_00304030    # ghidra_draft:-O2
 func_00304788    # ret_bool
 func_00304ba8    # ghidra_draft:-O2
