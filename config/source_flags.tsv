@@ -1015,6 +1015,7 @@ func_0029a8bc	-O2
 func_0029a99c	-O1
 func_0029aaa4	-O2
 func_0029adcc	-O2
+func_0029b0a4	-Os
 func_0029b14c	-Os
 func_0029b4f4	-O1
 func_0029b7f0	-Os

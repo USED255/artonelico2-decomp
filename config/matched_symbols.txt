@@ -1710,6 +1710,7 @@ func_0029adc4    # ret_load_arg0
 func_0029afc4    # ghidra_draft:-O2
 func_0029afdc    # ghidra_draft:-O2
 func_0029b08c    # ghidra_draft:-O2
+func_0029b0a4    # llm_draft
 func_0029b14c    # llm_draft
 func_0029b178    # permuter
 func_0029b4f4    # ghidra_draft:-O1
