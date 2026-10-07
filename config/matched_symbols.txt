@@ -881,6 +881,7 @@ func_001e2d78    # ghidra_draft:-O1
 func_001e30f0    # ghidra_draft:-O1
 func_001e32a0    # wrapper_o1_jal
 func_001e32bc    # ghidra_draft:-O1
+func_001e36c0    # llm_draft
 func_001e3cc0    # ghidra_draft:-O1
 func_001e3ce0    # wrapper_o1_jal
 func_001e3cfc    # ghidra_draft:-O1
@@ -1187,6 +1188,7 @@ func_00236218    # permuter
 func_00236234    # permuter
 func_00236258    # permuter
 func_002362f8    # permuter
+func_00236350    # llm_draft
 func_00236398    # ret_data_load
 func_002363c4    # ret_data_load
 func_002363f8    # ret_data_load
