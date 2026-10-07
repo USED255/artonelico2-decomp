@@ -1081,6 +1081,7 @@ func_0030ee98	-O3
 func_0030fcd8	-O2
 func_0030fcf8	-O1
 func_00310448	-O1
+func_00310460	-O3
 func_00312428	-O3
 func_00312db8	-O1
 func_00312dc8	-O1
