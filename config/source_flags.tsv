@@ -306,6 +306,7 @@ func_0019f5b8	-O1
 func_0019fab4	-O2
 func_001a0188	-O1
 func_001a09b4	-O1
+func_001a103c	-Os
 func_001a1c4c	-O2
 func_001a1db4	-Os
 func_001a2e9c	-O1
@@ -1214,3 +1215,4 @@ iopldfl_7	-O1
 iopsmem_14	-O1
 loadcore_7	-O3
 sifcmd_30	-O3
+sifcmd_6	-Os
