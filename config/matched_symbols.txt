@@ -1461,6 +1461,7 @@ func_002677d8    # mem_multi_store
 func_002678c0    # ghidra_draft:-O2
 func_00267ac4    # permuter
 func_00267b40    # ghidra_draft:-Os
+func_00267e98    # llm_draft
 func_0026828c    # permuter
 func_00268b04    # llm_draft
 func_00268b38    # permuter
