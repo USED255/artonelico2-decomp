@@ -461,6 +461,7 @@ func_0017ce58    # ghidra_draft:-O2
 func_0017e1fc    # permuter
 func_0017e288    # ghidra_draft:-O2
 func_0017e6a8    # llm_draft
+func_0017eb84    # llm_draft
 func_0017ec50    # ghidra_draft:-O2
 func_00180624    # permuter
 func_001806b8    # wrapper_o2_tail
@@ -882,6 +883,7 @@ func_001e5704    # permuter
 func_001e5848    # ghidra_draft:-O1
 func_001e5868    # ghidra_draft:-O1
 func_001e5e38    # permuter
+func_001e6368    # llm_draft
 func_001e675c    # ghidra_draft:-O1
 func_001e69dc    # permuter
 func_001e6a48    # llm_draft
@@ -1122,6 +1124,7 @@ func_00230e0c    # wrapper_o1_jal
 func_00232310    # wrapper_o1_jal
 func_00232df0    # ghidra_draft:-O2
 func_0023323c    # ghidra_draft:-O1
+func_00233d88    # llm_draft
 func_00234510    # permuter
 func_002345b4    # const_store
 func_002346b8    # permuter
@@ -1396,6 +1399,7 @@ func_0025bde0    # ghidra_draft:-O2
 func_0025c184    # permuter
 func_0025c278    # ghidra_draft:-O2
 func_0025d098    # ghidra_draft:-O2
+func_0025d378    # llm_draft
 func_0025d3d4    # permuter
 func_0025d494    # wrapper_o2_tail
 func_0025d4a8    # ghidra_draft:-O2
@@ -1984,6 +1988,7 @@ func_002fd728    # mem_pair
 func_002fd738    # ghidra_draft:-O1
 func_002fdb80    # empty
 func_002fddf8    # ghidra_draft:-O1
+func_002fe0a8    # llm_draft
 func_002fe338    # ghidra_draft:-O1
 func_002fe4e8    # wrapper_o2_tail
 func_002fe500    # llm_draft
@@ -2066,6 +2071,7 @@ func_00310050    # ret_const
 func_00310448    # permuter
 func_00310460    # llm_draft
 func_00312450    # ghidra_draft:-O2
+func_003125d8    # llm_draft
 func_00312658    # empty
 func_00312660    # empty
 func_00312848    # wrapper_o2_tail
@@ -2272,9 +2278,12 @@ func_0032a8a8    # permuter
 func_0032b910    # empty
 func_0032bd70    # ghidra_draft:-O2
 func_0032bf10    # permuter
+func_0032c058    # llm_draft
+func_0032c080    # llm_draft
 func_0032c0a8    # mem_multi_store
 func_0032c0b8    # llm_draft
 func_0032c118    # ret_load_arg0
+func_0032c1f8    # llm_draft
 func_0032c210    # ret_load_arg0
 func_0032c3b8    # ghidra_draft:-O1
 func_0032c3f0    # ghidra_draft:-O1
