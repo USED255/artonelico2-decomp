@@ -2,16 +2,16 @@
  "schema": "at2-published/2",
  "project": "Ar tonelico II: Melody of Metafalica — matching decompilation",
  "target": "SLPS_258.19",
- "published_at": "2026-10-07T19:16:50+0800",
- "source_revision": "a34aab5a32b54eaf171478e8654be4f045e9943f",
+ "published_at": "2026-10-07T19:30:46+0800",
+ "source_revision": "c8d79bd451d5f2374cb2b7771e8b88943b4dfe69",
  "payload_sha1": "7cc42d275750600d1f232b2632447f77205f3fc0",
  "report": {
   "path": "progress/SLPS_258.19_report.json",
-  "sha256": "8cf3e62d71ad819eef12769be6c14982ca76cae3942abee583465d2e24985cdd"
+  "sha256": "4df87a5eeb9db856c3b51a85dbcf635b5d1abd6a958357d5915297535537c520"
  },
  "baseline": {
   "path": "progress/baseline.json",
-  "sha256": "8cf3e62d71ad819eef12769be6c14982ca76cae3942abee583465d2e24985cdd"
+  "sha256": "4df87a5eeb9db856c3b51a85dbcf635b5d1abd6a958357d5915297535537c520"
  },
  "toolchain_lock_sha256": "0c4de09c6c8e76cfc45f95cae93aa5bdc1fbf4938f0511fb90fce9b6a4afb0ab",
  "policy": "docs/PUBLICATION-POLICY.md"
