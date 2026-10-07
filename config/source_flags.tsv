@@ -977,6 +977,7 @@ func_002d0c30	-O1
 func_002d1450	-O1
 func_002d36f0	-O1
 func_002d4a48	-O2
+func_002dbee0	-O1
 func_002de1a0	-Os
 func_002e0af8	-O2
 func_002e0b88	-O3

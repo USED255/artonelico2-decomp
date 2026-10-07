@@ -1740,6 +1740,7 @@ func_002d0c10    # wrapper_o1_jal
 func_002d0c30    # wrapper_o1_jal
 func_002d1450    # wrapper_o1_jal
 func_002d36f0    # wrapper_o1_jal
+func_002dbee0    # permuter
 func_002de0d0    # ret_data_addr
 func_002de0f0    # ret_data_addr
 func_002de130    # ret_data_addr
