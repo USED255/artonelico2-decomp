@@ -686,6 +686,7 @@ func_001a0208    # wrapper_o2_tail
 func_001a0274    # wrapper_o2_tail
 func_001a0468    # permuter
 func_001a09b4    # ghidra_draft:-O1
+func_001a103c    # llm_draft
 func_001a1d50    # permuter
 func_001a1d9c    # ret_data_load
 func_001a1da8    # ret_data_load
@@ -2482,6 +2483,7 @@ glue_8    # ret_const
 iopldfl_16    # llm_draft
 iopldfl_7    # wrapper_o1_jal
 iopsmem_14    # wrapper_o1_jal
+sifcmd_6    # llm_draft
 # ---- M3 段结束 ----
 # ---- M3 桩（syscall/break/手写指令；auto_match_stub.py 生成，勿手改本段）----
 # ---- M3 桩段结束 ----
