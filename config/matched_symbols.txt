@@ -834,6 +834,7 @@ func_001d863c    # store_arg0
 func_001d8654    # ret_load_arg0
 func_001d865c    # permuter
 func_001d8678    # llm_draft
+func_001d8694    # llm_draft
 func_001d8770    # permuter
 func_001d87b0    # permuter
 func_001d895c    # permuter
@@ -1285,6 +1286,7 @@ func_00241a04    # permuter
 func_00241dd0    # permuter
 func_00242214    # permuter
 func_002424b0    # permuter
+func_002424f0    # llm_draft
 func_00242518    # ghidra_draft:-O2
 func_002425f0    # ghidra_draft:-O2
 func_002427c0    # ghidra_draft:-O2
