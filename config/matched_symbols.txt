@@ -1836,6 +1836,7 @@ func_002b3b30    # ghidra_draft:-O2
 func_002b3bb8    # ghidra_draft:-O2
 func_002b3c28    # ghidra_draft:-O2
 func_002b5080    # ret_data_addr
+func_002b7f30    # llm_draft
 func_002b9748    # llm_draft
 func_002bb288    # mem_multi_store
 func_002bb298    # load_mixed_stores
@@ -2023,6 +2024,7 @@ func_002f2968    # ghidra_draft:-O2
 func_002f2b18    # ghidra_draft:-O2
 func_002f2eb0    # ghidra_draft:-O2
 func_002f3e58    # ghidra_draft:-O2
+func_002f56b8    # llm_draft
 func_002f59c8    # llm_draft
 func_002f6848    # permuter
 func_002f6da8    # ghidra_draft:-O2
