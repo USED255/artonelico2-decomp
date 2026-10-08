@@ -1072,6 +1072,7 @@ func_002a4578	-O3
 func_002a8cd8	-O3
 func_002a91e0	-O3
 func_002af0c0	-O3
+func_002b7f30	-Os
 func_002b9748	-O1
 func_002baed0	-O2
 func_002bb480	-Os
@@ -1130,6 +1131,7 @@ func_002f0170	-O3
 func_002f0188	-O3
 func_002f1488	-Os
 func_002f2118	-O3
+func_002f56b8	-O1
 func_002f59c8	-O3
 func_002f78b8	-Os
 func_002f78c8	-O3
