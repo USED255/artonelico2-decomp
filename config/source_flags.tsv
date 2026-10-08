@@ -247,6 +247,7 @@ func_00185d60	-Os
 func_00185da8	-Os
 func_00185df0	-Os
 func_00185fa0	-Os
+func_0018c41c	-Os
 func_0018c6d0	-Os
 func_0018c784	-O2
 func_0018cf14	-O2
