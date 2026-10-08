@@ -1078,6 +1078,7 @@ func_002a4578	-O3
 func_002a8cd8	-O3
 func_002a91e0	-O3
 func_002af0c0	-O3
+func_002b4378	-Os
 func_002b7f30	-Os
 func_002b9748	-O1
 func_002baed0	-O2
