@@ -23,12 +23,14 @@ baseelf_203	-O2
 baseelf_24	-O1
 baseelf_27	-Os
 baseelf_45	-O1
+baseelf_47	-Os
 baseelf_64	-O1
 baseelf_69	-O1
 baseelf_70	-O1
 baseelf_73	-Os
 baseelf_76	-O1
 baseelf_85	-O1
+eepatch_15	-Os
 eepatch_16	-Os
 eepatch_18	-Os
 eepatch_22	-O2
@@ -139,6 +141,7 @@ func_00145d04	-Os
 func_00145e6c	-Os
 func_00145e98	-Os
 func_00146974	-Os
+func_001469c0	-Os
 func_00146a08	-Os
 func_00146da4	-Os
 func_00146fd4	-Os

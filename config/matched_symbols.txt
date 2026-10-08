@@ -61,6 +61,7 @@ baseelf_191    # permuter
 baseelf_202    # permuter
 baseelf_27    # llm_draft
 baseelf_45    # permuter
+baseelf_47    # llm_draft
 baseelf_63    # permuter
 baseelf_64    # permuter
 baseelf_69    # permuter
@@ -69,6 +70,7 @@ baseelf_73    # llm_draft
 baseelf_76    # permuter
 baseelf_85    # wrapper_o1_jal
 baseelf_94    # permuter
+eepatch_15    # llm_draft
 eepatch_16    # llm_draft
 eepatch_18    # llm_draft
 eetlb_4    # llm_draft
@@ -299,6 +301,7 @@ func_00146934    # wrapper_o2_tail
 func_00146948    # ghidra_draft:-O2
 func_00146960    # wrapper_o2_tail
 func_00146974    # llm_draft
+func_001469c0    # llm_draft
 func_00146a08    # llm_draft
 func_00146da4    # llm_draft
 func_00146fd4    # permuter
