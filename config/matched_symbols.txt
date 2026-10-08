@@ -505,6 +505,7 @@ func_00185be0    # ghidra_draft:-O2
 func_00185d28    # ghidra_draft:-O2
 func_00185df0    # llm_draft
 func_0018c334    # float_multi_store
+func_0018c41c    # llm_draft
 func_0018c6d0    # llm_draft
 func_0018cd50    # ghidra_draft:-O2
 func_0018cd70    # ghidra_draft:-O2
