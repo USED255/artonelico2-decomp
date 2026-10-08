@@ -32,6 +32,7 @@ baseelf_76	-O1
 baseelf_85	-O1
 eepatch_15	-Os
 eepatch_16	-Os
+eepatch_17	-Os
 eepatch_18	-Os
 eepatch_22	-O2
 eetlb_4	-O1
