@@ -70,6 +70,7 @@ baseelf_76    # permuter
 baseelf_85    # wrapper_o1_jal
 baseelf_94    # permuter
 eepatch_16    # llm_draft
+eepatch_18    # llm_draft
 eetlb_4    # llm_draft
 fileio_10    # llm_draft
 fileio_12    # llm_draft
@@ -1077,6 +1078,7 @@ func_0021b394    # ghidra_draft:-O1
 func_0021b3b0    # ghidra_draft:-O1
 func_0021b478    # idx_load
 func_0021b4bc    # empty
+func_0021b530    # llm_draft
 func_0021b87c    # ghidra_draft:-O1
 func_0021d5e0    # ret_bool
 func_0021d5f8    # llm_draft
