@@ -1173,6 +1173,7 @@ func_00230c40    # ghidra_draft:-O1
 func_00230e0c    # wrapper_o1_jal
 func_00232310    # wrapper_o1_jal
 func_00232df0    # ghidra_draft:-O2
+func_00232fb0    # llm_draft
 func_0023323c    # ghidra_draft:-O1
 func_00233d88    # llm_draft
 func_00234510    # permuter
