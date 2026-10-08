@@ -1735,6 +1735,7 @@ func_0029b4f4    # ghidra_draft:-O1
 func_0029b5fc    # ghidra_draft:-O2
 func_0029b6a0    # ghidra_draft:-O2
 func_0029b7f0    # ghidra_draft:-Os
+func_0029b860    # llm_draft
 func_0029b918    # llm_draft
 func_0029b944    # llm_draft
 func_0029b964    # ghidra_draft:-O2
