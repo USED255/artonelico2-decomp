@@ -1195,6 +1195,7 @@ func_00303e48	-O3
 func_00303e60	-O3
 func_00303e78	-O3
 func_00303e90	-O3
+func_00304810	-O1
 func_00304e20	-O3
 func_00304e30	-O3
 func_00304e40	-O3
