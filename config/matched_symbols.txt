@@ -772,6 +772,7 @@ func_001b023c    # store_data
 func_001b04b0    # llm_draft
 func_001b0704    # ghidra_draft:-O2
 func_001b0cac    # permuter
+func_001b0d10    # llm_draft
 func_001b0f7c    # ghidra_draft:-O2
 func_001b1288    # empty
 func_001b3af4    # permuter
