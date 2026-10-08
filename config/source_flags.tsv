@@ -275,6 +275,7 @@ func_00190144	-Os
 func_00190408	-Os
 func_00191860	-Os
 func_001919e4	-O1
+func_00191a08	-Os
 func_00191bb4	-O2
 func_00191db8	-Os
 func_00191f38	-Os
@@ -895,6 +896,7 @@ func_00262964	-Os
 func_0026342c	-O2
 func_00263458	-O2
 func_00264894	-Os
+func_00265178	-Os
 func_00265688	-Os
 func_00265728	-Os
 func_00265bb4	-Os
