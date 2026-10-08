@@ -30,6 +30,7 @@ baseelf_73	-Os
 baseelf_76	-O1
 baseelf_85	-O1
 eepatch_16	-Os
+eepatch_18	-Os
 eepatch_22	-O2
 eetlb_4	-O1
 eetty_6	-O3
@@ -637,6 +638,7 @@ func_00209998	-O1
 func_0021b394	-O1
 func_0021b3b0	-O1
 func_0021b4c4	-O1
+func_0021b530	-O1
 func_0021b87c	-O1
 func_0021c374	-O1
 func_0021d5f8	-O1
