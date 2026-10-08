@@ -2186,6 +2186,7 @@ func_003139d8    # ghidra_draft:-O3
 func_003142e8    # llm_draft
 func_00314800    # empty
 func_00314978    # empty
+func_00319488    # llm_draft
 func_00319600    # wrapper_o2_tail
 func_0031a290    # ghidra_draft:-O1
 func_0031a2b8    # ret_load_arg0
