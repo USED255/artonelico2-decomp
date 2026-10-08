@@ -1167,6 +1167,7 @@ func_0022fc18    # ghidra_draft:-O1
 func_00230404    # ghidra_draft:-O1
 func_00230428    # ghidra_draft:-O1
 func_00230444    # ghidra_draft:-O1
+func_00230af8    # llm_draft
 func_00230bb4    # llm_draft
 func_00230c40    # ghidra_draft:-O1
 func_00230e0c    # wrapper_o1_jal
