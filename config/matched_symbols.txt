@@ -1841,6 +1841,7 @@ func_002b3a88    # ghidra_draft:-O2
 func_002b3b30    # ghidra_draft:-O2
 func_002b3bb8    # ghidra_draft:-O2
 func_002b3c28    # ghidra_draft:-O2
+func_002b4378    # llm_draft
 func_002b5080    # ret_data_addr
 func_002b7f30    # llm_draft
 func_002b9748    # llm_draft
