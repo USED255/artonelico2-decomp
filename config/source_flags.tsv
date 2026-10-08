@@ -711,6 +711,7 @@ func_00229770	-O1
 func_0022af74	-O1
 func_0022b024	-O1
 func_0022b96c	-O1
+func_0022b9ac	-O1
 func_0022ba24	-O1
 func_0022cc9c	-O1
 func_0022cd14	-O1
@@ -1220,6 +1221,7 @@ func_00312db8	-O1
 func_00312dc8	-O1
 func_00312de0	-O3
 func_003131e0	-O3
+func_00313920	-O1
 func_003139d8	-O3
 func_003142e8	-O1
 func_00319af8	-O3
