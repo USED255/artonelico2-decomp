@@ -1358,6 +1358,7 @@ func_00247b28    # permuter
 func_00247b5c    # permuter
 func_00247e8c    # llm_draft
 func_00247eec    # permuter
+func_00247f54    # llm_draft
 func_00247fbc    # permuter
 func_002480b4    # permuter
 func_00248114    # permuter

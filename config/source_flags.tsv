@@ -856,6 +856,7 @@ func_00247a80	-O1
 func_00247b28	-Os
 func_00247e8c	-Os
 func_00247eec	-O1
+func_00247f54	-Os
 func_00248114	-Os
 func_0024a1d4	-O2
 func_0024a3ac	-O2
