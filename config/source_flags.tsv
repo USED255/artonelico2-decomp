@@ -952,9 +952,11 @@ func_00273304	-Os
 func_00273970	-O2
 func_00274650	-O2
 func_002756d8	-Os
+func_00276640	-Os
 func_00276b2c	-O2
 func_00276c30	-O2
 func_00279780	-Os
+func_00279ddc	-Os
 func_0027a99c	-Os
 func_0027a9f4	-Os
 func_0027b0dc	-O2
