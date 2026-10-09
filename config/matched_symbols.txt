@@ -544,6 +544,7 @@ func_0018da88    # llm_draft
 func_0018dcec    # permuter
 func_0018e4dc    # ghidra_draft:-O2
 func_0018e57c    # permuter
+func_0018e5f4    # llm_draft
 func_0018e628    # ghidra_draft:-O2
 func_0018e67c    # permuter
 func_0018e6e4    # empty

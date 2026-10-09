@@ -265,6 +265,7 @@ func_0018d958	-O1
 func_0018d9e0	-O1
 func_0018da88	-O2
 func_0018dc74	-O2
+func_0018e5f4	-Os
 func_0018e870	-Os
 func_0018e9e0	-Os
 func_0018eb74	-Os
