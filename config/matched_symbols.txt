@@ -248,6 +248,7 @@ func_0013c4d4    # permuter
 func_0013c520    # ghidra_draft:-O2
 func_0013c5a4    # wrapper_o2_tail
 func_0013c5b8    # wrapper_o2_tail
+func_0013c934    # llm_draft
 func_0013cad8    # ghidra_draft:-O2
 func_0013cb2c    # store_data
 func_0013d6c0    # wrapper_o2_tail
