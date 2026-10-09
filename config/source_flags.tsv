@@ -912,6 +912,7 @@ func_00265bb4	-Os
 func_00265f04	-O1
 func_002664e0	-O2
 func_0026661c	-Os
+func_002666e8	-Os
 func_00266ac8	-O2
 func_0026746c	-Os
 func_00267840	-Os
