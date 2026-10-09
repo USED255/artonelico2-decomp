@@ -370,6 +370,7 @@ func_001b5a2c	-O2
 func_001b5a70	-Os
 func_001b5ad4	-O2
 func_001b5c60	-Os
+func_001b5f50	-Os
 func_001b5f8c	-Os
 func_001b5ff8	-Os
 func_001b6080	-Os

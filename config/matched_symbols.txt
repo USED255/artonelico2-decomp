@@ -791,6 +791,7 @@ func_001b5684    # ghidra_draft:-O2
 func_001b5a70    # llm_draft
 func_001b5c60    # permuter
 func_001b5f08    # empty
+func_001b5f50    # llm_draft
 func_001b5f8c    # llm_draft
 func_001b5ff8    # llm_draft
 func_001b6030    # ret_bool
