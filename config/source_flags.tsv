@@ -351,6 +351,7 @@ func_001a3e9c	-Os
 func_001a4d8c	-O2
 func_001a4e00	-O2
 func_001a4e38	-O2
+func_001a4e7c	-Os
 func_001a5024	-O2
 func_001a5130	-O2
 func_001a513c	-O2
