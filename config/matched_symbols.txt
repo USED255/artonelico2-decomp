@@ -236,6 +236,7 @@ func_00137e70    # permuter
 func_001380f4    # ghidra_draft:-O2
 func_00138a14    # permuter
 func_00138a40    # store_data
+func_00138aa4    # llm_draft
 func_00138abc    # ghidra_draft:-O2
 func_00138ae0    # ghidra_draft:-O2
 func_00139694    # ghidra_draft:-Os

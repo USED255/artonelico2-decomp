@@ -114,6 +114,7 @@ func_001357f4	-Os
 func_001358ac	-Os
 func_00136ad4	-Os
 func_00136b38	-Os
+func_00138aa4	-O1
 func_00139058	-O2
 func_00139464	-Os
 func_00139694	-Os
