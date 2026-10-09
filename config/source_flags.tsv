@@ -834,6 +834,7 @@ func_0023ed28	-O2
 func_0023f8ac	-O2
 func_0023f9b8	-O2
 func_0023fb68	-O2
+func_0023fb78	-Os
 func_0023fd58	-Os
 func_00240248	-O2
 func_00240960	-Os
