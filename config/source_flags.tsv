@@ -125,6 +125,7 @@ func_0013c6cc	-O2
 func_0013c6fc	-O2
 func_0013c888	-O2
 func_0013c904	-O2
+func_0013c934	-Os
 func_0013c9c8	-O2
 func_0013c9f8	-O2
 func_0013ca28	-O2
