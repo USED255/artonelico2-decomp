@@ -107,6 +107,7 @@ func_00104488    # wrapper_o2_tail
 func_0010449c    # permuter
 func_00104a68    # ghidra_draft:-O1
 func_00104a8c    # permuter
+func_00105000    # llm_draft
 func_00105670    # permuter
 func_00105e3c    # ghidra_draft:-O2
 func_001062a8    # permuter
