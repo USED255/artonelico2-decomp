@@ -1297,6 +1297,7 @@ func_0023e308    # ghidra_draft:-Os
 func_0023e3a4    # llm_draft
 func_0023e9dc    # llm_draft
 func_0023efb0    # permuter
+func_0023fb78    # llm_draft
 func_0023fd58    # llm_draft
 func_002401c4    # permuter
 func_00240768    # permuter
