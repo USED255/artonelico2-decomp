@@ -888,6 +888,7 @@ func_001d895c    # permuter
 func_001d89d4    # permuter
 func_001d8a28    # ghidra_draft:-O2
 func_001d8a44    # permuter
+func_001d8a84    # llm_draft
 func_001d936c    # llm_draft
 func_001d9628    # permuter
 func_001d9644    # ghidra_draft:-O2
@@ -1378,6 +1379,7 @@ func_0024555c    # permuter
 func_0024570c    # permuter
 func_00245794    # ghidra_draft:-O2
 func_002457ec    # permuter
+func_0024582c    # llm_draft
 func_002458c4    # ghidra_draft:-O1
 func_00245b28    # ghidra_draft:-O2
 func_00245dcc    # ghidra_draft:-O2
