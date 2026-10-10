@@ -1130,6 +1130,7 @@ func_002094c4    # llm_draft
 func_002094fc    # empty
 func_00209940    # llm_draft
 func_00209998    # ghidra_draft:-O1
+func_0021b358    # llm_draft
 func_0021b384    # empty
 func_0021b38c    # empty
 func_0021b394    # ghidra_draft:-O1
