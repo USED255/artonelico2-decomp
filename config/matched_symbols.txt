@@ -628,6 +628,7 @@ func_001928d8    # permuter
 func_00192970    # permuter
 func_0019298c    # llm_draft
 func_001929a8    # permuter
+func_00192a8c    # llm_draft
 func_00192af0    # ghidra_draft:-Os
 func_00192cb0    # permuter
 func_00192e58    # ret_load_arg0
