@@ -551,6 +551,7 @@ func_0018d334    # llm_draft
 func_0018d37c    # permuter
 func_0018d7e8    # permuter
 func_0018d83c    # permuter
+func_0018d858    # llm_draft
 func_0018d898    # permuter
 func_0018d958    # permuter
 func_0018d9b4    # permuter
@@ -1858,6 +1859,7 @@ func_0029ead4    # ret_load_arg0
 func_0029eadc    # ret_load_arg0
 func_0029eb04    # ret_load_arg0
 func_0029eb14    # permuter
+func_0029eb28    # llm_draft
 func_0029ec54    # llm_draft
 func_0029ecd4    # ret_bool
 func_0029ece4    # permuter
