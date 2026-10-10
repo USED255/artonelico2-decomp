@@ -1000,6 +1000,7 @@ func_001ec8b0    # permuter
 func_001ec944    # idx_load
 func_001ecc38    # empty
 func_001ed000    # ghidra_draft:-O1
+func_001ed180    # llm_draft
 func_001ed220    # permuter
 func_001ed470    # store_arg0
 func_001ed478    # float_mem
@@ -1543,6 +1544,7 @@ func_00265178    # llm_draft
 func_00265688    # permuter
 func_00265728    # llm_draft
 func_00265bb4    # llm_draft
+func_00265d9c    # llm_draft
 func_00265e58    # llm_draft
 func_00265eec    # ghidra_draft:-O2
 func_00265f04    # ghidra_draft:-O1
