@@ -129,6 +129,7 @@ func_00109794    # llm_draft
 func_00109e5c    # permuter
 func_00109ef0    # ghidra_draft:-O2
 func_0010a140    # permuter
+func_0010a250    # llm_draft
 func_0010bfd0    # ghidra_draft:-O2
 func_0010c128    # ghidra_draft:-O2
 func_0010c294    # permuter

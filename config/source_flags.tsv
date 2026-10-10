@@ -74,6 +74,7 @@ func_00108324	-Os
 func_00108660	-Os
 func_001090e4	-Os
 func_00109794	-Os
+func_0010a250	-O2
 func_0010cd64	-Os
 func_001127fc	-O1
 func_00112810	-O1
