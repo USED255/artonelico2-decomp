@@ -277,6 +277,7 @@ func_0018d2ec	-Os
 func_0018d334	-Os
 func_0018d7e8	-Os
 func_0018d83c	-Os
+func_0018d858	-Os
 func_0018d958	-O1
 func_0018d9e0	-O1
 func_0018da88	-O2
@@ -1127,6 +1128,7 @@ func_0029e8f4	-Os
 func_0029e9b0	-Os
 func_0029ea88	-O2
 func_0029eabc	-O2
+func_0029eb28	-Os
 func_0029ec54	-Os
 func_0029ece4	-Os
 func_0029ed80	-O1
