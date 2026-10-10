@@ -924,6 +924,7 @@ func_00254378	-Os
 func_002543fc	-Os
 func_0025581c	-Os
 func_00255894	-O1
+func_0025741c	-Os
 func_00257c08	-Os
 func_00257c4c	-O2
 func_00257c7c	-Os
