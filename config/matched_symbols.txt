@@ -1180,6 +1180,7 @@ func_002254e0    # ghidra_draft:-O1
 func_00225558    # store_arg0
 func_00225560    # ghidra_draft:-O1
 func_0022557c    # ghidra_draft:-O1
+func_00225718    # llm_draft
 func_0022576c    # ghidra_draft:-O1
 func_002259a4    # empty
 func_002259ac    # empty
