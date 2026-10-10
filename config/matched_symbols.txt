@@ -440,6 +440,7 @@ func_00156d30    # permuter
 func_0015761c    # ghidra_draft:-Os
 func_001579d8    # ghidra_draft:-O2
 func_00157a10    # ghidra_draft:-O1
+func_00159398    # llm_draft
 func_00159400    # ghidra_draft:-O2
 func_00159414    # store_arg0
 func_0015941c    # const_store
@@ -568,6 +569,7 @@ func_0018ef6c    # permuter
 func_0018f0f0    # permuter
 func_0018f82c    # llm_draft
 func_0018f9cc    # llm_draft
+func_0018fdb8    # llm_draft
 func_0018fef4    # ret_data_load
 func_0018ff08    # ret_const
 func_0018ffc8    # permuter
