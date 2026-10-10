@@ -1474,6 +1474,7 @@ func_00255034    # ghidra_draft:-O2
 func_00255060    # ghidra_draft:-O2
 func_00255158    # ghidra_draft:-O2
 func_00255218    # llm_draft
+func_002552a4    # llm_draft
 func_00255360    # ghidra_draft:-O2
 func_00255570    # empty
 func_00255798    # ghidra_draft:-O2
