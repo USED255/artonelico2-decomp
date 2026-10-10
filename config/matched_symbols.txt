@@ -1085,6 +1085,7 @@ func_00203960    # permuter
 func_00203f30    # ret_bool
 func_002042dc    # llm_draft
 func_00204328    # ghidra_draft:-O2
+func_00204344    # llm_draft
 func_00204fa8    # ghidra_draft:-O1
 func_002051f4    # llm_draft
 func_002052d4    # permuter
