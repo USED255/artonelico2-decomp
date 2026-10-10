@@ -165,6 +165,7 @@ func_00119bf8    # ghidra_draft:-Os
 func_0011a848    # llm_draft
 func_0011b1a8    # wrapper_o1_jal
 func_0011e430    # ret_const
+func_0011e440    # llm_draft
 func_0011e6b4    # ghidra_draft:-O2
 func_0011ed64    # llm_draft
 func_0011eddc    # permuter
@@ -433,6 +434,7 @@ func_00153308    # store_arg0
 func_00153310    # empty
 func_00153318    # ghidra_draft:-O2
 func_001538dc    # ghidra_draft:-O2
+func_00154204    # llm_draft
 func_00154740    # ghidra_draft:-O2
 func_0015478c    # llm_draft
 func_001549b4    # llm_draft
