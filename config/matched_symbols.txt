@@ -797,6 +797,7 @@ func_001ab874    # permuter
 func_001ab964    # ghidra_draft:-O2
 func_001abcb0    # permuter
 func_001acc58    # ghidra_draft:-O2
+func_001acc80    # llm_draft
 func_001ad9ac    # ret_bool
 func_001af8d0    # wrapper_o2_tail
 func_001b023c    # store_data

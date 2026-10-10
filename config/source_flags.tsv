@@ -389,6 +389,7 @@ func_001a62d0	-O1
 func_001ab8b8	-O2
 func_001ab9a8	-O2
 func_001abc5c	-Os
+func_001acc80	-Os
 func_001b04b0	-Os
 func_001b0cac	-Os
 func_001b0d10	-Os
