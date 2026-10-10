@@ -393,6 +393,7 @@ func_001acc80	-Os
 func_001b04b0	-Os
 func_001b0cac	-Os
 func_001b0d10	-Os
+func_001b3a64	-Os
 func_001b5354	-Os
 func_001b53dc	-Os
 func_001b5418	-O2

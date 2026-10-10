@@ -807,6 +807,7 @@ func_001b0cac    # permuter
 func_001b0d10    # llm_draft
 func_001b0f7c    # ghidra_draft:-O2
 func_001b1288    # empty
+func_001b3a64    # llm_draft
 func_001b3af4    # permuter
 func_001b3b8c    # ghidra_draft:-O2
 func_001b3bc0    # permuter
