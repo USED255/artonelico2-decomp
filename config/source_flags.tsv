@@ -625,6 +625,7 @@ func_001f8a48	-O1
 func_001f98f8	-O1
 func_001f9958	-O1
 func_001f99cc	-O1
+func_001f9a30	-O1
 func_001fa154	-O1
 func_001faa9c	-O1
 func_001faab8	-O1
@@ -912,6 +913,7 @@ func_0024de40	-Os
 func_0024df10	-Os
 func_0024e04c	-Os
 func_0024e110	-Os
+func_0024e158	-Os
 func_0024e400	-Os
 func_0024e754	-O1
 func_0024e770	-O1
