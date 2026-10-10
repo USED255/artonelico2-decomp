@@ -444,6 +444,7 @@ func_001d8678	-Os
 func_001d8694	-Os
 func_001d8704	-Os
 func_001d87b0	-O1
+func_001d8a84	-Os
 func_001d936c	-Os
 func_001d9628	-O1
 func_001da5f8	-Os
@@ -894,6 +895,7 @@ func_002428cc	-Os
 func_00243e74	-Os
 func_00244f90	-Os
 func_00245388	-Os
+func_0024582c	-Os
 func_00245878	-Os
 func_002458c4	-O1
 func_00246d7c	-Os
