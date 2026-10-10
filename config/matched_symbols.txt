@@ -371,6 +371,7 @@ func_0014d19c    # ghidra_draft:-O2
 func_0014d218    # wrapper_o2_tail
 func_0014d22c    # permuter
 func_0014d340    # ghidra_draft:-O2
+func_0014d3b0    # llm_draft
 func_0014d540    # permuter
 func_0014d614    # ghidra_draft:-O2
 func_0014dbac    # ghidra_draft:-O2
