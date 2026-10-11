@@ -1013,6 +1013,7 @@ func_001ef628    # permuter
 func_001efbc4    # permuter
 func_001efc08    # mem_pair
 func_001efdf0    # mem_pair
+func_001eff98    # llm_draft
 func_001effc4    # permuter
 func_001f0070    # llm_draft
 func_001f00d4    # ret_arg
