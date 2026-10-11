@@ -35,27 +35,30 @@ make report         # write the progress report
 ```
 
 This is a mixed-compiler build: the game code uses `ee-gcc 3.2-ee-040921` and the
-CRI middleware uses `ee-gcc 2.96-ee-001003-1`. `config/compiler_map.tsv` states,
-per source file, which compiler to use (absent = the game compiler); the two
-paths come from `EE_GCC` / `EE_GCC_CRI` (or `GCC` / `GCC_CRI`). A source that
-needs the CRI compiler also needs `-G0` in `config/source_flags.tsv`.
+CRI middleware uses `ee-gcc 2.96-ee-001003-1`. `config/compiler_map.tsv` states
+the compiler for each source file. If a file is absent from the map, the build
+uses the game compiler. The two paths come from `EE_GCC` / `EE_GCC_CRI` or
+`GCC` / `GCC_CRI`. A source that needs the CRI compiler also needs `-G0` in
+`config/source_flags.tsv`. Read [docs/CONFIG.md](CONFIG.md) for the configuration
+files.
 
 `make build` derives the payload from the retail executable. Then it splits the
-payload, assembles the source, and links the result. It checks the payload sha1value after each stage. The expected value is
+payload, assembles the source, and links the result. It checks the payload sha1
+value after each stage. The expected value is
 `7cc42d275750600d1f232b2632447f77205f3fc0`. One different byte stops the build.
 
 ## 3. Check a change
 
 ```bash
 make delta BASE=origin/main      # each changed file in src/matched/ must match 100%
-make check                       # repository checks; the retail executable is not necessary
+make check                       # repository checks. The retail executable is not necessary.
 ```
 
 ## 4. CI
 
 | Workflow | When it runs | What it does |
 | --- | --- | --- |
-| `validate` | Each push, each pull request, and a manual start | On a push it checks the publication record (`PUBLISHED.json`), the forbidden material, the report schema, and the baseline. On a pull request it allows any change **except** the publication content (`progress/**` and `PUBLISHED.json`). Read [CONTRIBUTING.md](../CONTRIBUTING.md). |
+| `validate` | Each push, each pull request, and a manual start | On a push it checks the publication record (`PUBLISHED.json`), the forbidden material, the report schema, and the baseline. On a pull request it allows any change **except** the publication content (`progress/**` and `PUBLISHED.json`). A branch of this repository may also rename or delete a file. A pull request from an external fork must still only add or change files. Read [CONTRIBUTING.md](../CONTRIBUTING.md). |
 | `matching-gate` | A push to the default branch, an internal pull request, or a manual start | Gets the retail executable and the toolchain from a private companion repository. Then it runs `make build`, `make delta`, and `make report`. It publishes the artifact **only** when all checks pass. |
 
 The `matching-gate` workflow needs the secret `ORIG_DEPLOY_KEY` and the variable

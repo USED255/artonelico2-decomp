@@ -9,26 +9,16 @@
 `src/matched/` 下的源码用**原版编译器工具链**编译。构建过程把结果与零售二进制**逐字节**比较。
 两个字节序列相同时，该函数判定为**已匹配**。
 
-> **欢迎贡献**（见 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)）。
+**欢迎贡献**（见 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)）。
 
 ## 进度
 
-截至 2026-10-05（[progress/baseline.json](progress/baseline.json)，构建版本 `c0c0541`）：
+截至 2026-10-11（[progress/baseline.json](progress/baseline.json)，构建版本 `aae85fe`）：
 
-- 已匹配函数：**2,688 / 10,923（24.61%）**
-- 已匹配代码：**119,076 / 2,276,780 字节（5.23%）**
+- 已匹配函数：**3,223 / 10,923（29.51%）**
+- 已匹配代码：**161,700 / 2,276,780 字节（7.10%）**
 
-逐条转录的汇编桩**不计入**「已匹配」。比基线更差的报告，CI 不会发布。进度历史：<https://decomp.dev/>。
-
-## 目录
-
-```
-src/matched/    产物：每个已还原函数一个 C 文件
-config/         splat 配置、符号表、编译档、匹配台账
-tools/          构建驱动、报告生成器、仓库自检
-progress/       当前报告与已接受基线
-docs/           构建说明与发表政策
-```
+逐条转录的汇编桩**不计入**「已匹配」。比基线更差的报告，CI 不会发布。进度历史：<https://decomp.dev/USED255/artonelico2-decomp>。
 
 ## 构建
 

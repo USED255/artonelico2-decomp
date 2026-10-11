@@ -11,27 +11,18 @@ The source in `src/matched/` compiles with the original compiler toolchain.
 The build compares the result with the retail binary byte by byte. A function is
 **matched** when the two byte sequences are equal.
 
-> **Contributions are welcome** — read [CONTRIBUTING.md](CONTRIBUTING.md).
+**Contributions are welcome** — read [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Status
 
-As of 2026-10-05 ([progress/baseline.json](progress/baseline.json), build `c0c0541`):
+As of 2026-10-11 ([progress/baseline.json](progress/baseline.json), build `aae85fe`):
 
-- Matched functions: **2,688 / 10,923 (24.61%)**
-- Matched code: **119,076 / 2,276,780 bytes (5.23%)**
+- Matched functions: **3,223 / 10,923 (29.51%)**
+- Matched code: **161,700 / 2,276,780 bytes (7.10%)**
 
 We do not count the assembly stubs that we copied. CI does not publish a report
-that is worse than the baseline. Progress history: <https://decomp.dev/>.
-
-## Layout
-
-```
-src/matched/    the product: one C file for each recovered function
-config/         splat configuration, symbol table, compiler flags, match ledger
-tools/          build driver, report generator, repository checks
-progress/       the current report and the accepted baseline
-docs/           build instructions and the publication policy
-```
+that is worse than the baseline. Progress history:
+<https://decomp.dev/USED255/artonelico2-decomp>.
 
 ## Build
 

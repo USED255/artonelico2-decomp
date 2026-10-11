@@ -44,7 +44,7 @@ make check                       # repository checks
 
 | Workflow | Your pull request |
 | --- | --- |
-| `validate` | Runs in **contribution mode**. It allows an addition or a change in the contribution paths. It rejects a change outside them, a deletion, a non-text file, and a file above 1 MiB. |
+| `validate` | Runs in **contribution mode**. It allows an addition or a change in the contribution paths. It rejects a change outside them, a non-text file, and a file above 1 MiB. A branch of this repository may also rename or delete a file. A pull request from an external fork must still only add or change files. |
 | `matching-gate` | Needs the retail executable and the Sony toolchain. A pull request from a fork cannot get them, so the job skips. A maintainer then verifies your commit, or runs the workflow manually with your pull request number. |
 
 ## 5. What happens after CI
@@ -73,30 +73,16 @@ for `config/`, `splat.yaml`, and the build scripts, because a change there can
 affect the whole build.
 
 **A note about a new function.** You do not add a `config/matched_symbols.txt`
-entry. A maintainer adds it for you.
+entry. A maintainer adds it for you. `config/matched_symbols.txt` and
+`config/symbol_addrs.txt` are read-only configuration. A maintainer fills them
+for you. Read [docs/CONFIG.md](docs/CONFIG.md).
 
 ## 7. Writing style
 
-English documents in this repository use the **ASD-STE100** style. ASD-STE100 is
-Simplified Technical English. Follow these rules:
-
-1. Write one idea in one sentence.
-2. Keep a procedure sentence below 20 words. Keep a description sentence below
-   25 words.
-3. Write a maximum of six sentences in one paragraph.
-4. Use the active voice. Use the imperative for instructions.
-5. Use simple tenses. Do not use contractions. Do not use a semicolon.
-6. Do not write "e.g.", "i.e.", or "etc.". Write "for example", "that is", or
-   "and more".
-7. Use one word for one meaning. Use the same word for the same thing.
-8. Do not use idioms, slang, or vague words.
-9. Obey the approved dictionary of ASD-STE100 when you can.
+Documents in this repository use the **ASD-STE100** style.
 
 The ASD-STE100 dictionary has a copyright. We do not copy it into this
 repository. The standard is at <https://www.asd-ste100.org/>.
-
-Documents in other languages follow the same principles: short sentences, the
-active voice, one term for one meaning, and no spoken language.
 
 ## 8. Licence
 
