@@ -42,9 +42,9 @@ typedef int BOOL;
 u32 func_002bb480(u32 *a0, u32 a1)
 {
   u32 v0 = *a0;
-  u32 *new_var;
-  new_var = &a1;
-  a1 = v0 + ((*new_var) << 2);
-  *a0 = a1;
+  long new_var;
+  a1 = v0 + (a1 << 2);
+  new_var = a1;
+  *a0 = new_var;
   return v0;
 }

@@ -43,11 +43,11 @@ extern unsigned char D_00778430[];
 s32 func_00193c04(s32 arg0)
 {
   s32 i = 0;
-  uintptr_t new_var;
+  unsigned char *new_var;
   while (i < 0x14B)
   {
-    new_var = (uintptr_t) D_00778430;
-    if ((*((short *) ((new_var + (i * 0xC)) + 4))) == arg0)
+    new_var = D_00778430;
+    if ((*((short *) ((((uintptr_t) new_var) + (i * 0xC)) + 4))) == arg0)
     {
       return i;
     }
