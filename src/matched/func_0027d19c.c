@@ -31,7 +31,7 @@ extern int syscall(int);
 void func_0027d19c(int param_1)
 {
   *((undefined1 *) (param_1 + 0x2e)) = 0x10;
-  *((undefined1 *) (param_1 + 0x44c)) = 1;
+  *((undefined1 *) (0x44c + param_1)) = 1;
   *((undefined1 *) (param_1 + 0x2d)) = *((undefined1 *) (param_1 + 0x2f));
   return;
 }

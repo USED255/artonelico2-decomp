@@ -30,14 +30,12 @@ extern void FlushCache(int);
 extern int syscall(int);
 void func_0017e548(undefined4 *param_1, undefined4 param_2)
 {
-  unsigned long long new_var;
-  new_var = 4;
-  *param_1 = new_var;
+  param_1[4] = param_2;
   *((undefined2 *) (param_1 + 5)) = 0;
   *((undefined8 *) (param_1 + 6)) = 0;
   param_1[1] = 10;
   param_1[2] = 0x200;
   param_1[3] = 0x100;
-  param_1[4] = param_2;
+  *param_1 = 4;
   return;
 }
