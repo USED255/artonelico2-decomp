@@ -490,6 +490,7 @@ func_0016dfa0    # empty
 func_0016dfa8    # llm_draft
 func_0016e100    # llm_draft
 func_0016ea3c    # empty
+func_0016eea0    # llm_draft
 func_0016f02c    # permuter
 func_0016f2b0    # permuter
 func_00171a98    # llm_draft
@@ -1692,6 +1693,7 @@ func_0027b324    # permuter
 func_0027b40c    # mem_pair
 func_0027c230    # mem_pair
 func_0027c590    # ghidra_draft:-O2
+func_0027c638    # llm_draft
 func_0027c9d8    # llm_draft
 func_0027cc88    # mem_pair
 func_0027d18c    # store_arg0
