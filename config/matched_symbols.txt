@@ -1046,6 +1046,7 @@ func_001f333c    # mem_multi_store
 func_001f3c90    # ghidra_draft:-O1
 func_001f3cdc    # ghidra_draft:-O1
 func_001f3d48    # ghidra_draft:-O1
+func_001f3e00    # llm_draft
 func_001f3e38    # ret_const
 func_001f4704    # ghidra_draft:-O1
 func_001f4d04    # llm_draft
