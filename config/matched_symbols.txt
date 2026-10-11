@@ -1732,6 +1732,7 @@ func_0027d19c    # permuter
 func_0027d1b8    # permuter
 func_0027d26c    # mem_pair
 func_0027d53c    # ret_load_arg0
+func_0027e2f8    # permuter
 func_0027e3c0    # permuter
 func_0027e3dc    # permuter
 func_0027e5b8    # permuter
