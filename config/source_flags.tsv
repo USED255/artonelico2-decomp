@@ -287,6 +287,7 @@ func_00185840	-O1
 func_00185d60	-Os
 func_00185da8	-Os
 func_00185df0	-Os
+func_00185f40	-Os
 func_00185fa0	-Os
 func_0018c41c	-Os
 func_0018c6d0	-Os
@@ -823,6 +824,7 @@ func_0022d544	-O1
 func_0022d5a4	-O1
 func_0022d5d0	-O1
 func_0022e4b0	-O1
+func_0022ef08	-O1
 func_0022f220	-O1
 func_0022f4ac	-O1
 func_0022fab0	-O1
