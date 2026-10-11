@@ -1169,6 +1169,7 @@ func_00220e98    # ghidra_draft:-O2
 func_00221748    # ghidra_draft:-O1
 func_002217ac    # ghidra_draft:-O1
 func_00221808    # ghidra_draft:-O1
+func_00221834    # llm_draft
 func_00221930    # ghidra_draft:-O1
 func_00221954    # permuter
 func_002219b8    # wrapper_o1_jal
