@@ -134,6 +134,7 @@ func_00112e30    # llm_draft
 func_00114708    # permuter
 func_001155f8    # ghidra_draft:-O1
 func_00115668    # llm_draft
+func_001156e8    # permuter
 func_00115788    # llm_draft
 func_001157bc    # llm_draft
 func_001157f0    # permuter
@@ -308,6 +309,7 @@ func_00147ec8    # store_data_const
 func_00147ed8    # store_data_const
 func_00147ee8    # store_data_const
 func_00147ef8    # llm_draft
+func_00147f78    # permuter
 func_00148148    # llm_draft
 func_001482b4    # ghidra_draft:-O2
 func_001482d0    # permuter
