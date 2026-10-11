@@ -544,6 +544,7 @@ func_001e9064	-O1
 func_001e9900	-O1
 func_001e9b50	-O1
 func_001e9c04	-O1
+func_001e9c28	-O1
 func_001e9f1c	-O1
 func_001e9f40	-O1
 func_001e9ffc	-Os

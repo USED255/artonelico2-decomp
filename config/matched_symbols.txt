@@ -1000,6 +1000,7 @@ func_001e9064    # llm_draft
 func_001e9900    # ghidra_draft:-O1
 func_001e9924    # ghidra_draft:-O2
 func_001e9b50    # ghidra_draft:-O1
+func_001e9c28    # llm_draft
 func_001e9f1c    # ghidra_draft:-O1
 func_001e9f40    # ghidra_draft:-O1
 func_001e9ffc    # llm_draft
