@@ -33,15 +33,13 @@ extern int func_0011a098();
 void func_00119f4c(undefined8 param_1, int *param_2, undefined8 param_3, undefined8 param_4, undefined8 param_5)
 {
   int iVar1;
-  int new_var;
   ;
   while ((*param_2) != 0)
   {
     func_0011a098(param_1, param_2, param_3, param_4, param_5);
-    new_var = func_00115638(param_2);
-    iVar1 = new_var;
-    param_2 = param_2 + (iVar1 * 0xc);
     iVar1 = *param_2;
+    iVar1 = func_00115638(param_2);
+    param_2 = param_2 + (iVar1 * 0xc);
   }
 
   return;
