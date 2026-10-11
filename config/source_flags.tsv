@@ -144,6 +144,7 @@ func_0013f814	-O1
 func_00140bb8	-Os
 func_00140c5c	-Os
 func_00140d0c	-Os
+func_00140e14	-O2 -mno-split-addresses
 func_001420e8	-Os
 func_00142214	-O1
 func_0014254c	-Os
@@ -402,6 +403,7 @@ func_001acc80	-Os
 func_001b04b0	-Os
 func_001b0cac	-Os
 func_001b0d10	-Os
+func_001b30c8	-O2 -mno-split-addresses
 func_001b3a64	-Os
 func_001b5354	-Os
 func_001b53dc	-Os
@@ -468,6 +470,7 @@ func_001de6e0	-Os
 func_001de94c	-Os
 func_001deb30	-Os
 func_001deec4	-Os
+func_001df944	-Os
 func_001dfb10	-Os
 func_001dfc10	-Os
 func_001dfc80	-Os
