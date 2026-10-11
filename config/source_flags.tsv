@@ -130,6 +130,7 @@ func_00139464	-Os
 func_00139694	-Os
 func_0013ae70	-O1
 func_0013aea0	-Os
+func_0013bacc	-Os
 func_0013c6cc	-O2
 func_0013c6fc	-O2
 func_0013c888	-O2
