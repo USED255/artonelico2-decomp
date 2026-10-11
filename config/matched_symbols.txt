@@ -446,6 +446,7 @@ func_00154740    # ghidra_draft:-O2
 func_0015478c    # llm_draft
 func_001549b4    # llm_draft
 func_00154b20    # ghidra_draft:-Os
+func_001552bc    # llm_draft
 func_00155894    # ghidra_draft:-O2
 func_00155934    # ghidra_draft:-O2
 func_00155958    # ghidra_draft:-O2
