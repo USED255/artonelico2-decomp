@@ -52,6 +52,32 @@ DEFAULT_AS = os.environ.get("MIPS_AS", str(Path.home() / "eecc" / "ps2binutils" 
 DEFAULT_OBJDIFF = os.environ.get("OBJDIFF", str(Path.home() / "eecc" / "objdiff-cli"))
 SCHEMA = "https://raw.githubusercontent.com/encounter/objdiff/main/config.schema.json"
 
+# ---- objdiff `scratch`（一键推 decomp.me）默认值 ----
+# 依据（2026-10-06，R22 §3.3 / §3.7）：decomp.me 的 `ps2` 平台收录了与本案逐字相同的两个编译器；
+# GovanifY/kh2（MIT，同版 ee-gcc 3.2-ee-040921）已在 objdiff 里这样用。
+# c_flags 与 build_hybrid.sh 的 MATCHED_CFLAGS 保持一致（不含 -I，schema 要求排除 include 路径）。
+SCRATCH_PLATFORM = "ps2"
+SCRATCH_COMPILER_GAME = "ee-gcc3.2-040921"
+SCRATCH_COMPILER_CRI = "ee-gcc2.96"
+DEFAULT_SCRATCH_CFLAGS = "-O2 -falign-functions=4 -ffunction-sections"
+DEFAULT_CC_MAP = "config/compiler_map.tsv"
+DEFAULT_FLAGS_FILE = "config/source_flags.tsv"
+
+
+def parse_kv_tsv(path: Path) -> dict[str, str]:
+    """读 `<key><TAB><value...>` 表；`#` 起注释（含行内），空行跳过。后出现者覆盖先出现者。"""
+    out: dict[str, str] = {}
+    if not path.is_file():
+        return out
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.split("#", 1)[0].strip()
+        if not line:
+            continue
+        parts = line.split()
+        if len(parts) >= 2:
+            out[parts[0]] = " ".join(parts[1:])
+    return out
+
 RE_GLABEL = re.compile(r"\s*glabel\s+(\S+)")
 RE_ENDLABEL = re.compile(r"\s*endlabel\s+(\S+)")
 RE_NONMATCHING = re.compile(r"\s*nonmatching\b")
@@ -201,6 +227,12 @@ def main() -> int:
     ap.add_argument("--universe", choices=["symbol_addrs", "all"], default="symbol_addrs",
                     help="unit 全集：symbol_addrs（默认，任务书口径）或 all（含 splat 自动识别的额外 glabel）")
     ap.add_argument("--no-run", action="store_true", help="只写 objdiff.json，不调用 objdiff-cli")
+    ap.add_argument("--no-scratch", action="store_true",
+                    help="不在 objdiff.json 里写 decomp.me scratch 段（默认写）")
+    ap.add_argument("--cc-map", default=DEFAULT_CC_MAP, help="每源编译器表（相对 project）")
+    ap.add_argument("--flags-file", default=DEFAULT_FLAGS_FILE, help="每源额外 flags 表（相对 project）")
+    ap.add_argument("--scratch-cflags", default=DEFAULT_SCRATCH_CFLAGS,
+                    help="scratch 的基础 c_flags（不含 -I；每源额外 flags 会自动追加）")
     args = ap.parse_args()
 
     t0 = time.time()
@@ -285,6 +317,9 @@ def main() -> int:
 
     # ---- 组装 objdiff.json ----
     matched = parse_matched(project / "config" / "matched_symbols.txt")
+    cc_map = parse_kv_tsv(project / args.cc_map)
+    extra_flags = parse_kv_tsv(project / args.flags_file)
+    scratch_stats = {"game": 0, "cri": 0}
     entry_total, entry_stub, distinct_nonstub = matched_entry_stats(project / "config" / "matched_symbols.txt")
     hybrid_obj = project / "build" / "hybrid" / "obj"
     units: list[dict] = []
@@ -315,6 +350,16 @@ def main() -> int:
                         "progress_categories": ["c"],
                         "source_path": str(Path("src") / "matched" / f"{src}.c"),
                     }
+                    if not args.no_scratch:
+                        tag_cc = cc_map.get(src, "game")
+                        flags = args.scratch_cflags.split() + extra_flags.get(src, "").split()
+                        unit["scratch"] = {
+                            "platform": SCRATCH_PLATFORM,
+                            "compiler": (SCRATCH_COMPILER_CRI if tag_cc == "cri"
+                                         else SCRATCH_COMPILER_GAME),
+                            "c_flags": " ".join(flags),
+                        }
+                        scratch_stats["cri" if tag_cc == "cri" else "game"] += 1
                     stats["c"] += 1
                 else:
                     stats["missing_obj"] += 1
@@ -330,8 +375,9 @@ def main() -> int:
     }
     (out_dir / "objdiff.json").write_text(json.dumps(config, indent=1, ensure_ascii=False) + "\n",
                                           encoding="utf-8")
-    print("[4/5] 写出 {}：units={}（c={c} / asm={asm} / 未匹配={no_base} / 桩排除={stub_excluded} / 缺 base={missing_obj}）"
-          .format(out_dir / "objdiff.json", len(units), **stats))
+    print("[4/5] 写出 {}：units={}（c={c} / asm={asm} / 未匹配={no_base} / 桩排除={stub_excluded} / 缺 base={missing_obj} / scratch: game={gs} cri={cs}）"
+          .format(out_dir / "objdiff.json", len(units), **stats,
+                  gs=scratch_stats["game"], cs=scratch_stats["cri"]))
 
     baseline: dict = {}
     report_measures: dict = {}
