@@ -439,6 +439,7 @@ func_001b5ff8	-Os
 func_001b6080	-Os
 func_001b8ac8	-Os
 func_001b9a68	-Os
+func_001b9a94	-Os
 func_001b9af0	-Os
 func_001b9d3c	-Os
 func_001ba13c	-O1
@@ -936,6 +937,7 @@ func_0023fb68	-O2
 func_0023fb78	-Os
 func_0023fd58	-Os
 func_00240248	-O2
+func_002406b4	-Os
 func_00240960	-Os
 func_00240ac0	-Os
 func_00241580	-Os
@@ -1208,6 +1210,7 @@ func_0029bcc8	-O1
 func_0029be00	-O2 -fno-optimize-sibling-calls
 func_0029bf18	-O2
 func_0029c004	-O1
+func_0029c09c	-Os
 func_0029c678	-O2
 func_0029c6e4	-O2
 func_0029c704	-O2
