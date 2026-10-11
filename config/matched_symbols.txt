@@ -1014,6 +1014,7 @@ func_001edc00    # ghidra_draft:-O1
 func_001edc94    # ghidra_draft:-O1
 func_001ee000    # llm_draft
 func_001ee66c    # llm_draft
+func_001ef098    # permuter
 func_001ef160    # ghidra_draft:-O1
 func_001ef628    # permuter
 func_001efbc4    # permuter
