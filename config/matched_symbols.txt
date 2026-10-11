@@ -163,6 +163,7 @@ func_0011f258    # ghidra_draft:-O2
 func_0011f270    # ghidra_draft:-O2
 func_0011f2a4    # ret_bool
 func_0011f340    # permuter
+func_001202ac    # permuter
 func_00120314    # llm_draft
 func_001205a0    # ghidra_draft:-O2
 func_001206d0    # ghidra_draft:-O2
@@ -1419,6 +1420,7 @@ func_00247544    # ghidra_draft:-O2
 func_0024758c    # permuter
 func_00247724    # permuter
 func_002479a8    # permuter
+func_002479e8    # permuter
 func_00247a34    # permuter
 func_00247a80    # ghidra_draft:-O1
 func_00247b28    # permuter
