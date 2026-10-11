@@ -970,6 +970,7 @@ func_001e3e88    # wrapper_o1_jal
 func_001e41f8    # ghidra_draft:-O1
 func_001e4248    # ghidra_draft:-O1
 func_001e42e0    # ghidra_draft:-O1
+func_001e4538    # permuter
 func_001e475c    # ghidra_draft:-O2
 func_001e5508    # ghidra_draft:-O1
 func_001e552c    # ghidra_draft:-O1
