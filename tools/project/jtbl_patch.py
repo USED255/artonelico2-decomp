@@ -1,13 +1,46 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""jtbl 对象修补：把 C 对象里**自产跳转表**的引用改指到 splat 既有的 `jtbl_*` 数据符号。
+"""Patch a jtbl object: redirect the reference to the **C-made jump table** to the existing `jtbl_*` data symbol from splat.
+
+## Why this tool is necessary
+
+Under ee-gcc 3.2, a `switch` makes its own `.rodata` jump table (measured at `-Os`: 32 B,
+8 `R_MIPS_32` entries). The code refers to it with `lui/addiu %hi/%lo(<.rodata>)`. But the
+data section of this game **already has** this table (splat cut the symbol, for example
+`jtbl_00965B58`). A second table from C is a duplicate definition or a wrong address (P-23).
+The mixed build safety gate also rejects it (`.rodata` is an allocatable section that is not
+`.text`).
+
+Measurement (`func_001d7154`, 2026-10-07): a real `switch` draft gives objdiff **99.5%**.
+The only difference is the **relocation target** of the two `%hi/%lo` instructions (they
+point to the C `.rodata` and not to `jtbl_00965B58`). This tool changes them to refer to an
+**undefined** symbol `jtbl_XXXX` (the original asm data object supplies the real
+definition). It also clears the 16-bit immediate of the changed instructions, which removes
+the in-section addend. The C `.rodata` section then has **no reference**, and the linker
+script can discard it with `/DISCARD/`. The code bytes then agree fully with the original.
+
+## Conservative limits (the tool does nothing rather than silently write a wrong byte)
+
+* The tool handles only a reference with **immediate == 0** (the table is at `.rodata`
+  offset 0). A function with several tables, or a string constant after the table, gives a
+  non-zero immediate. The tool then **reports an error and exits**.
+* The tool changes only a relocation in a `.text*` section. It does not touch `.rel.rodata`
+  (the `R_MIPS_32` entries of the table itself). The link discards that whole section.
+* Idempotent: when the target symbol exists as UND, the code reuses it and adds no
+  duplicate.
+
+Usage:
+  python3 tools/project/jtbl_patch.py --obj build/x.o --table jtbl_00965B58 [--out y.o]
+  python3 tools/project/jtbl_patch.py --obj x.o --table jtbl_X --check
+
+jtbl 对象修补：把 C 对象里**自产跳转表**的引用改指到 splat 既有的 `jtbl_*` 数据符号。
 
 ## 为什么需要
 
 `switch` 在 ee-gcc 3.2 下会自产 `.rodata` 跳转表（实测 `-Os`：32 B，8 条 `R_MIPS_32`），
 代码用 `lui/addiu %hi/%lo(<.rodata>)` 引用它。但本作数据段里**本来就有**这张表
 （splat 切出符号，如 `jtbl_00965B58`），C 再产一份就是重复定义/地址错位（P-23），
-hybrid 的安全闸门也会拒收（`.rodata` 是非 `.text` 可分配段）。
+mixed 的安全闸门也会拒收（`.rodata` 是非 `.text` 可分配段）。
 
 实测（`func_001d7154`，2026-10-07）：真实 `switch` 草稿 objdiff **99.5%**，
 唯一差异就是这两条 `%hi/%lo` 的**重定位目标**（指向 C 自己的 `.rodata` 而非 `jtbl_00965B58`）。
@@ -43,20 +76,28 @@ R_MIPS_HI16, R_MIPS_LO16 = 5, 6
 class Elf:
     def __init__(self, data: bytes):
         if data[:4] != b"\x7fELF" or data[4] != 1 or data[5] != 1:
-            raise ValueError("不是 ELF32 little-endian")
+            raise ValueError("not ELF32 little-endian")
         self.d = bytearray(data)
         (self.sh_off,) = struct.unpack_from("<I", self.d, 0x20)
         self.sh_entsize, self.sh_num, self.sh_strndx = struct.unpack_from("<HHH", self.d, 0x2E)
         if self.sh_entsize != 40:
-            raise ValueError("e_shentsize != 40（非标准 ELF32）")
+            raise ValueError("e_shentsize != 40 (not standard ELF32)")
         self.sh = [list(struct.unpack_from("<10I", self.d, self.sh_off + i * 40))
                    for i in range(self.sh_num)]
 
     @staticmethod
     def _str_at(raw: bytes, off: int) -> str:
-        """按偏移取字符串。⚠️ GAS 会做**字符串后缀共享**：`sh_name`/`st_name` 可能指向
+        """Return the string at an offset.
+
+        Warning: GAS shares a **string suffix**. `sh_name` and `st_name` can point into the
+        middle of another string (measurement: `.text.func_001d7154` lies inside
+        `.rel.text.func_001d7154`). Therefore the code cannot use a dictionary built with
+        split('\\0') that accepts only a string start.
+
+        按偏移取字符串。⚠️ GAS 会做**字符串后缀共享**：`sh_name`/`st_name` 可能指向
         另一条字符串的中间（实测 `.text.func_001d7154` 落在 `.rel.text.func_001d7154` 内部），
-        所以不能用 split('\\0') 建立的「只认串首」字典。"""
+        所以不能用 split('\\0') 建立的「只认串首」字典。
+        """
         end = raw.find(b"\0", off)
         return raw[off:end if end >= 0 else len(raw)].decode("utf-8", "replace")
 
@@ -88,10 +129,10 @@ def patch(obj: Path, table: str, out: Path | None = None, check: bool = False) -
     syms = e.syms()
     rodata = next((i for i in range(e.sh_num) if e.name(i) == ".rodata"), None)
     if rodata is None:
-        return False, "对象里没有 .rodata（不需要修补？）"
+        return False, "no .rodata in the object (no patch necessary?)"
     secsym = next((s for s in syms if s["type"] == STT_SECTION and s["shndx"] == rodata), None)
     if secsym is None:
-        return False, "找不到 .rodata 的节符号"
+        return False, "the .rodata section symbol is missing"
     hits = []
     for ri in range(e.sh_num):
         if e.sh[ri][1] != SHT_REL or not e.name(e.sh[ri][7]).startswith(".text"):
@@ -105,16 +146,17 @@ def patch(obj: Path, table: str, out: Path | None = None, check: bool = False) -
             (word,) = struct.unpack_from("<I", e.d, tgt_off)
             hits.append((ri, k, r_off, r_info & 0xFF, tgt_off, word & 0xFFFF))
     if not hits:
-        return False, "没有指向 .rodata 的 .text 重定位（可能已修补过）"
+        return False, "no .text relocation to .rodata (perhaps already patched)"
     bad = [h for h in hits if h[5] != 0]
     if bad:
-        return False, ("引用的表不在 .rodata 偏移 0（立即数 %s）⇒ 该函数有多张表或混有常量，本工具保守拒做"
+        return False, ("the referenced table is not at .rodata offset 0 (immediate %s). The function has several "
+                       "tables or a constant in the same section. This tool refuses the patch."
                        % ", ".join(hex(h[5]) for h in bad[:4]))
-    desc = "找到 %d 条 .text→.rodata 重定位：%s" % (
+    desc = "found %d .text->.rodata relocations: %s" % (
         len(hits), ", ".join("R_MIPS_%s@+0x%x" % ({R_MIPS_HI16: "HI16", R_MIPS_LO16: "LO16"}.get(h[3], h[3]), h[2])
                              for h in hits))
     if check:
-        return True, desc + "（--check：未写入）"
+        return True, desc + " (--check: no write)"
 
     st = e.symtab_index()
     strs_idx = e.sh[st][6]
@@ -144,13 +186,13 @@ def patch(obj: Path, table: str, out: Path | None = None, check: bool = False) -
         n += 1
     dst = out or obj
     dst.write_bytes(bytes(e.d))
-    return True, desc + " ⇒ 已改写 %d 条重定位指向 %s（立即数清零）；输出 %s" % (n, table, dst)
+    return True, desc + " => redirected %d relocations to %s (immediate cleared); output %s" % (n, table, dst)
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="把 C 自产跳转表的引用改指到既有 jtbl_* 符号")
+    ap = argparse.ArgumentParser(description="Redirect the reference of a C-made jump table to the existing jtbl_* symbol")
     ap.add_argument("--obj", required=True)
-    ap.add_argument("--table", required=True, help="splat 里的表符号名，如 jtbl_00965B58")
+    ap.add_argument("--table", required=True, help="jump table symbol name from splat, for example jtbl_00965B58")
     ap.add_argument("--out", default="")
     ap.add_argument("--check", action="store_true")
     a = ap.parse_args()

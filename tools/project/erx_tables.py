@@ -1,5 +1,36 @@
 #!/usr/bin/env python3
-"""解析主程序的 `.erx.lib` 导出注册表与 `.erx.stub` 导入表（PS2 EE ELF）。
+"""Parse the `.erx.lib` export registry and the `.erx.stub` import table of the main program (PS2 EE ELF).
+
+Background: the main program of this game has no symbols (`.mdebug`=0, no `.symtab`). The
+`.erx.lib` section is the **export registry** that the GUST/ERX mechanism leaves. It gives
+"library name + version -> a set of function addresses". It is the only ready source of
+naming anchors. The 749 anchors of the US route B come from it (see the comments in
+tools/build/gen_symbol_addrs.py).
+
+Format (this script derives it from the US version by measurement. The JP structure is
+byte-identical. See `[verified]` in out/evidence/jp_routeb_m1_result.txt):
+
+    .erx.lib record (one record per library):
+      +0x00  u32 magic0 = 'eRxL' (0x4C785265 LE)
+      +0x04  u32 magic1 = 'iB\\0A' (0x41004269 LE)
+      +0x08  u32 0
+      +0x0C  u32 0
+      +0x10  u32 name_va   -> points to the library name string in .rodata
+      +0x14  u32 version   (0x101, 0x102, ...)
+      +0x18  u32 0
+      +0x1C  u32 0
+      +0x20  u32 funcs[n]  (n = (next record offset - this record offset - 0x20 - 4) / 4)
+      The last 4 bytes are 0 fill. The next record follows (or the section ends).
+     The next record = the next position of magic0.
+
+    .erx.stub record (32 bytes each):
+      +0x00 magic0 'sRx$' (0x24785273 LE)  +0x04 magic1 '\\0BuT' (0x54754200 LE)
+      +0x08 u32 0  +0x0C u32 0
+      +0x10 name_va  +0x14 version  +0x18 a  +0x1C b
+
+Usage: python3 erx_tables.py <elf> <out.json> [out.txt]
+
+解析主程序的 `.erx.lib` 导出注册表与 `.erx.stub` 导入表（PS2 EE ELF）。
 
 背景：本作主程序无符号（`.mdebug`=0、无 `.symtab`），`.erx.lib` 是 GUST/ERX 机制
 留下的**导出注册表**——它给出「库名 + 版本 → 一组函数地址」，是唯一现成的命名锚点
@@ -34,8 +65,8 @@ import sys
 
 MAGIC_LIB = b"eRxLiB\x00A"
 MAGIC_STUB = b"sRx$\x00BuT"
-LIB_HDR = 0x20          # 记录头长度
-LIB_TAIL = 4            # 每条记录末尾的 0 填充
+LIB_HDR = 0x20          # Record header size
+LIB_TAIL = 4            # Zero fill at the end of each record
 STUB_REC = 32
 
 
@@ -57,7 +88,13 @@ SEGMAPS = []
 
 
 def cstr(d, va):
-    """把 vaddr 读成 NUL 结尾 ASCII 串。日版有两段 LOAD，用节表反查最稳。"""
+    """Read a vaddr as a NUL-terminated ASCII string.
+
+    The JP version has two LOAD segments, so a lookup through the section table is the most
+    reliable method.
+
+    把 vaddr 读成 NUL 结尾 ASCII 串。日版有两段 LOAD，用节表反查最稳。
+    """
     for base, off, size in SEGMAPS:
         if base <= va < base + size:
             o = off + (va - base)
@@ -68,7 +105,10 @@ def cstr(d, va):
 
 
 def build_seg_maps(secs):
-    """用节表构造 (vaddr_base, file_off, size) 列表，供 cstr 使用。"""
+    """Build the (vaddr_base, file_off, size) list from the section table for cstr.
+
+    用节表构造 (vaddr_base, file_off, size) 列表，供 cstr 使用。
+    """
     del SEGMAPS[:]
     for nm, s in secs.items():
         if s["size"] and s["off"] and s["addr"]:
@@ -108,7 +148,10 @@ def parse_stub(d, secs):
 
 
 def scan_hle_stubs(d, secs):
-    """扫描 canononical 16 字节 HLE 桩: addiu $v1,$zero,n ; syscall 12 ; jr $ra ; nop"""
+    """Scan for the canonical 16-byte HLE stub: addiu $v1,$zero,n ; syscall 12 ; jr $ra ; nop
+
+    扫描规范的 16 字节 HLE 桩: addiu $v1,$zero,n ; syscall 12 ; jr $ra ; nop
+    """
     stubs = {}
     for nm in (".text", ".init", ".fini"):
         s = secs.get(nm)
@@ -160,14 +203,14 @@ def main():
         L["n_stub"], L["n_native"], L["n_none"] = n_stub, n_real, n_none
 
     uniq_slots = sum(1 for L in libs for f in L["funcs"] if f)
-    print("库数            = %d" % len(libs))
-    print("槽位总数        = %d" % sum(len(L["funcs"]) for L in libs))
-    print("非空槽位        = %d" % uniq_slots)
-    print("唯一函数地址    = %d" % len(n_uniq_all))
-    print("HLE 桩(全局扫描)= %d" % len(hle))
-    print("库名            = %s" % ", ".join(L["name"] for L in libs))
-    print("唯一地址范围    = %s" % ("0x%06x .. 0x%06x" % (min(n_uniq_all), max(n_uniq_all))
-                                    if n_uniq_all else "n/a"))
+    print("libraries        = %d" % len(libs))
+    print("total slots      = %d" % sum(len(L["funcs"]) for L in libs))
+    print("non-empty slots  = %d" % uniq_slots)
+    print("unique func addrs = %d" % len(n_uniq_all))
+    print("HLE stubs (global scan) = %d" % len(hle))
+    print("library names    = %s" % ", ".join(L["name"] for L in libs))
+    print("unique addr range = %s" % ("0x%06x .. 0x%06x" % (min(n_uniq_all), max(n_uniq_all))
+                                      if n_uniq_all else "n/a"))
     json.dump(dict(stub=stub, libs=libs, hle_stubs=len(hle),
                    n_unique_funcs=len(n_uniq_all)), open(out_json, "w"), indent=1)
     print("-> %s" % out_json)

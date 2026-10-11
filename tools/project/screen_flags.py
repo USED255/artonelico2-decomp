@@ -1,6 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""大池筛查：把 N 个候选草稿合并成**一个 TU**，每档只编译一次，再用 objdiff 逐符号取分。
+"""Large-pool screening: merge N candidate drafts into **one TU**. Compile once per flag level, then let objdiff score each symbol.
+
+Motivation (2026-10-05, the `combined` idea from teammate task-4):
+  A per-candidate compile of 8,000 candidates at 5 flag levels is 40,000 ee-gcc runs (about
+  1.5 hours). A merged TU compiles **once per flag level** (5 runs in total). objdiff still
+  compares symbol by symbol (about 50 ms each). The total time falls to the **minute range**.
+  The teammate verified that the same source is **byte-identical** in a merged TU and in a
+  single compile (12 samples). The screening result is therefore reliable. Before a real
+  commit, the code still verifies **each candidate** (the verify path of
+  auto_match_m2c/permuter).
+
+Usage:
+  python3 tools/project/screen_flags.py run [--limit N] [--flags "O2,O1,O3,O2 -G8,O1 -G8,Os"] [--frontend m2c|ghidra]
+  python3 tools/project/screen_flags.py report        # print the historical best (build/screen/screen.json)
+
+大池筛查：把 N 个候选草稿合并成**一个 TU**，每档只编译一次，再用 objdiff 逐符号取分。
 
 动机（2026-10-05，队友 task-4 的 `combined` 思路）：
   逐候选编译 8,000 个×5 档 = 4 万次 ee-gcc（约 1.5 小时）。合并 TU 后 **每档只编译 1 次**（共 5 次），
@@ -9,9 +24,11 @@
   但正式入库前仍要**逐候选复核**（沿用 auto_match_m2c/permuter 的 verify）。
 
 用法：
-  python3 routebjp/tools/screen_flags.py run [--limit N] [--flags "O2,O1,O3,O2 -G8,O1 -G8,Os"] [--frontend m2c|ghidra]
-  python3 routebjp/tools/screen_flags.py report        # 打印历史最佳（build/screen/screen.json）
+  python3 tools/project/screen_flags.py run [--limit N] [--flags "O2,O1,O3,O2 -G8,O1 -G8,Os"] [--frontend m2c|ghidra]
+  python3 tools/project/screen_flags.py report        # 打印历史最佳（build/screen/screen.json）
 """
+
+# Private layout names (routebjp/build/screen, routebjp/build/m2c, jp_m3_workqueue.tsv), do not rename.  私有布局名（routebjp/build/screen、routebjp/build/m2c、jp_m3_workqueue.tsv），勿改名。
 
 from __future__ import annotations
 
@@ -27,7 +44,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ghidra_draft as GD  # noqa: E402
 import m2c_draft as M2C  # noqa: E402
 
-from at2_paths import (  # noqa: E402  布局无关的路径解析（说明见 at2_paths.py 顶部）
+from at2_paths import (  # noqa: E402  layout-independent path resolution (see the top of at2_paths.py)
     PROJECT_ROOT as ROOT,
     PRIVATE_ROOT,
     EVIDENCE_ROOT,
@@ -76,10 +93,17 @@ PLACEHOLDERS = [
 
 
 def sanitize(txt: str) -> str:
-    """把 m2c 的「不可表达」占位短语替换成 0，让合并 TU 至少能编译。
+    """Replace the "cannot express" placeholder phrases of m2c with 0, so the merged TU at least compiles.
+
+    Such a draft cannot match the target (m2c did not recover it either). The screening
+    needs only that the draft does not block the compile.
+
+    把 m2c 的「不可表达」占位短语替换成 0，让合并 TU 至少能编译。
 
     这类草稿本来就对不上目标（m2c 自己也没恢复出来），筛查只需它们不阻塞编译。
     """
+    # m2c writes "// Error: ..." in the middle of an expression. The line then becomes a
+    # syntax error. The screening step removes the inline comment directly.
     # m2c 会把「// Error: ...」插在表达式中间 ⇒ 该行被截断成语法错误。筛查阶段直接剥掉行内注释。
     txt = re.sub(r"//[^\n]*", "", txt)
     for rx, rep in PLACEHOLDERS:
@@ -116,14 +140,14 @@ def main() -> int:
     if a.mode == "report":
         f = OUT / "screen.json"
         if not f.is_file():
-            print("还没有筛查结果")
+            print("no screening result yet")
             return 0
         data = json.loads(f.read_text(encoding="utf-8"))
         best = data.get("best", {})
         perfect = [s for s, v in best.items() if v.get("match") == 100.0]
-        print(f"历史最佳：覆盖 {len(best)} 个候选，其中 100% = {len(perfect)}")
+        print(f"historical best: covers {len(best)} candidates, of which 100% = {len(perfect)}")
         c = Counter(best[s]["flags"] for s in perfect)
-        print("  命中档位:", dict(c))
+        print("  winning flag levels:", dict(c))
         for s in perfect[:40]:
             print(f"   {s:20s} {best[s]['flags']}")
         return 0
@@ -135,15 +159,20 @@ def main() -> int:
     rows.sort(key=lambda r: r["size"])
     if a.limit:
         rows = rows[:a.limit]
-    print(f"== 合并 TU 筛查：候选 {len(rows)} 个，前端 {a.frontend}，档位 {a.flags} ==")
+    print(f"== merged TU screening: {len(rows)} candidates, frontend {a.frontend}, flag levels {a.flags} ==")
     OUT.mkdir(parents=True, exist_ok=True)
     dr = OUT / "drafts"
     dr.mkdir(parents=True, exist_ok=True)
 
-    # 1) 生成草稿 + 目标对象
+    # 1) Make the draft and the target object  生成草稿 + 目标对象
     ok: list[dict] = []
     for r in rows:
         sym = r["sym"]
+        # Reuse a historical draft (build/m2c/batch/<sym>/<sym>.m2c.c) to save the
+        # regeneration time. Generate a draft only when none exists. Note: a historical
+        # draft can be older than the current m2c_draft.py. The screening only **finds
+        # candidates**. A hit is regenerated and verified for each candidate, so
+        # correctness is not affected.
         # 复用历史草稿（build/m2c/batch/<sym>/<sym>.m2c.c）以省掉重新生成的时间；
         # 没有才现生成。注意：m2c_draft.py 若已更新，历史草稿可能略旧 —— 筛查只用来**找候选**，
         # 命中后仍要逐候选重新生成 + 复核，所以不影响正确性。
@@ -162,10 +191,10 @@ def main() -> int:
         if to is None:
             continue
         ok.append({"sym": sym, "draft": src})
-    print(f"   可用草稿 {len(ok)} / {len(rows)}")
+    print(f"   usable drafts {len(ok)} / {len(rows)}")
 
-    CHUNK = 60       # 每块函数数：太大编译冲突多、太小编译次数多；60 是折中（P-39/P-40）
-    # 2) 合并（分块）
+    CHUNK = 60       # Functions per chunk (P-39/P-40). A larger value gives more compile conflicts. A smaller value needs more compiles. 60 is the compromise.
+    # 2) Merge the drafts (in chunks)  合并（分块）
     header = ("typedef signed char s8; typedef unsigned char u8; typedef short s16; typedef unsigned short u16;\n"
               "typedef int s32; typedef unsigned int u32; typedef long long s64; typedef unsigned long long u64;\n"
               "typedef float f32; typedef double f64;\n"
@@ -174,6 +203,11 @@ def main() -> int:
               "#define M2C_FIELD(expr, type_ptr, offset) (*(type_ptr)((s8 *)(expr) + (offset)))\n"
               "#define M2C_BITWISE(type, expr) ((type)(expr))\n#define M2C_LIKELY(x) (x)\n#define M2C_UNLIKELY(x) (x)\n"
               "#define NULL 0\n#define M2C_ERROR() 0\nextern unsigned char *sp;\n")
+    # Type conflict handling for the merged TU (two passes):
+    #   1. Collect the function names that a draft defines. (m2c sometimes keeps the
+    #      definition of an adjacent thunk in a draft.)
+    #   2. Deduplicate the extern declarations by identifier, and **skip a name that is
+    #      already defined**. Otherwise the compile reports "conflicting types".
     # 合并 TU 的类型冲突处理（两遍）：
     #   ① 先收集「在某个草稿里被定义」的函数名（m2c 偶尔会在草稿里带上邻接 thunk 的定义）；
     #   ② extern 声明按标识符去重，且**跳过已被定义的**——否则会出现 conflicting types。
@@ -181,13 +215,13 @@ def main() -> int:
     for r in ok:
         txt = sanitize(r["draft"].read_text(encoding="utf-8", errors="replace"))
         if "M2C_ERROR" in txt or "Error:" in txt:
-            continue          # m2c 恢复失败的草稿：占位符会把表达式结构破坏，且本来也不可能匹配
+            continue          # A draft that m2c failed to recover. A placeholder breaks the expression structure, and a match is impossible.
         r["text"] = txt
         kept.append(r)
     ok = kept
-    print(f"   可并入合并 TU 的草稿 {len(ok)}")
+    print(f"   drafts that fit the merged TU: {len(ok)}")
     chunks = [ok[i:i + CHUNK] for i in range(0, len(ok), CHUNK)]
-    print(f"   切成 {len(chunks)} 块（每块 ≤{CHUNK} 个函数）", flush=True)
+    print(f"   split into {len(chunks)} chunks (at most {CHUNK} functions each)", flush=True)
     defined: set[str] = set()
     def_re = re.compile(r"^\s*(?:[A-Za-z_][\w \*]*?)\b([A-Za-z_]\w*)\s*\([^;]*\)\s*\{", re.M)
     for r in ok:
@@ -209,6 +243,12 @@ def main() -> int:
                         continue
                     decls.setdefault(name + (m.group(2) or ""), l.strip())
                     continue
+                # The m2c form is "function prototype + /* extern */". Signatures from
+                # different drafts often disagree ("too many/few arguments to function").
+                # This code downgrades all of them to the C89 no-argument prototype
+                # `extern int NAME();`. The call then checks neither the type nor the
+                # argument count, and the merged TU compiles. The screening cares only
+                # whether the candidate itself can match.
                 # m2c 的「函数原型 + /* extern */」写法。跨草稿的签名经常互相冲突
                 # （too many/few arguments to function）⇒ 统一降级成 C89 无参原型 `extern int NAME();`，
                 # 召唤实参不再做类型/个数检查，合并 TU 才能编过（筛查只关心候选本身能否匹配）。
@@ -233,6 +273,8 @@ def main() -> int:
         ci, chunk = queue.popleft()
         merged = OUT / f"chunk{ci}.c"
         build_chunk(chunk, merged)
+        # Compile this chunk at every flag level first. On a failure, retry with a bisection.
+        # A type conflict across drafts is common.
         # 先把这一块在所有档位都编译一遍；任一档失败 → 二分重试（跨草稿类型冲突常见）
         objs = []
         bad = False
@@ -248,7 +290,7 @@ def main() -> int:
             objs.append((fs, mo))
         if bad:
             if len(chunk) <= 4:
-                print(f"   块 {ci}（{len(chunk)} 个函数）编不过，跳过", flush=True)
+                print(f"   chunk {ci} ({len(chunk)} functions) does not compile. Skip it.", flush=True)
                 continue
             mid = len(chunk) // 2
             queue.append((cid, chunk[:mid])); cid += 1
@@ -277,7 +319,7 @@ def main() -> int:
                 if prev is None or float(m) > prev["match"]:
                     best[sym] = {"match": float(m), "flags": " ".join(fs)}
         n100 = sum(1 for v in best.values() if v["match"] == 100.0)
-        print(f"   块 {ci}（{len(chunk)} 个）完成：累计覆盖 {len(best)}，100% = {n100}", flush=True)
+        print(f"   chunk {ci} ({len(chunk)}) done: total coverage {len(best)}, 100% = {n100}", flush=True)
     sj = OUT / "screen.json"
     prev_all = {}
     if sj.is_file():
@@ -290,7 +332,7 @@ def main() -> int:
             prev_all[s] = v
     sj.write_text(json.dumps({"best": prev_all}, indent=1, ensure_ascii=False), encoding="utf-8")
     perfect = sum(1 for v in prev_all.values() if v["match"] == 100.0)
-    print(f"  合计：覆盖 {len(prev_all)} 个候选，历史 100% = {perfect}")
+    print(f"  total: covers {len(prev_all)} candidates, historical 100% = {perfect}")
     return 0
 
 

@@ -1,14 +1,43 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""M3 hybrid 残差拆分工具：让「一个 asm .o 里的**某个**符号」可以被 C 单独替换。
+"""Split the residual of one asm .o, so C can replace **one** symbol alone.
+
+Background (see docs/R9 and P-15/P-16):
+  * The asm/cod/<sym>.s output of splat can hold **several** glabel/alabel entries
+    (sibling function entries).
+  * Fill instructions can follow endlabel (almost always nop).
+  The current build_mixed.sh removes a whole asm .o for one symbol. It then also loses a
+  sibling definition or trailing bytes. This tool extracts the code block of the target
+  symbol from the original file. It does not change build.sh and it does not change the
+  meaning of the .s content. It keeps all other content (the preamble, the sibling
+  blocks, the trailing fill, and other instruction lines) line by line as a residual
+  .s. build_mixed.sh assembles the residual into an object and places that object after
+  the C object. The link order and all bytes stay the same.
+
+Mode decision (the target symbol must be the **first** glabel in the file. A
+measurement of 10,923 symbols had 0 exceptions):
+  direct           the file holds only this symbol and no instruction after endlabel
+                   -> no residual; use the current path
+  residual         a sibling symbol or trailing fill exists
+                   -> make <sym>.residual.s and <sym>.target.s
+  blocked_*        no glabel, not the first glabel, a sibling label in the block, or a
+                   residual assembly error (a cross-block .L reference and more)
+                   -> exclude the symbol and report it
+
+Usage:
+  python3 tools/project/split_asm.py split <symbol> <outdir>   # write target/residual.s and print the mode
+  python3 tools/project/split_asm.py verify --all [--jobs 4]   # exhaustive: target plus residual must restore the .text of the original .o
+  python3 tools/project/split_asm.py stats [--jobs 4]          # count each mode only
+
+matching batch mixed build 残差拆分工具：让「一个 asm .o 里的**某个**符号」可以被 C 单独替换。
 
 背景（见 docs/R9 与 P-15/P-16）：
   * splat 产出的 asm/cod/<sym>.s 里可能含**多个** glabel/alabel（兄弟函数入口）；
   * endlabel 之后可能有填充指令（几乎都是 nop）。
-  现有 build_hybrid.sh 按「一符号 = 一个 asm .o」整份摘除，会连带丢掉兄弟定义或尾部字节。
+  现有 build_mixed.sh 按「一符号 = 一个 asm .o」整份摘除，会连带丢掉兄弟定义或尾部字节。
   本工具在**不改 build.sh、不改 .s 内容语义**的前提下，把目标符号的代码块从原文件里摘出来，
   其余内容（前导 + 兄弟块 + 尾部填充 + 其它指令行）逐行原样保留为「残差 .s」，
-  由 build_hybrid.sh 汇编成 residual 对象放在 C 对象之后，从而保持链接顺序与全部字节。
+  由 build_mixed.sh 汇编成 residual 对象放在 C 对象之后，从而保持链接顺序与全部字节。
 
 模式判定（目标符号必须是文件里**第一个** glabel，实测 10,923 个符号 0 例外）：
   direct           文件只有该符号、endlabel 后没有指令        -> 不产残差，走现有路径
@@ -17,10 +46,12 @@
                    残差汇编报错（跨块 .L 引用等）            -> 排除该符号，如实报告
 
 用法：
-  python3 routebjp/tools/split_asm.py split <symbol> <outdir>   # 写 target/residual.s，打印模式
-  python3 routebjp/tools/split_asm.py verify --all [--jobs 4]   # 穷举：target+residual 必须还原原 .o 的 .text
-  python3 routebjp/tools/split_asm.py stats [--jobs 4]          # 只统计各模式数量
+  python3 tools/project/split_asm.py split <symbol> <outdir>   # 写 target/residual.s，打印模式
+  python3 tools/project/split_asm.py verify --all [--jobs 4]   # 穷举：target+residual 必须还原原 .o 的 .text
+  python3 tools/project/split_asm.py stats [--jobs 4]          # 只统计各模式数量
 """
+
+# Private layout path (routebjp/tools/split_asm.py), do not rename.  私有布局路径（routebjp/tools/split_asm.py），勿改名。
 
 from __future__ import annotations
 
@@ -33,7 +64,12 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 def _find_root(start: Path) -> Path:
-    """布局无关：从脚本位置向上找同时含 asm/cod 或 splat.yaml 的目录。
+    """Layout independent: walk up from the script and stop at a directory with asm/cod or splat.yaml.
+
+    Private layout: routebjp/tools/split_asm.py -> routebjp/.
+    Public flat layout: tools/project/split_asm.py -> the repo root.
+
+    布局无关：从脚本位置向上找同时含 asm/cod 或 splat.yaml 的目录。
 
     私有布局 routebjp/tools/split_asm.py → routebjp/；公开扁平布局 tools/project/split_asm.py → 仓库根。
     """
@@ -47,7 +83,7 @@ ROOT = Path(os.environ.get("AT2_PROJECT_ROOT") or _find_root(Path(__file__).reso
 REPO = ROOT.parent
 ASMDIR = ROOT / "asm" / "cod"
 BUILD_ASM = ROOT / "build" / "asm" / "cod"
-CHECK_DIR = ROOT / "build" / "hybrid" / "splitcheck"   # 派生数据，不入库
+CHECK_DIR = ROOT / "build" / "mixed" / "splitcheck"   # Derived data, not in the repository
 
 BINUTILS = Path(os.environ.get("BINUTILS", str(Path.home() / "eecc" / "ps2binutils")))
 AS = BINUTILS / "mips-ps2-decompals-as"
@@ -64,7 +100,10 @@ TOKEN = re.compile(r"[.\w]+")
 
 
 def _defs_and_refs(lines: list[str]) -> tuple[set[str], set[str]]:
-    """返回（本文件里定义的标签名集合, 被指令引用的标识符集合）。"""
+    """Return (the set of label names defined in this file, the set of identifiers used by instructions).
+
+    返回（本文件里定义的标签名集合, 被指令引用的标识符集合）。
+    """
     defs: set[str] = set()
     refs: set[str] = set()
     for l in lines:
@@ -93,18 +132,23 @@ def read_lines(path: Path) -> list[str]:
 
 
 def analyze(sym: str, asm_dir: Path = ASMDIR) -> dict:
-    """判定单个符号的拆分模式；不写盘、不汇编（汇编错误由 verify/assemble 阶段发现）。"""
+    """Report the split mode of one symbol. The code writes nothing and assembles nothing.
+
+    The verify or assemble stage finds an assembly error.
+
+    判定单个符号的拆分模式；不写盘、不汇编（汇编错误由 verify/assemble 阶段发现）。
+    """
     p = asm_dir / f"{sym}.s"
     if not p.is_file():
-        return {"mode": "blocked_no_asm", "reason": f"缺少 {p}"}
+        return {"mode": "blocked_no_asm", "reason": f"missing {p}"}
     lines = read_lines(p)
 
     gl = [(i, GLABEL.match(l).group(1)) for i, l in enumerate(lines) if GLABEL.match(l)]
     al = [(i, ALABEL.match(l).group(1)) for i, l in enumerate(lines) if ALABEL.match(l)]
     if not gl:
-        return {"mode": "blocked_no_glabel", "reason": "文件里没有 glabel"}
+        return {"mode": "blocked_no_glabel", "reason": "no glabel in the file"}
     if gl[0][1] != sym:
-        return {"mode": "blocked_not_first", "reason": f"首 glabel 是 {gl[0][1]}，不是 {sym}"}
+        return {"mode": "blocked_not_first", "reason": f"first glabel is {gl[0][1]}, not {sym}"}
 
     gi = gl[0][0]
     start = gi
@@ -122,12 +166,14 @@ def analyze(sym: str, asm_dir: Path = ASMDIR) -> dict:
             end = k
             break
     if end is None:
-        return {"mode": "blocked_no_endlabel", "reason": "块内没有 endlabel"}
+        return {"mode": "blocked_no_endlabel", "reason": "no endlabel in the block"}
 
+    # The block must not define another global function symbol (alabel or nested glabel).
+    # A removal would lose its definition.
     # 块内不得定义别的全局函数符号（alabel/嵌套 glabel）——摘除会丢掉它们的定义
     inner = [n for i, n in gl + al if start <= i <= end and n != sym]
     if inner:
-        return {"mode": "blocked_inner_label", "reason": "块内有兄弟标签: " + ", ".join(inner)}
+        return {"mode": "blocked_inner_label", "reason": "sibling labels in the block: " + ", ".join(inner)}
 
     outer = [n for i, n in gl + al if not (start <= i <= end)]
 
@@ -147,6 +193,12 @@ def analyze(sym: str, asm_dir: Path = ASMDIR) -> dict:
     }
 
     if mode == "residual":
+        # Cross-block reference: the target block refers to a label in the residual, or
+        # the residual refers to a label in the target block.
+        # A real link of "C replacement plus residual object" cannot express either case.
+        # C cannot write a cross-object .L branch. The code must exclude these symbols.
+        # If it does not, a byte-for-byte objcopy comparison sees only unresolved
+        # relocations.
         # 跨块引用：目标块引用残差里的标签，或残差引用目标块里的标签。
         # 两种情况在「C 替换 + 残差对象」的真实链接里都无法表达（C 写不出跨对象 .L 分支），
         # 必须排除；否则 objcopy 逐字节比对也只会看到未解析的重定位。
@@ -156,15 +208,18 @@ def analyze(sym: str, asm_dir: Path = ASMDIR) -> dict:
         cross_in = sorted((o_refs & b_defs) - o_defs)
         if cross_out or cross_in:
             info["mode"] = "blocked_cross_ref"
-            info["reason"] = ("跨块引用: "
-                              + ("目标块->残差 " + ",".join(cross_out) if cross_out else "")
+            info["reason"] = ("cross-block reference: "
+                              + ("target->residual " + ",".join(cross_out) if cross_out else "")
                               + ("; " if cross_out and cross_in else "")
-                              + ("残差->目标块 " + ",".join(cross_in) if cross_in else ""))
+                              + ("residual->target " + ",".join(cross_in) if cross_in else ""))
     return info
 
 
 def emit(sym: str, outdir: Path, info: dict | None = None) -> dict:
-    """写 <sym>.target.s / <sym>.residual.s；返回 analyze 结果（含写入路径）。"""
+    """Write <sym>.target.s and <sym>.residual.s. Return the analyze result (with the write paths).
+
+    写 <sym>.target.s / <sym>.residual.s；返回 analyze 结果（含写入路径）。
+    """
     info = info or analyze(sym)
     if info["mode"] not in ("direct", "residual"):
         return info
@@ -197,7 +252,10 @@ def text_bytes(obj: Path, out: Path) -> bytes | None:
 
 
 def verify_one(sym: str, work: Path) -> tuple[str, str]:
-    """返回 (status, detail)；status ∈ ok / direct / blocked / FAIL。"""
+    """Return (status, detail). status is ok, direct, blocked, or FAIL.
+
+    返回 (status, detail)；status ∈ ok / direct / blocked / FAIL。
+    """
     info = analyze(sym)
     if info["mode"] == "direct":
         return "direct", ""
@@ -210,21 +268,21 @@ def verify_one(sym: str, work: Path) -> tuple[str, str]:
     t_o, r_o = d / "t.o", d / "r.o"
     rt = assemble(t_s, t_o)
     if rt.returncode != 0:
-        return "blocked", "target 汇编失败: " + rt.stderr.strip().splitlines()[-1][:160]
+        return "blocked", "target assembly failed: " + rt.stderr.strip().splitlines()[-1][:160]
     rr = assemble(r_s, r_o)
     if rr.returncode != 0:
-        return "blocked", "residual 汇编失败: " + rr.stderr.strip().splitlines()[-1][:160]
+        return "blocked", "residual assembly failed: " + rr.stderr.strip().splitlines()[-1][:160]
     orig_o = BUILD_ASM / f"{sym}.o"
     if not orig_o.is_file():
-        return "blocked", f"缺少原对象 {orig_o}"
+        return "blocked", f"original object is missing: {orig_o}"
     tb = text_bytes(t_o, d / "t.bin")
     rb = text_bytes(r_o, d / "r.bin")
     ob = text_bytes(orig_o, d / "o.bin")
     if tb is None or rb is None or ob is None:
-        return "blocked", "objcopy 取 .text 失败"
+        return "blocked", "objcopy could not read .text"
     if tb + rb != ob:
-        return "FAIL", (f"字节不符: target {len(tb)} + residual {len(rb)} = {len(tb) + len(rb)} "
-                        f"!= 原 {len(ob)}")
+        return "FAIL", (f"byte mismatch: target {len(tb)} + residual {len(rb)} = {len(tb) + len(rb)} "
+                        f"!= original {len(ob)}")
     return "ok", f"{len(tb)}+{len(rb)}={len(ob)}"
 
 
@@ -262,18 +320,18 @@ def cmd_verify(args) -> int:
             elif st == "blocked":
                 key = detail.split(":", 1)[0]
                 reasons[key] = reasons.get(key, 0) + 1
-    print(f"== split verify：共 {len(syms)} 个符号 ==")
+    print(f"== split verify: {len(syms)} symbols ==")
     for k, v in sorted(counts.items()):
         print(f"   {k:10s} {v}")
     if reasons:
-        print("   -- blocked 原因 --")
+        print("   -- blocked reasons --")
         for k, v in sorted(reasons.items(), key=lambda kv: -kv[1]):
             print(f"      {k:28s} {v}")
     if fails:
-        print("   -- FAIL（前 20 条）--")
+        print("   -- FAIL (first 20) --")
         for f in fails[:20]:
             print("      " + f)
-    print(f"结论：{'✅ 全部通过' if fail == 0 else f'❌ {fail} 个失败'}")
+    print(f"result: {'all pass' if fail == 0 else f'{fail} failures'}")
     return 0 if fail == 0 else 1
 
 
@@ -286,7 +344,7 @@ def cmd_stats(args) -> int:
             counts[st] = counts.get(st, 0) + 1
             if st.startswith("blocked"):
                 reasons[detail] = reasons.get(detail, 0) + 1
-    print(f"== split 模式统计（{len(syms)} 个符号）==")
+    print(f"== split mode statistics ({len(syms)} symbols) ==")
     for k, v in sorted(counts.items(), key=lambda kv: -kv[1]):
         print(f"   {k:22s} {v}")
     for k, v in sorted(reasons.items(), key=lambda kv: -kv[1])[:10]:
@@ -304,7 +362,7 @@ def main() -> int:
     tp = sub.add_parser("stats"); tp.add_argument("--jobs", type=int, default=4); tp.set_defaults(fn=cmd_stats)
     args = ap.parse_args()
     if args.cmd == "verify" and not args.all and not args.symbols:
-        print("verify 需要 --all 或符号列表", file=sys.stderr)
+        print("verify needs --all or a symbol list", file=sys.stderr)
         return 2
     return args.fn(args)
 

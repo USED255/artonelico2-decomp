@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""按「拼接全部 PT_LOAD 段」的口径抽取 ELF 载荷（路线 B 棘轮口径）。
+"""Extract the ELF payload. Join all PT_LOAD segments (payload check rule).
+
+The US version has one PT_LOAD segment. The JP version has two PT_LOAD segments.
+A 0x80-byte hole sits between the two segments in vram.
+The command `objcopy -O binary` fills that hole in the output (9,305,064 B).
+The original join rule gives 9,304,936 B. Therefore this script reads the program
+headers and joins the segments directly.
+
+按「拼接全部 PT_LOAD 段」的口径抽取 ELF 载荷（载荷校验口径）。
 
 美版是单 PT_LOAD，日版是**两个** PT_LOAD（中间 vram 有 0x80 空洞）。
 用 `objcopy -O binary` 会把两段之间的 0x80 空洞也补进输出（9,305,064 B），
@@ -26,7 +34,7 @@ def main():
             payload += d[off:off + fsz]
             segs.append((off, va, fsz, msz, fl))
     open(out, "wb").write(payload)
-    print("PT_LOAD 段数 = %d" % len(segs))
+    print("PT_LOAD segment count = %d" % len(segs))
     for off, va, fsz, msz, fl in segs:
         print("   off=0x%06x va=0x%08x filesz=0x%x memsz=0x%x flags=%d" % (off, va, fsz, msz, fl))
     print("%d %s %s" % (len(payload), hashlib.sha1(payload).hexdigest(), out))

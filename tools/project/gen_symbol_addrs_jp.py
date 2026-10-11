@@ -1,11 +1,28 @@
 #!/usr/bin/env python3
-"""生成 splat 用的 symbol_addrs.txt（路线 B / 版本无关）。
+"""Generate symbol_addrs.txt for splat (version independent).
+
+This script uses the same logic as tools/build/gen_symbol_addrs.py.
+Only the two input paths are parameters. One copy of the code serves the US
+version (regression self-test) and the JP version (main target of this task).
+
+    Input 1: Ghidra function list <name>.functions.tsv  (addr / name / size_bytes ...)
+    Input 2: .erx.lib export registry text (made by tools/project/erx_tables.py)
+
+Name priority: the library_slot name from `.erx.lib` wins over the Ghidra name
+FUN_xxxxxxxx (which becomes func_xxxxxxxx).
+An address in `.erx.lib` that is not a function entry gets **no** `type:label`
+entry (see P-06).
+
+Self-test: run this script on the US input. The output must be byte-identical to
+routeb/config/symbol_addrs.txt.
+
+生成 splat 用的 symbol_addrs.txt（版本无关）。
 
 与 tools/build/gen_symbol_addrs.py 的逻辑完全一致，只把两个输入路径参数化，
 以便同一份代码服务美版（回归自检）与日版（本次主目标）：
 
     输入 1: Ghidra 函数清单 <name>.functions.tsv  (addr / name / size_bytes ...)
-    输入 2: .erx.lib 导出注册表文本（routebjp/tools/erx_tables.py 生成）
+    输入 2: .erx.lib 导出注册表文本（tools/project/erx_tables.py 生成）
 
 命名优先级：`.erx.lib` 的 库_槽号 > Ghidra 的 FUN_xxxxxxxx（转 func_xxxxxxxx）。
 `.erx.lib` 里非函数入口的地址**不写入** `type:label`（见 P-06）。
@@ -32,7 +49,12 @@ def load_functions(path):
 
 
 def load_erx_names(path):
-    """`.erx.lib` 导出注册表：addr -> 主名（库_槽号），按首次出现去重。"""
+    """Return addr -> primary name (library_slot) from the `.erx.lib` export registry.
+
+    Keep the first occurrence of each address.
+
+    `.erx.lib` 导出注册表：addr -> 主名（库_槽号），按首次出现去重。
+    """
     cur, rows = None, []
     for line in open(path, encoding="utf-8"):
         m = re.match(r"^=== library (\S+)", line)
@@ -78,11 +100,11 @@ def main():
     with open(out_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
 
-    print("函数符号      = %d" % len(funcs))
-    print("  有真名/锚点 = %d (%.1f%%)" % (named, 100 * named / max(len(funcs), 1)))
-    print("  仅占位      = %d" % (len(funcs) - named))
-    print("erx 唯一地址  = %d（其中不在 Ghidra 函数表内 = %d）" % (len(erx), len(extra)))
-    print("写出          = %s" % out_path)
+    print("function symbols   = %d" % len(funcs))
+    print("  named/anchor     = %d (%.1f%%)" % (named, 100 * named / max(len(funcs), 1)))
+    print("  placeholder only = %d" % (len(funcs) - named))
+    print("erx unique addrs   = %d (not in the Ghidra function list = %d)" % (len(erx), len(extra)))
+    print("written            = %s" % out_path)
 
 
 if __name__ == "__main__":

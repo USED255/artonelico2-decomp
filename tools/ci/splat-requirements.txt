@@ -1,4 +1,5 @@
-# splat 运行所需：照抄本机已验证的 splat venv（只去掉 py2-only、CI 用不到的 m2c）
+# splat runtime requirements. This list copies the verified local splat venv.
+# The list omits the Python 2 only tools that CI does not use.
 colorama==0.4.6
 crunch64==0.6.2
 graphviz==0.20.3

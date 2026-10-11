@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""发布进度报告：把一次**已验证**构建的报告写入 progress/，并更新 PUBLISHED.json。
+"""Publish a progress report. This tool copies a verified build report into progress/ and updates PUBLISHED.json.
+
+Usage:
+    python3 tools/publish_report.py --report <build output.json> [--accept-baseline]
+    python3 tools/publish_report.py --check
+
+发布进度报告：把一次**已验证**构建的报告写入 progress/，并更新 PUBLISHED.json。
 
 用法：
     python3 tools/publish_report.py --report <构建产物.json> [--accept-baseline]
@@ -9,7 +15,11 @@ from __future__ import annotations
 import argparse, hashlib, json, shutil, sys, time
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]   # tools/ → 仓库根
+# The help text stays English only, because the module docstring is bilingual.
+# argparse 的 help 只输出英文，因此这里单独给一段英文说明。
+EN_USAGE = "Publish a verified progress report, or check the publication record."
+
+ROOT = Path(__file__).resolve().parents[1]   # tools/ -> repository root
 REPORT = ROOT / "progress" / "SLPS_258.19_report.json"
 BASELINE = ROOT / "progress" / "baseline.json"
 PUB = ROOT / "PUBLISHED.json"
@@ -38,7 +48,7 @@ def write_published() -> None:
         "policy": "docs/PUBLICATION-POLICY.md",
     }
     PUB.write_text(json.dumps(pub, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(f"✅ 已更新 {PUB.name}（报告 {pub['report']['sha256'][:12]}…）")
+    print(f"updated {PUB.name} (report {pub['report']['sha256'][:12]}...)")
 
 
 def _git_head() -> str:
@@ -57,32 +67,32 @@ def measures(p: Path) -> dict:
 def check() -> int:
     problems = []
     if not PUB.is_file():
-        print("FAIL: 缺少 PUBLISHED.json"); return 1
+        print("FAIL: PUBLISHED.json is missing"); return 1
     pub = json.loads(PUB.read_text(encoding="utf-8"))
     for key in ("report", "baseline"):
         item = pub.get(key, {})
         f = ROOT / item.get("path", "")
         if not f.is_file() or sha256(f) != item.get("sha256"):
-            problems.append(f"{key} 与 PUBLISHED.json 不一致")
+            problems.append(f"{key} does not match PUBLISHED.json")
     if pub.get("toolchain_lock_sha256") != sha256(LOCK):
-        problems.append("toolchain.lock.json 与 PUBLISHED.json 不一致")
+        problems.append("toolchain.lock.json does not match PUBLISHED.json")
     cur, base = measures(REPORT), measures(BASELINE)
     for k in ("matched_code", "matched_functions"):
         if int(cur.get(k, 0)) < int(base.get(k, 0)):
-            problems.append(f"进度回退：{k} {cur.get(k)} < 基线 {base.get(k)}")
+            problems.append(f"regression: {k} {cur.get(k)} < baseline {base.get(k)}")
     if problems:
-        print("FAIL: " + "；".join(problems)); return 1
-    print("✅ 发布记录自洽，且未回退"); return 0
+        print("FAIL: " + "; ".join(problems)); return 1
+    print("OK: the publication record is consistent, and no measure regressed"); return 0
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--report", help="新报告 JSON（来自一次已验证构建）")
-    ap.add_argument("--accept-baseline", action="store_true", help="同时把新报告接受为新基线")
-    ap.add_argument("--force", action="store_true", help="允许发布比基线更差的报告（默认拒绝）")
+    ap = argparse.ArgumentParser(description=EN_USAGE, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--report", help="new report JSON (from a verified build)")
+    ap.add_argument("--accept-baseline", action="store_true", help="also accept the new report as the new baseline")
+    ap.add_argument("--force", action="store_true", help="publish a report that is worse than the baseline (refused by default)")
     ap.add_argument("--refresh", action="store_true",
-                    help="只按当前文件重算 PUBLISHED.json 的哈希（例如改过 toolchain.lock.json 之后）")
-    ap.add_argument("--check", action="store_true", help="只校验发布记录自洽")
+                    help="recompute the PUBLISHED.json hashes from the current files (for example after a toolchain.lock.json change)")
+    ap.add_argument("--check", action="store_true", help="check the publication record only")
     a = ap.parse_args()
     if a.refresh:
         write_published()
@@ -91,17 +101,17 @@ def main() -> int:
         return check()
     src = Path(a.report)
     if not src.is_file():
-        print(f"FAIL: 找不到 {src}"); return 1
+        print(f"FAIL: cannot find {src}"); return 1
     if not a.force:
         cur, base = measures(src), measures(BASELINE)
         for k in ("matched_code", "matched_functions"):
             if int(cur.get(k, 0)) < int(base.get(k, 0)):
-                print(f"FAIL: 新报告比基线差（{k} {cur.get(k)} < {base.get(k)}）；确认无误后用 --force")
+                print(f"FAIL: the new report is worse than the baseline ({k} {cur.get(k)} < {base.get(k)}). Use --force to accept it.")
                 return 1
     shutil.copy2(src, REPORT)
     if a.accept_baseline:
         shutil.copy2(src, BASELINE)
-        print("✅ 基线已更新")
+        print("the baseline is updated")
     write_published()
     return 0
 

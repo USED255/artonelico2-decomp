@@ -8,6 +8,13 @@ much closer to the real EE instruction mix than capstone's output; the
 capstone comparison is printed as well so the difference is visible.
 
 Usage: python3 r5900_stats.py <elf> <out.json>
+
+R5900 感知的 PS2 EE 二进制指令统计器。
+capstone 不认识 R5900（会误译 SPECIAL2/MMI、LQ/SQ 与 COP2 宏模式），
+所以本脚本全部按原始 32 位字与 R5900 位域分类；这样得到的助记符直方图比
+capstone 的输出更接近真实 EE 指令构成，同时打印 capstone 对照便于看出差异。
+
+用法：python3 r5900_stats.py <elf> <out.json>
 """
 import struct, sys, json, collections, math, hashlib, os
 
@@ -34,6 +41,7 @@ COP2_RS = {0x00:'mfc2',0x02:'cfc2',0x04:'mtc2',0x06:'ctc2',0x08:'bc2f/bc2t',
  0x13:'VU0-macro(rs=0x13)',0x14:'qpmi(rs=0x14)',0x15:'qmfc2(rs=0x15)',
  0x16:'qmtc2(rs=0x16)',0x17:'VU0-macro(rs=0x17)'}
 # VU0 macro-mode "upper" opcode (bits 5:0) - the VU upper instruction opcode
+# VU0 宏模式的「上位」操作码（bits 5:0），即 VU 上位指令的操作码
 VU_UPPER = {0x00:'VADD?/NOP',0x28:'VADD',0x29:'VSUB',0x2a:'VMUL',0x2b:'VMAX',0x2c:'VMINI',
  0x2d:'VMULq',0x2e:'VADDq',0x2f:'VMADDI',0x30:'VADDI',0x31:'VSUBI',0x32:'VMULI',
  0x33:'VMAXI',0x34:'VABS',0x35:'VMSUB',0x36:'VMSUBq',0x37:'VOPMSUB',0x38:'VIADD',
@@ -118,7 +126,7 @@ def main():
                 jal_targets[((w & 0x03ffffff) << 2) | (s['addr'] & 0xf0000000)] += 1
             if op == 0x0f and ((w & 0xffff) == 0x1100):
                 micro_upload += 1
-        # capstone comparison
+        # capstone comparison  capstone 对照
         from capstone import Cs, CS_ARCH_MIPS, CS_MODE_MIPS64, CS_MODE_LITTLE_ENDIAN
         md = Cs(CS_ARCH_MIPS, CS_MODE_MIPS64 | CS_MODE_LITTLE_ENDIAN)
         cs_mne = collections.Counter(); cs_n = 0

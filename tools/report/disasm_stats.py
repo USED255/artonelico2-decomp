@@ -13,6 +13,13 @@
 - invalid-instruction ratio
 
 Usage: python3 disasm_stats.py <elf> <out.json>
+
+PS2 EE（R5900）主程序反汇编统计。
+用 capstone 对每个可执行的 PROGBITS 段做线性扫描；另外按原始操作码 (bits 31:26)
+独立统计，避免 capstone 不认识 R5900 扩展指令时漏计；还统计助记符直方图、
+jal/jr 约定、跳转表、按段的字节熵与非法指令比例。
+
+用法：python3 disasm_stats.py <elf> <out.json>
 """
 import struct, sys, json, collections, math
 
@@ -30,7 +37,7 @@ def main():
     elf, out = sys.argv[1], sys.argv[2]
     d = open(elf, 'rb').read()
     ej = json.load(open(elf.replace('.', '_').replace('out_', 'out/') + '.json')) if False else None
-    # find json next to elf
+    # find the JSON file next to the ELF  找 ELF 旁边的 JSON 文件
     import os
     for cand in ('out/evidence/elf_SLUS.json', 'out/evidence/elf_SLPS.json'):
         if os.path.exists(cand):
@@ -76,7 +83,7 @@ def main():
         for i in range(0, n*4, 4):
             w = struct.unpack_from('<I', blob, i)[0]
             opc[(w >> 26) & 0x3f] += 1
-        # capstone
+        # capstone pass  capstone 扫描
         for ins in md.disasm(blob, s['addr']):
             mne[ins.mnemonic] += 1
         decoded = sum(mne.values())
@@ -105,7 +112,7 @@ def main():
         print('  -- top 25 capstone mnemonics --')
         for k, v in mne.most_common(25):
             print('     %-16s %8d  %5.2f%%' % (k, v, 100.0*v/max(decoded,1)))
-        # call convention
+        # call convention  调用约定
         print('  -- control flow --')
         for name in ('jal', 'jalr', 'jr', 'j', 'b', 'beq', 'bne', 'bal', 'bc1f', 'bc1t'):
             if mne.get(name): print('     %-16s %8d' % (name, mne[name]))
