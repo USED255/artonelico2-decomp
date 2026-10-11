@@ -2,8 +2,9 @@
 #
 # Two modes:
 #   push / manual   -> repository checks + publication record.
-#   pull_request    -> contribution mode. A pull request may add or change files
-#                      in the contribution paths only. See CONTRIBUTING.md.
+#   pull_request    -> contribution mode. A same-repository pull request may add,
+#                      change, rename, or delete files. A pull request from a fork
+#                      may add or change files only. See CONTRIBUTING.md.
 name: validate
 
 on:
@@ -32,4 +33,15 @@ jobs:
 
       - name: Contribution check (pull request)
         if: github.event_name == 'pull_request'
-        run: python3 tools/check/check_public_repo.py --pr "${{ github.event.pull_request.base.sha }}"
+        env:
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          args=(--pr "${{ github.event.pull_request.base.sha }}")
+          # A same-repository pull request may rename or delete files. A fork pull request stays strict.
+          # 同仓库 PR 允许重命名与删除；外部 fork PR 保持严格。
+          if [ "$HEAD_REPO" = "$BASE_REPO" ]; then
+            args+=(--allow-restructure)
+          fi
+          python3 tools/check/check_public_repo.py "${args[@]}"
