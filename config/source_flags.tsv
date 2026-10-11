@@ -85,6 +85,7 @@ func_00112e30	-Os
 func_001155f8	-O1
 func_00115638	-O2
 func_00115668	-Os
+func_001156e8	-Os
 func_00115788	-Os
 func_001157bc	-Os
 func_001157f0	-Os
@@ -170,6 +171,7 @@ func_00147bdc	-O2
 func_00147d80	-Os
 func_00147eac	-O1
 func_00147ef8	-Os
+func_00147f78	-Os
 func_00148148	-Os
 func_001482f8	-O2
 func_00148508	-O2
