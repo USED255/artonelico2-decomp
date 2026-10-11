@@ -1,6 +1,6 @@
-# name: 魔塔大陆2 日版 (Ar tonelico II, Japan) -- 路线 B 可重建基线
-# 生成器: routebjp/tools/gen_splat_yaml_jp.py（从 ELF 节表/程序头推导）
-# sha1 = 拼接全部 PT_LOAD 段（与 build.sh 的载荷抽取口径一致）
+# name: Ar tonelico II, Japan (SLPS_258.19) -- rebuildable baseline
+# generator: tools/project/gen_splat_yaml_jp.py (derives the layout from the ELF section table and program headers)
+# sha1: the sha1 of all PT_LOAD segments concatenated (the same rule that build.sh uses)
 sha1: 7cc42d275750600d1f232b2632447f77205f3fc0
 options:
   basename: SLPS_258.19
@@ -40,8 +40,8 @@ options:
 
   named_regs_for_c_funcs: False
 
-  # 数值寄存器名（$4 而非 $a0）：绕开 binutils 2.45 拒绝 $t4–$t7 的坑，
-  # 与美版一致（DCDecomp 同款 mips_abi_gpr: numeric）。
+  # Numeric register names ($4 instead of $a0). This avoids a binutils 2.45 bug that rejects $t4-$t7.
+  # The setting also agrees with the US version and with DCDecomp.
   mips_abi_gpr: numeric
 
   section_order:
@@ -67,7 +67,7 @@ segments:
     bss_size: 0x0
     subalign: null
     subsegments:
-      - [0x0, asm, cod/head]   # 段起点到首个函数之间的头部
+      - [0x0, asm, cod/head]   # the header between the segment start and the first function
       - {start: 0x1C, type: asmtu, name: cod/entry}
       - {start: 0x260, type: asmtu, name: cod/thunk_FUN_002c5828}
       - {start: 0x270, type: asmtu, name: cod/func_00100270}
@@ -10990,7 +10990,7 @@ segments:
       - {start: 0x26C460, type: asmtu, name: cod/func_0036c460}
       - {start: 0x26C518, type: asmtu, name: cod/func_0036c518}
       - {start: 0x26C588, type: asmtu, name: cod/fileio_37}
-      - [0x26C5E0, asm, cod/tail]   # .text 尾部对齐/填充区
+      - [0x26C5E0, asm, cod/tail]   # .text tail alignment and padding
       - [0x26C5E8, asm, cod/26C5E8] # .init
       - [0x26C60C, asm, cod/26C60C] # .fini
       - [0x26C630, textbin, cod/26C630] # .vutext

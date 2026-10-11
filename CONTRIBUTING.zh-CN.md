@@ -40,7 +40,7 @@ make check                       # 仓库自检
 
 | workflow | 你的 PR |
 | --- | --- |
-| `validate` | 跑**贡献模式**：允许白名单路径内的新增与修改；拒绝白名单外的改动、删除、非文本文件、超过 1 MiB 的文件。 |
+| `validate` | 跑**贡献模式**：允许白名单路径内的新增与修改；拒绝白名单外的改动、非文本文件、超过 1 MiB 的文件。本仓库自己的分支还可以重命名或删除文件；外部 fork 的 PR 仍只能新增或修改。 |
 | `matching-gate` | 需要原版可执行文件与 Sony 工具链。**fork 的 PR 拿不到**，该 job 会跳过；之后由维护者复验你的 commit，或者用你的 PR 编号手动触发该 workflow。 |
 
 ## 5. CI 之后
@@ -65,25 +65,13 @@ make check                       # 仓库自检
 
 其它路径都可以改。`config/`、`splat.yaml` 与三个构建脚本，**建议先开 issue 说明**再动手 —— 它们会影响整个构建。
 
-**新增函数注意**：你**不需要**改 `config/matched_symbols.txt`；维护者会替你补条目。
+**新增函数注意**：你**不需要**改 `config/matched_symbols.txt`；维护者会替你补条目。`config/matched_symbols.txt` 与 `config/symbol_addrs.txt` 是**只读配置**，由维护者代填。详见 [docs/CONFIG.zh-CN.md](docs/CONFIG.zh-CN.md)。
 
 ## 7. 写作风格
 
-本仓库的**英文**文档统一使用 **ASD-STE100** 风格（Simplified Technical English，简化技术英语）：
-
-1. 一句话写一个意思。
-2. 步骤句不超过 20 个词；描述句不超过 25 个词。
-3. 一个段落最多 6 句。
-4. 用主动语态；指令用祈使句。
-5. 只用简单时态；不用缩写形式；不用分号。
-6. 不写 `e.g.` / `i.e.` / `etc.`，改写成 `for example` / `that is` / `and more`。
-7. **一词一义**：同一个东西始终用同一个词。
-8. 不用习语、俚语和含糊的评价词。
-9. 能查 ASD-STE100 的批准词典时，照词典写。
+本仓库的文档统一使用 **ASD-STE100** 风格。
 
 ASD-STE100 的词典有版权，**不得复制进本仓库**。规范见 <https://www.asd-ste100.org/>。
-
-**其他语言**的文档遵循同一套原则：短句、主动语态、一词一义、不用口语。
 
 ## 8. 许可证
 

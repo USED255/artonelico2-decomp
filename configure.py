@@ -1,5 +1,17 @@
 #!/usr/bin/env python3
-"""公开仓库的配置入口（社区惯例：`python3 configure.py`）。
+"""Write the build configuration for the public repository (community convention: `python3 configure.py`).
+
+This script does three things only:
+  1. Find the retail ELF (`--game` or `orig/SLPS_258.19`).
+  2. Check the sha1 against `toolchain.lock.json`.
+  3. Write the configuration to `build/config.json` for `tools/build/decomp_build.py`.
+
+The real build logic lives in `tools/build/decomp_build.py`. This file stays thin on purpose.
+
+Usage:
+    python3 configure.py --game /path/to/SLPS_258.19
+
+公开仓库的配置入口（社区惯例：`python3 configure.py`）。
 
 只做三件事：① 找原版 ELF（`--game` 或 `orig/SLPS_258.19`）；② 校验 sha1 与 `toolchain.lock.json` 一致；
 ③ 把配置写进 `build/config.json`，供 `tools/build/decomp_build.py` 使用。
@@ -17,6 +29,10 @@ import json
 import sys
 from pathlib import Path
 
+# The help text stays English only, because the module docstring is bilingual.
+# argparse 的 help 只输出英文，因此这里单独给一段英文说明。
+EN_USAGE = "Check the retail ELF against toolchain.lock.json, then write build/config.json."
+
 ROOT = Path(__file__).resolve().parent
 LOCK = ROOT / "toolchain.lock.json"
 
@@ -30,9 +46,10 @@ def sha1(path: Path) -> str:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--game", default="orig/SLPS_258.19", help="原版 SLPS_258.19 的路径")
-    ap.add_argument("--allow-mismatch", action="store_true", help="校验失败也让配置通过（仅供调试）")
+    ap = argparse.ArgumentParser(description=EN_USAGE, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--game", default="orig/SLPS_258.19", help="path to the retail SLPS_258.19")
+    ap.add_argument("--allow-mismatch", action="store_true",
+                    help="write the configuration even when a check fails (debug only)")
     args = ap.parse_args()
 
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
@@ -43,17 +60,17 @@ def main() -> int:
 
     problems: list[str] = []
     if not game.is_file():
-        problems.append(f"找不到原版 ELF：{game}（需要自备正版光盘中的 SLPS_258.19）")
+        problems.append(f"retail ELF not found: {game} (supply SLPS_258.19 from your own legal disc)")
     else:
         size = game.stat().st_size
         digest = sha1(game)
         if size != want["elf_size"]:
-            problems.append(f"ELF 大小不符：{size} != {want['elf_size']}")
+            problems.append(f"ELF size mismatch: {size} != {want['elf_size']}")
         if digest != want["elf_sha1"]:
-            problems.append(f"ELF sha1 不符：{digest} != {want['elf_sha1']}")
+            problems.append(f"ELF sha1 mismatch: {digest} != {want['elf_sha1']}")
 
     if problems and not args.allow_mismatch:
-        print("❌ configure 失败：", file=sys.stderr)
+        print("configure failed:", file=sys.stderr)
         for p in problems:
             print("   -", p, file=sys.stderr)
         return 1
@@ -69,9 +86,9 @@ def main() -> int:
         "objdiff": "objdiff-cli",
     }
     (ROOT / "build" / "config.json").write_text(json.dumps(cfg, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(f"✅ configure 完成：{ROOT/'build'/'config.json'}")
-    print(f"   原版 ELF：{game}")
-    print("   下一步：make build")
+    print(f"configure done: {ROOT / 'build' / 'config.json'}")
+    print(f"retail ELF: {game}")
+    print("next step: make build")
     return 0
 
 

@@ -1,9 +1,35 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""jtbl 池专项工具：真实池画像 / 样本选择 / （Stage 2）草稿生成。
+"""jtbl pool tool: true pool profile, sample selection, and (stage 2) draft generation.
+
+Background (see `at2/docs/kb/reports/` and OPEN-ISSUES O-20):
+  The `jtbl` column of `match_workqueue.py` is a decision over the **whole `.s` file** (P-32).
+  A public `asm/cod/<sym>.s` often holds a **sibling function** of the same address range.
+  Therefore 7 of 316 entries are contaminated. The decision domain of this tool is the
+  **target block** (between `glabel/endlabel <sym>`). The true pool is 309 functions /
+  334,632 B.
+
+Three subproblems (they decide whether the "extern table plus computed goto" form can
+express the function):
+  * `table_in`:   a table entry points to an address inside the target block. A case body
+                  must stay alive in the C source.
+  * `table_out`:  a table entry points outside the target block (a function of another
+                  symbol or a shared tail). The C source does not need to express it. The
+                  table itself stays the original data.
+  * `branch_out`: a **conditional branch** points outside the declared range. This condition
+                  shows that symbol_addrs cut the function boundary too short. C cannot
+                  match (C cannot goto an external label), so this round excludes the symbol.
+
+Usage:
+  python3 tools/project/jtbl_draft.py stats [--tsv out.tsv]
+  python3 tools/project/jtbl_draft.py list [--kind clean|boundary|dispatch] [--limit N]
+  python3 tools/project/jtbl_draft.py prepare <sym> [--outdir DIR]   # target block -> target.o + skeleton
+  python3 tools/project/jtbl_draft.py probe <sym> --dir DIR          # score each DIR/*.c at every flag level (stage 1)
+
+jtbl 池专项工具：真实池画像 / 样本选择 / （Stage 2）草稿生成。
 
 背景（见 `at2/docs/kb/reports/` 与 OPEN-ISSUES O-20）：
-  `m3_workqueue.py` 的 `jtbl` 列是**整份 `.s` 文件**判定的（P-32），而公开 `asm/cod/<sym>.s`
+  `match_workqueue.py` 的 `jtbl` 列是**整份 `.s` 文件**判定的（P-32），而公开 `asm/cod/<sym>.s`
   里常含同地址段的**兄弟函数** ⇒ 316 个里 7 个是污染。本工具的判定域是**目标块**
   （`glabel/endlabel <sym>` 之间），得到的才是真池：309 个 / 334,632 B。
 
@@ -19,6 +45,8 @@
   python3 tools/project/jtbl_draft.py prepare <sym> [--outdir DIR]   # 目标块 → target.o + skeleton
   python3 tools/project/jtbl_draft.py probe <sym> --dir DIR          # DIR/*.c 逐档打分（Stage 1）
 """
+
+# Private layout names (routebjp/build/jtbl, jp_m3_workqueue.tsv), do not rename.  私有布局名（routebjp/build/jtbl、jp_m3_workqueue.tsv），勿改名。
 
 from __future__ import annotations
 
@@ -41,6 +69,7 @@ PREAMBLE = '.include "macro.inc"\n\n.set noat\n.set noreorder\n\n.section .text,
 _PRIV = Path(PRIVATE_ROOT) if PRIVATE_ROOT else ROOT.parent / "at2"
 WORK = Path(os.environ.get("AT2_JTBL_WORK", str(_PRIV / "routebjp" / "build" / "jtbl")))
 
+# Flag matrix with the same rule as auto_match_permuter.py (17 flag levels)
 # 与 auto_match_permuter.py 同口径的档位矩阵（17 档）
 FLAG_SETS = [["-Os"], ["-O2"], ["-O1"], ["-O3"], ["-O2", "-G8"], ["-O1", "-G8"], ["-O3", "-G8"],
              ["-Os", "-G8"], ["-O2", "-fno-common"], ["-O2", "-fomit-frame-pointer"],
@@ -55,7 +84,10 @@ HIREF = re.compile(r"jtbl_[0-9A-Fa-f]+")
 
 
 def block_of(text: str, sym: str) -> str | None:
-    """目标块（`glabel/jlabel/alabel <sym>` → `endlabel <sym>`）文本。"""
+    """Return the text of the target block (`glabel/jlabel/alabel <sym>` to `endlabel <sym>`).
+
+    目标块（`glabel/jlabel/alabel <sym>` → `endlabel <sym>`）文本。
+    """
     m = re.search(
         r"^(?:glabel|jlabel|alabel)\s+%s\b.*?$(.*?)^endlabel\s+%s\b" % (re.escape(sym), re.escape(sym)),
         text, re.M | re.S)
@@ -75,7 +107,12 @@ _TABLES: dict[str, list[str]] | None = None
 
 
 def load_tables() -> dict[str, list[str]]:
-    """数据段里的 `jtbl_*` 表：{表名: [表项符号名, ...]}（表项名本身带地址后缀）。"""
+    """Return the `jtbl_*` tables in the data sections: {table name: [entry symbol name, ...]}.
+
+    An entry name itself has an address suffix.
+
+    数据段里的 `jtbl_*` 表：{表名: [表项符号名, ...]}（表项名本身带地址后缀）。
+    """
     global _TABLES
     if _TABLES is not None:
         return _TABLES
@@ -89,7 +126,10 @@ def load_tables() -> dict[str, list[str]]:
 
 
 def name_to_addr(name: str) -> int | None:
-    """`.L001F68B8` / `func_001F68C0` / `baseelf_163` / `D_0096F0C4` → 地址。"""
+    """Turn `.L001F68B8`, `func_001F68C0`, `baseelf_163`, or `D_0096F0C4` into an address.
+
+    `.L001F68B8` / `func_001F68C0` / `baseelf_163` / `D_0096F0C4` → 地址。
+    """
     m = re.match(r"\.L([0-9A-Fa-f]+)$", name)
     if m:
         return int(m.group(1), 16)
@@ -175,21 +215,21 @@ def cmd_stats(args) -> int:
     for r in recs:
         kinds.setdefault(kind_of(r), []).append(r)
     total_b = sum(r["size"] for r in recs)
-    print("== jtbl 真池（目标块判定，目标块含 `jtbl_` 引用的工作队列行）==")
-    print("  函数 %d 个 / %d B" % (len(recs), total_b))
+    print("== jtbl true pool (target-block rule, workqueue rows whose target block uses `jtbl_`) ==")
+    print("  functions %d / %d B" % (len(recs), total_b))
     flagged = sum(1 for row in workqueue_rows() if row.get("jtbl") == "1")
-    print("  工作队列整文件标 jtbl %d 个 ⇒ 污染 %d 个（P-32）" % (flagged, flagged - len(recs)))
+    print("  workqueue marks %d entries with jtbl in the whole file => %d contaminated (P-32)" % (flagged, flagged - len(recs)))
     for k in ("clean", "partial", "dispatch", "boundary"):
         g = kinds.get(k, [])
         if not g:
             continue
         leaf = sum(1 for r in g if not r["jal"])
         sizes = sorted(r["size"] for r in g)
-        print("  %-9s %3d 个 / %7d B   叶子 %2d  尺寸中位 %4d  最大 %6d"
+        print("  %-9s %3d / %7d B   leaf %2d  median size %4d  max %6d"
               % (k, len(g), sum(r["size"] for r in g), leaf,
                  sizes[len(sizes) // 2], sizes[-1]))
     both = [r for r in recs if r["entries_in"] and r["entries_out"]]
-    print("  表项「部分在外」%d 个；含 jal %d 个；叶子 %d 个"
+    print("  entries partly outside %d; with jal %d; leaf %d"
           % (len(both), sum(1 for r in recs if r["jal"]), sum(1 for r in recs if not r["jal"])))
     if args.tsv:
         p = Path(args.tsv)
@@ -201,7 +241,7 @@ def cmd_stats(args) -> int:
                          % (r["name"], r["addr"], r["size"], kind_of(r), r["jal"], r["entries_in"],
                             r["entries_out"], r["branch_out"], r["labels"],
                             ",".join(r["tables"]), r["cls"]))
-        print("  落盘：%s" % p)
+        print("  wrote %s" % p)
     return 0
 
 
@@ -215,7 +255,7 @@ def cmd_list(args) -> int:
     return 0
 
 
-# --------------------------------------------------------------------------- Stage 1 探针
+# --------------------------------------------------------------------------- Stage 1 probe  探针
 
 def _workdir(sym: str) -> Path:
     return WORK / sym
@@ -238,7 +278,7 @@ def _build_target(sym: str, d: Path) -> bool:
     r = subprocess.run([AS, "-EL", "-march=r5900", "-I", "include", "-o", str(to), str(ts)],
                        cwd=str(ROOT), capture_output=True, text=True)
     if r.returncode:
-        print("  [FAIL] 目标块汇编失败：%s" % r.stderr.strip()[:400], file=sys.stderr)
+        print("  [FAIL] target block assembly failed: %s" % r.stderr.strip()[:400], file=sys.stderr)
         return False
     return True
 
@@ -283,11 +323,11 @@ def cmd_prepare(args) -> int:
                  rec["entries_out"], rec["branch_out"]))
         for t in rec["tables"]:
             ents = load_tables().get(t, [])
-            print("  表 %s：%d 项" % (t, len(ents)))
+            print("  table %s: %d entries" % (t, len(ents)))
             print("    " + " ".join(ents[:24]) + (" ..." if len(ents) > 24 else ""))
     (d / "asm.txt").write_text(blk, encoding="utf-8")
     print("  target.o=%s" % (d / "target.o"))
-    print("  目标块已写 %s" % (d / "asm.txt"))
+    print("  target block written to %s" % (d / "asm.txt"))
     return 0
 
 
@@ -298,7 +338,7 @@ def cmd_probe(args) -> int:
         return 1
     cands = sorted(Path(args.dir).glob("*.c")) if args.dir else sorted(d.glob("*.c"))
     if not cands:
-        print("没有候选 .c（先写一个到 %s）" % d, file=sys.stderr)
+        print("no candidate .c (write one to %s first)" % d, file=sys.stderr)
         return 2
     rows = []
     for c in cands:
@@ -319,33 +359,33 @@ def cmd_probe(args) -> int:
         if args.all:
             print("  -- %s" % c.name)
             for m, f in per_flag:
-                print("     %7s  %s" % ("%.2f" % m if m is not None else "编译失败", f))
+                print("     %7s  %s" % ("%.2f" % m if m is not None else "compile failed", f))
     rows.sort(reverse=True)
-    print("== probe %s（%d 个候选 × %d 档）==" % (sym, len(rows), len(FLAG_SETS)))
+    print("== probe %s (%d candidates x %d flag levels) ==" % (sym, len(rows), len(FLAG_SETS)))
     for m, name, f, ok in rows:
-        print("  %7.2f%%  %-24s %-32s %s" % (m if ok else -1, name, f, "" if ok else "(编译失败)"))
+        print("  %7.2f%%  %-24s %-32s %s" % (m if ok else -1, name, f, "" if ok else "(compile failed)"))
     return 0
 
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="jtbl 池专项工具")
+    ap = argparse.ArgumentParser(description="jtbl pool tool")
     sub = ap.add_subparsers(dest="mode", required=True)
-    s = sub.add_parser("stats", help="真池画像（可选落 TSV）")
+    s = sub.add_parser("stats", help="true pool profile (optional TSV output)")
     s.add_argument("--tsv", default="")
     s.set_defaults(func=cmd_stats)
-    l = sub.add_parser("list", help="列样本")
+    l = sub.add_parser("list", help="list samples")
     l.add_argument("--kind", default="clean", choices=["", "clean", "partial", "dispatch", "boundary"])
     l.add_argument("--limit", type=int, default=20)
     l.set_defaults(func=cmd_list)
-    p = sub.add_parser("prepare", help="目标块 → target.o（探针用）")
+    p = sub.add_parser("prepare", help="target block -> target.o (for the probe)")
     p.add_argument("sym")
     p.add_argument("--outdir", default="")
     p.set_defaults(func=cmd_prepare)
-    r = sub.add_parser("probe", help="对目录里的候选 .c 逐档打分")
+    r = sub.add_parser("probe", help="score each candidate .c in the directory at every flag level")
     r.add_argument("sym")
     r.add_argument("--dir", default="")
-    r.add_argument("--all", action="store_true", help="打印每个档位的分数")
+    r.add_argument("--all", action="store_true", help="print the score of every flag level")
     r.set_defaults(func=cmd_probe)
     args = ap.parse_args()
     return args.func(args)

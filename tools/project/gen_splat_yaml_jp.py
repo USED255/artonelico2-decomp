@@ -1,5 +1,25 @@
 #!/usr/bin/env python3
-"""生成日版（SLPS_258.19）路线 B 的 splat 配置（含 per-function asmtu 子段）。
+"""Generate the splat config of the JP version (SLPS_258.19) for route B, with per-function asmtu subsegments.
+
+Why the code does not use `splat create_config` plus tools/build/gen_splat_yaml.py:
+  1. `TEXT_END` in `tools/build/gen_splat_yaml.py` is hard-coded to the .init start of the
+     **US** version (0x36E028). The JP value is 0x36C5E8. A direct use would overwrite
+     .init/.fini/.vutext several times.
+  2. The JP main program has **two PT_LOAD segments** (the US version has one). splat derives
+     vram linearly from `most_parent.vram_start + start - most_parent.rom_start`. At the
+     start of the second JP segment, the vram value is **0x80 more** than the linear
+     extrapolation (0x376000 -> 0x376080). The config must therefore use **two top-level
+     segments** (cod and dat), each with start and vram. Then the vram of every subsegment
+     agrees with the original address.
+
+This script **derives** the whole layout from the ELF section table and program headers. It
+hard-codes no address. The same script can therefore make a config for the US version with
+the same structure as `routeb/SLUS_217.88.yaml` (the one-segment case) for a self-test.
+
+Usage:
+  python3 gen_splat_yaml_jp.py <elf> <symbol_addrs.txt> <out.yaml> [--name NAME]
+
+生成日版（SLPS_258.19）路线 B 的 splat 配置（含 per-function asmtu 子段）。
 
 为什么不用 `splat create_config` + tools/build/gen_splat_yaml.py 串起来：
   1. `tools/build/gen_splat_yaml.py` 的 `TEXT_END` 硬编码为**美版**的 .init 起点
@@ -21,6 +41,7 @@ import re
 import struct
 import sys
 
+# Keep the same values as splat ps2elfinfo.ELF_SECTION_MAPPING
 # 与 splat ps2elfinfo.ELF_SECTION_MAPPING 保持一致
 SECT_MAP = {
     ".text": "asm", ".data": "data", ".rodata": "rodata", ".bss": "bss",
@@ -59,7 +80,10 @@ def load_funcs(path):
 
 
 def rom_map(phs):
-    """PT_LOAD -> [(vram_start, vram_end, rom_off, file_off, flags)]，按序拼接。"""
+    """PT_LOAD -> [(vram_start, vram_end, rom_off, file_off, flags)], joined in order.
+
+    PT_LOAD -> [(vram_start, vram_end, rom_off, file_off, flags)]，按序拼接。
+    """
     out, rom = [], 0
     for (t, off, va, pa, fsz, msz, fl, al) in phs:
         if t != 1:
@@ -86,6 +110,7 @@ def main():
     d, phs, secs = parse_elf(elf)
     loads = rom_map(phs)
     rom_size = sum(L["fsz"] for L in loads)
+    # The sha1 in the yaml must equal the sha1 of target_path (the rom from the joined PT_LOAD segments)
     # yaml 的 sha1 必须等于 target_path（拼 PT_LOAD 得到的 rom）的 sha1
     rom_sha1 = hashlib.sha1(b"".join(d[L["foff"]:L["foff"] + L["fsz"]] for L in loads)).hexdigest()
     funcs = load_funcs(sym_path)
@@ -105,6 +130,7 @@ def main():
             return "data"
         return "rodata"
 
+    # Group by the PT_LOAD boundary (1 group for the US version; 2 groups for the JP version)
     # 按 PT_LOAD 边界分组（美版 1 组；日版 2 组）
     groups = []
     for L in loads:
@@ -116,12 +142,14 @@ def main():
     gp = None
     for s in secs:
         if s["name"] == ".reginfo" and s["size"] >= 0x18:
+            # EE .reginfo: the last 4 bytes hold the gp value (measurement: true for the US and the JP version)
             # EE .reginfo：最后 4 字节是 gp 值（美版/日版实测均如此）
             gp = struct.unpack_from("<I", d, s["off"] + s["size"] - 4)[0]
 
     def gname(i):
         return names[i]
 
+    # The gp expression in the linker script: <group>_SDATA_START + 0x7FF0
     # 链接脚本里的 gp 表达式：<group>_SDATA_START + 0x7FF0
     gp_expr = None
     for i, (L, gs) in enumerate(groups):
@@ -130,9 +158,9 @@ def main():
             break
 
     lines = []
-    lines.append("# name: 魔塔大陆2 日版 (Ar tonelico II, Japan) -- 路线 B 可重建基线")
-    lines.append("# 生成器: routebjp/tools/gen_splat_yaml_jp.py（从 ELF 节表/程序头推导）")
-    lines.append("# sha1 = 拼接全部 PT_LOAD 段（与 build.sh 的载荷抽取口径一致）")
+    lines.append("# name: Ar tonelico II, Japan (SLPS_258.19) -- rebuildable baseline")
+    lines.append("# generator: tools/project/gen_splat_yaml_jp.py (derives the layout from the ELF section table and program headers)")
+    lines.append("# sha1: the sha1 of all PT_LOAD segments concatenated (the same rule that build.sh uses)")
     lines.append("sha1: %s" % rom_sha1)
     lines.append("options:")
     lines.append("  basename: %s" % name)
@@ -172,8 +200,8 @@ def main():
     lines.append("")
     lines.append("  named_regs_for_c_funcs: False")
     lines.append("")
-    lines.append("  # 数值寄存器名（$4 而非 $a0）：绕开 binutils 2.45 拒绝 $t4–$t7 的坑，")
-    lines.append("  # 与美版一致（DCDecomp 同款 mips_abi_gpr: numeric）。")
+    lines.append("  # Numeric register names ($4 instead of $a0). This avoids a binutils 2.45 bug that rejects $t4-$t7.")
+    lines.append("  # The setting also agrees with the US version and with DCDecomp.")
     lines.append("  mips_abi_gpr: numeric")
     lines.append("")
     lines.append("  section_order:")
@@ -213,7 +241,7 @@ def main():
             tend_va = ts["addr"] + ts["size"]
             in_text = sorted(a for a in funcs if tstart_va <= a < tend_va)
             if in_text and in_text[0] > tstart_va:
-                lines.append("      - [0x%X, asm, %s/head]   # 段起点到首个函数之间的头部"
+                lines.append("      - [0x%X, asm, %s/head]   # the header between the segment start and the first function"
                              % (va2rom(loads, tstart_va), gn))
             elif not in_text:
                 lines.append("      - [0x%X, asm, %s/head]" % (va2rom(loads, tstart_va), gn))
@@ -225,8 +253,9 @@ def main():
                 last = in_text[-1]
                 last_end = last + funcs[last][1]
                 if last_end < tend_va:
-                    lines.append("      - [0x%X, asm, %s/tail]   # .text 尾部对齐/填充区"
+                    lines.append("      - [0x%X, asm, %s/tail]   # .text tail alignment and padding"
                                  % (va2rom(loads, last_end), gn))
+        # .init/.fini/.vutext/.ctors/... and the data, rodata, sdata, and bss sections
         # .init/.fini/.vutext/.ctors/... 及数据/rodata/sdata/bss 节
         for s in gs:
             if s["name"] == ".text":
@@ -241,10 +270,10 @@ def main():
                                 s["name"]))
     lines.append("  - [0x%X]" % rom_size)
     open(out_yaml, "w", encoding="utf-8").write("\n".join(lines) + "\n")
-    print("写出 %s" % out_yaml)
-    print("组数 = %d ; 组名 = %s" % (len(groups), names[:len(groups)]))
-    print("rom_size(拼 PT_LOAD) = 0x%X (%d B)" % (rom_size, rom_size))
-    print("gp = 0x%08X ; ld_gp_expression = %s" % (gp, gp_expr))
+    print("wrote %s" % out_yaml)
+    print("group count = %d ; group names = %s" % (len(groups), names[:len(groups)]))
+    print("rom_size (joined PT_LOAD) = 0x%X (%d B)" % (rom_size, rom_size))
+    print("gp = 0x%08X, ld_gp_expression = %s" % (gp, gp_expr))
     for i, (L, gs) in enumerate(groups):
         print("  [%s] rom 0x%06X vram 0x%08X bss 0x%X sections=%s"
               % (gname(i), L["rom"], L["vstart"], sum(s["size"] for s in gs if s["type"] == 8),

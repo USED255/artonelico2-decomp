@@ -1,5 +1,22 @@
 #!/usr/bin/env python3
-"""公开仓库自检（CI 的快速门禁；只依赖标准库）。
+"""Public repository checks for CI. The tool uses the standard library only.
+
+Four tasks:
+  1. Publication record integrity: the report, the baseline, and the toolchain lock
+     sha256 values in `PUBLISHED.json` must agree with the files on disk.
+  2. Denied material: `*.s` files (transcription stubs), `routeb/`, `docs/private/`,
+     ROM and ISO images, and toolchain archives must all FAIL.
+  3. Report rules: the schema and the arithmetic of
+     `progress/SLPS_258.19_report.json` must hold (matched <= total).
+  4. No regression: the report must not fall behind `progress/baseline.json`
+     (`--baseline` and `--report` select other files).
+
+Usage:
+    python3 tools/check/check_public_repo.py --check
+    python3 tools/check/check_public_repo.py --baseline progress/baseline.json --report progress/SLPS_258.19_report.json
+Exit code: 0 on success, 1 when the tool finds a problem that you must repair.
+
+公开仓库自检（CI 的快速门禁；只依赖标准库）。
 
 四件事：
   1. **发布记录自洽**：`PUBLISHED.json` 记录的报告/基线/工具链锁 sha256 必须与磁盘一致。
@@ -22,7 +39,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]      # 公开仓库根（tools/check/ → 上溯两级）
+# The help text stays English only, because the module docstring is bilingual.
+# argparse 的 help 只输出英文，因此这里单独给一段英文说明。
+EN_USAGE = "Check the public repository: publication record, denied material, and report rules."
+
+ROOT = Path(__file__).resolve().parents[2]      # public repository root (tools/check/ -> two levels up)
+# 公开仓库根（tools/check/ → 上溯两级）
 
 DENY = ["*.s", "*.rom", "*.iso", "*.tar.xz", "*.tar.gz", "routeb/*", "docs/private/*", "out/*", ".tmp/*"]
 
@@ -61,38 +83,38 @@ def tracked_files() -> list[str] | None:
 
 
 def check_published() -> None:
-    """发布记录自洽：PUBLISHED.json 里的报告/基线/工具链哈希必须与磁盘一致。"""
+    """Publication record integrity: the report, baseline, and lock hashes must agree with the disk."""
     pub_path = ROOT / "PUBLISHED.json"
     if not pub_path.is_file():
-        bad("缺少 PUBLISHED.json（发布记录；由 maintainers/tools/publish_report.py 维护）")
+        bad("PUBLISHED.json is missing (the publication record; tools/publish_report.py maintains it)")
         return
     try:
         pub = json.loads(pub_path.read_text(encoding="utf-8"))
     except Exception as e:
-        bad(f"PUBLISHED.json 不是合法 JSON：{e}")
+        bad(f"PUBLISHED.json is not valid JSON: {e}")
         return
     if pub.get("schema") != "at2-published/2":
-        bad(f"PUBLISHED.json 的 schema 异常：{pub.get('schema')!r}")
+        bad(f"unexpected PUBLISHED.json schema: {pub.get('schema')!r}")
     for key in ("report", "baseline"):
         item = pub.get(key) or {}
         rel, want = item.get("path"), item.get("sha256")
         if not rel or not want:
-            bad(f"PUBLISHED.json 缺 {key}.path/sha256")
+            bad(f"PUBLISHED.json has no {key}.path or {key}.sha256")
             continue
         f = ROOT / rel
         if not f.is_file():
-            bad(f"发布记录指向的文件不存在：{rel}")
+            bad(f"the publication record points to a file that does not exist: {rel}")
         elif sha256(f) != want:
-            bad(f"{rel} 与 PUBLISHED.json 记录的 sha256 不一致（发布后被改动过？）")
+            bad(f"the sha256 of {rel} does not match PUBLISHED.json (was the file changed after publication?)")
         else:
-            ok(f"发布记录一致：{rel}")
+            ok(f"the publication record agrees: {rel}")
     lock = ROOT / "toolchain.lock.json"
     if pub.get("toolchain_lock_sha256") and lock.is_file():
         if sha256(lock) != pub["toolchain_lock_sha256"]:
-            bad("toolchain.lock.json 与 PUBLISHED.json 记录的 sha256 不一致")
+            bad("the sha256 of toolchain.lock.json does not match PUBLISHED.json")
         else:
-            ok("发布记录一致：toolchain.lock.json")
-    ok(f"发布记录自洽（source_revision={str(pub.get('source_revision'))[:12]}）")
+            ok("the publication record agrees: toolchain.lock.json")
+    ok(f"the publication record is consistent (source_revision={str(pub.get('source_revision'))[:12]})")
 
 
 
@@ -102,21 +124,21 @@ def check_deny(allowed: set[str]) -> None:
     for rel in present:
         for pat in DENY:
             if fnmatch.fnmatch(rel, pat) or fnmatch.fnmatch(rel, "*/" + pat):
-                hits.append(f"{rel}（命中 {pat}）")
+                hits.append(f"{rel} (matches {pat})")
     if hits:
-        bad(f"公开树含不可公开类别：{hits[:8]}")
+        bad(f"the public tree contains material that the project cannot publish: {hits[:8]}")
     else:
-        ok("不可公开类别扫描通过")
+        ok("the denied-material scan passed")
 
 
 def load_report(path: Path) -> dict:
     if not path.is_file():
-        bad(f"报告不存在：{path.relative_to(ROOT) if path.is_relative_to(ROOT) else path}")
+        bad(f"the report does not exist: {path.relative_to(ROOT) if path.is_relative_to(ROOT) else path}")
         return {}
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except Exception as e:
-        bad(f"报告不是合法 JSON：{e}")
+        bad(f"the report is not valid JSON: {e}")
         return {}
     return data
 
@@ -128,9 +150,9 @@ def check_report(path: Path) -> dict:
     m = data.get("measures") or {}
     missing = [k for k in REQUIRED_MEASURES if k not in m]
     if missing:
-        bad(f"报告 measures 缺字段：{missing}")
+        bad(f"the report measures are missing fields: {missing}")
     else:
-        ok(f"报告 schema 通过（units={m.get('total_units')}）")
+        ok(f"the report schema passed (units={m.get('total_units')})")
 
     def as_int(v):
         try:
@@ -144,11 +166,11 @@ def check_report(path: Path) -> dict:
         if va is None or vb is None:
             continue
         if va > vb:
-            bad(f"报告算术不成立：{a}({va}) > {b}({vb})")
+            bad(f"the report arithmetic fails: {a}({va}) > {b}({vb})")
     if not bad:
-        ok("报告算术自洽（matched ≤ total）")
+        ok("the report arithmetic is consistent (matched <= total)")
     if not data.get("units"):
-        bad("报告没有任何 unit（可能生成失败）")
+        bad("the report has no unit (the generation probably failed)")
     return data
 
 
@@ -156,30 +178,41 @@ def check_no_regression(base_path: Path, report_path: Path) -> None:
     base = load_report(base_path)
     cur = load_report(report_path)
     if not base or not cur:
-        bad("基线或报告缺失，无法比较")
+        bad("the baseline or the report is missing, so the comparison is not possible")
         return
     bm, cm = base.get("measures", {}), cur.get("measures", {})
     for key in ("matched_code", "matched_functions"):
         b, c = int(bm.get(key, 0) or 0), int(cm.get(key, 0) or 0)
         if c < b:
-            bad(f"进度回退：{key} {c} < 基线 {b}")
+            bad(f"regression: {key} {c} < baseline {b}")
         else:
-            ok(f"不回退：{key} {c} ≥ {b}")
+            ok(f"no regression: {key} {c} >= {b}")
     for key in ("matched_code_percent", "matched_functions_percent"):
         b, c = float(bm.get(key, 0) or 0), float(cm.get(key, 0) or 0)
         if c + 1e-9 < b:
-            bad(f"百分比回退：{key} {c:.4f} < 基线 {b:.4f}")
+            bad(f"percentage regression: {key} {c:.4f} < baseline {b:.4f}")
 
 
-def check_contrib(base: str) -> None:
-    """贡献模式（PR 用）：除只读路径外都可以改；删除、二进制、忌语一律 FAIL。
+def check_contrib(base: str, allow_restructure: bool = False) -> None:
+    """Contribution mode (for a pull request): any path is open except the read-only paths.
+
+    A delete, a binary file, and denied material always FAIL unless `allow_restructure`
+    permits a delete. A rename or a copy needs `allow_restructure` too.
+
+    Read-only paths = `progress/**` and `PUBLISHED.json` (published content that CI and
+    the maintainers write). They stay read-only in every mode.
+
+    贡献模式（PR 用）：除只读路径外都可以改；删除、二进制、忌语一律 FAIL。
+    `allow_restructure` 只放开重命名/复制/删除，不放开只读路径。
 
     只读路径 = `progress/**` 与 `PUBLISHED.json`（CI/维护者产出的发布内容）。
     """
-    # 公开仓库现在是项目主仓库：除「CI/维护者产出的只读路径」外都可以贡献
+    # The public repository is the main repository now. Every path is open except the
+    # read-only paths that CI and the maintainers produce.
+    # 公开仓库现在是项目主仓库：除「CI/维护者产出的只读路径」外都可以贡献。
     readonly = {
-        "progress/": "进度报告由经过验证的构建产出（tools/publish_report.py 写入），不接受手工改动",
-        "PUBLISHED.json": "发布记录由 tools/publish_report.py 维护",
+        "progress/": "the progress report comes from a verified build (tools/publish_report.py writes it), so a manual change is not acceptable",
+        "PUBLISHED.json": "tools/publish_report.py maintains the publication record",
     }
     max_bytes = 1 << 20
 
@@ -192,55 +225,67 @@ def check_contrib(base: str) -> None:
     cp = subprocess.run(["git", "-C", str(ROOT), "diff", "--name-status", f"{base}...HEAD"],
                         capture_output=True, text=True)
     if cp.returncode != 0:
-        bad(f"无法取得与基线 {base} 的差异：{cp.stderr.strip()[:120]}")
+        bad(f"cannot get the diff against the base {base}: {cp.stderr.strip()[:120]}")
         return
-    changes, renames = [], 0
+    changes: list[tuple[str, str]] = []
+    allowed_restructure: list[str] = []
     for line in cp.stdout.splitlines():
         parts = line.split("\t")
         if len(parts) < 2:
             continue
         status, rel = parts[0], parts[-1]
         if status.startswith(("R", "C")):
-            renames += 1
-            bad(f"不接受重命名/复制：{parts[1]} → {rel}（请改成「新增文件」+「不改原文件」）")
+            if not allow_restructure:
+                bad(f"a rename or a copy is not accepted: {parts[1]} -> {rel} (add a new file and keep the original file)")
+                continue
+            allowed_restructure.append(f"a rename or a copy is allowed (--allow-restructure): {parts[1]} -> {rel}")
+            src_reason = why(parts[1])
+            if src_reason:
+                bad(f"a read-only path cannot be changed: {parts[1]} - {src_reason}")
+                continue
+            changes.append((status, rel))
             continue
         changes.append((status, rel))
 
     if not changes:
-        ok("本次 PR 没有文件改动")
+        ok("this pull request has no file change")
     for status, rel in changes:
         if status.startswith("D"):
-            bad(f"不接受删除：{rel}（生成物由导出器管理，删掉会在下一次导出中回来）")
-            continue
+            if not allow_restructure:
+                bad(f"a delete is not accepted: {rel} (this pull request may add or change files only)")
+                continue
+            allowed_restructure.append(f"a delete is allowed (--allow-restructure): {rel}")
         reason = why(rel)
         if reason:
-            bad(f"只读路径不可改：{rel} —— {reason}")
+            bad(f"a read-only path cannot be changed: {rel} - {reason}")
             continue
         p = ROOT / rel
         if p.is_file():
             if p.stat().st_size > max_bytes:
-                bad(f"文件过大（限 {max_bytes // 1024} KiB）：{rel}")
+                bad(f"the file is too large (limit {max_bytes // 1024} KiB): {rel}")
                 continue
             try:
                 p.read_text(encoding="utf-8")
             except UnicodeDecodeError:
-                bad(f"不是文本文件：{rel}（本仓库只收文本贡献）")
+                bad(f"not a text file: {rel} (this repository accepts text contributions only)")
                 continue
-        ok(f"允许贡献：{rel}")
-    if renames:
-        ok(f"（重命名 {renames} 项已按上面的 FAIL 处理）")
+        ok(f"allowed contribution: {rel}")
+    for m in allowed_restructure:
+        ok(m)
 
     check_deny(set())
     check_report(ROOT / "progress" / "SLPS_258.19_report.json")
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--check", action="store_true", help="完整性 + 类别 + 报告不变量（默认动作）")
+    ap = argparse.ArgumentParser(description=EN_USAGE, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--check", action="store_true", help="integrity, denied material, and report rules (the default action)")
     ap.add_argument("--compare-only", action="store_true",
-                    help="只比数字：报告 schema + 相对基线不回退（用 CI 刚生成的报告，不校验已提交副本的哈希）")
+                    help="compare numbers only: the report schema and the baseline (use the report that CI just wrote, and do not check the hashes of the committed copy)")
     ap.add_argument("--pr", metavar="BASE", default="",
-                    help="贡献模式：与 BASE（如 pull_request.base.sha）比较，只允许白名单内的新增/修改")
+                    help="contribution mode: compare with BASE (for example pull_request.base.sha); allow added or changed files only")
+    ap.add_argument("--allow-restructure", action="store_true",
+                    help="with --pr, also allow a rename, a copy, and a delete (a same-repository pull request only)")
     ap.add_argument("--report", default="progress/SLPS_258.19_report.json")
     ap.add_argument("--baseline", default="progress/baseline.json")
     args = ap.parse_args()
@@ -249,7 +294,7 @@ def main() -> int:
         check_report(ROOT / args.report)
         check_no_regression(ROOT / args.baseline, ROOT / args.report)
     elif args.pr:
-        check_contrib(args.pr)
+        check_contrib(args.pr, args.allow_restructure)
     else:
         check_published()
         check_deny(set())
@@ -257,17 +302,17 @@ def main() -> int:
         if (ROOT / args.baseline).is_file():
             check_no_regression(ROOT / args.baseline, ROOT / args.report)
         else:
-            bad("缺少 progress/baseline.json（第一条报告的基线由导出器写入）")
+            bad("progress/baseline.json is missing (the exporter writes the baseline of the first report)")
 
     for m in OK:
         print(f"[  ok ] {m}")
     for m in BAD:
         print(f"[FAIL ] {m}")
-    print(f"\n合计 {len(OK) + len(BAD)} 项：FAIL {len(BAD)} / OK {len(OK)}")
+    print(f"\n{len(OK) + len(BAD)} checks: FAIL {len(BAD)} / OK {len(OK)}")
     if BAD:
-        print("结论：❌ 公开仓库自检未通过")
+        print("result: the public repository check FAILED")
         return 1
-    print("结论：✅ 公开仓库自检通过")
+    print("result: the public repository check passed")
     return 0
 
 

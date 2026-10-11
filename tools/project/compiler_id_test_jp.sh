@@ -1,4 +1,19 @@
 #!/bin/bash
+# M0 compiler identity test -- JP version SLPS_258.19
+#
+# This script is the JP port of tools/research/compiler_id_test.sh.
+# The test principle is the same. See the header of that script.
+# Only two items change: (a) the target ELF is the JP version, and (b) the target
+# function addresses are the JP equivalents.
+#
+# Decision point: the register that holds the address of a global variable.
+#   ee-gcc 2.96 -G0 -> lui $v1 ; lw $v0,lo($v1)
+#   ee-gcc 3.2-040921 -G0 -> lui $t7 ; lw $v0,lo($t7)
+#
+# JP comparison functions (from the .erx.lib baseelf slot alignment):
+#   baseelf_15 @0x1F5D20  ->  jr $ra ; lh $v0,24($a0)   (control, both versions agree)
+#   baseelf_19 @0x1E0F60  ->  lui $t7,0x7b ; jr $ra ; lw $v0,-3376($t7)  (decision point)
+#
 # M0 编译器身份判决实验 —— **日版 SLPS_258.19**
 #
 # 这是 tools/research/compiler_id_test.sh 的日版移植：判别原理完全相同（见该脚本头部注释），
@@ -21,16 +36,16 @@ trap 'rm -rf "$TMP"' EXIT
 
 cat > "$TMP/probe.c" <<'EOF'
 struct S { char pad[24]; short v; };
-short f1(struct S *p){ return p->v; }        /* 不受版本影响，作对照组 */
+short f1(struct S *p){ return p->v; }        /* Not affected by the version. This is the control. */
 extern int gv;
-int  f2(void){ return gv; }                  /* <-- 判别点：地址暂存寄存器 */
+int  f2(void){ return gv; }                  /* <-- Decision point: the register that holds the address. */
 EOF
 
-echo "=== 对照组 f1（两版应一致，日版 @0x1F5D20 = jr ra ; lh v0,24(a0)）==="
-echo "=== 判别点 f2（2.96 用 \$v1 或 \$gp；3.2 用 \$t7）==="
+echo "=== Control f1 (both versions agree; JP @0x1F5D20 = jr ra ; lh v0,24(a0)) ==="
+echo "=== Decision point f2 (2.96 uses \$v1 or \$gp; 3.2 uses \$t7) ==="
 for v in 2.96 3.2-040921; do
     GCC="$EECC/ee-gcc$v/bin/ee-gcc"
-    [ -x "$GCC" ] || { echo "  缺少 $GCC，跳过"; continue; }
+    [ -x "$GCC" ] || { echo "  $GCC is missing. Skip this compiler."; continue; }
     echo "--- ee-gcc $($GCC --version 2>&1 | head -1) ---"
     for g in 0 8; do
         "$GCC" -O2 -G$g -c -o "$TMP/p.o" "$TMP/probe.c" 2>/dev/null
@@ -45,7 +60,7 @@ for v in 2.96 3.2-040921; do
 done
 
 echo
-echo "=== 日版目标二进制实测 ==="
+echo "=== Measured result on the JP target binary ==="
 printf "  f1 @0x1F5D20 : "
 "$OD" -d --start-address=0x1f5d20 --stop-address=0x1f5d28 "$ELF" | sed -n '/>:/,$p' \
     | grep -E '^\s+[0-9a-f]+:' | sed 's/^ *[0-9a-f]*:\t[0-9a-f]*\t//' | tr '\n' '|'
@@ -55,11 +70,11 @@ printf "  f2 @0x1E0F60 : "
     | grep -E '^\s+[0-9a-f]+:' | sed 's/^ *[0-9a-f]*:\t[0-9a-f]*\t//' | tr '\n' '|'
 echo
 echo
-echo "=== 日版 .text 全局地址暂存寄存器直方图（复现判决的统计依据）==="
+echo "=== Histogram of the global-address register in the JP .text (evidence for the decision) ==="
 python3 - "$ELF" <<'PY'
 import struct, collections, sys
 d = open(sys.argv[1], 'rb').read()
-# 日版 .text: vaddr 0x100000, size 0x26C5E8, file off 0x1000
+# JP .text: vaddr 0x100000, size 0x26C5E8, file off 0x1000
 W = struct.unpack_from('<%dI' % (0x26C5E8 // 4), d, 0x1000)
 op = lambda w: w >> 26
 rs = lambda w: (w >> 21) & 0x1f

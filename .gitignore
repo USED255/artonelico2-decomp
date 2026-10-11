@@ -1,4 +1,4 @@
-# ---- build outputs / generated code（只锚定仓库根：不要遮蔽 tools/build/ 等目录）----
+# ---- build outputs and generated code (anchor the repository root only, and do not hide tools/build/ and other directories)  （只锚定仓库根，不要遮蔽 tools/build/ 等目录）----
 /build/
 /asm/
 /assets/
@@ -8,7 +8,7 @@
 *.bin
 *.map
 
-# ---- splat 生成的中间件（由 make split 产出，不入库） ----
+# ---- splat output and intermediate files (make split writes these, and the repository excludes them)  （splat 生成的中间件，由 make split 产出，不入库）----
 include/
 undefined_funcs_auto.txt
 undefined_syms_auto.txt
@@ -37,5 +37,5 @@ venv/
 .DS_Store
 *.swp
 
-# ---- 生成的台账（由 make/tools 生成；事实源是 config/matched_symbols.txt 与 config/source_flags.tsv）----
+# ---- generated ledger (make and tools write this file, and config/matched_symbols.txt plus config/source_flags.tsv are the sources of truth)  （生成的台账，由 make 与 tools 生成；事实源是 config/matched_symbols.txt 与 config/source_flags.tsv）----
 /config/match_meta.tsv

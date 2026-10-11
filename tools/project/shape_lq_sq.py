@@ -1,6 +1,42 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""D 档（MMI 池中只用 ``lq/sq``，可含 ``por/pand/pxor/pnor`` 的 128 位搬运/逻辑）
+"""Vector shape synthesis prototype for class D. The MMI pool uses only ``lq/sq``, and ``por/pand/pxor/pnor`` can appear in a 128-bit move or logic operation.
+
+Background
+----------
+- The true MMI pool = `class=G_mmi` and not in `routebjp/config/matched_symbols.txt`:
+  803 functions / 530,384 B.
+- **Class D = the block holds only `lq/sq` (plus `por/pand/pxor/pnor`)**: 350 functions /
+  224,020 B ([R15]).
+- The mechanism works ([P-22]): `typedef int v4si __attribute__((mode(V4SI)));` and
+  `*(v4si*)p` gives `lq` (`0x78820000`). `*(v4si*)p = v` gives `sq` (`0x7c850000`).
+- But the median of the m2c draft in class D is only 34.6% ([R15] section 4), and m2c
+  already uses `s128` for lq/sq.
+
+What this tool does
+-------------------
+1. Recompute the D pool (the in-block rule, to agree with 350 / 224,020 B of R15).
+2. Parse the instruction stream of the target block and extract the 128-bit memory and move
+   **shapes**: the source and destination base registers, the offset, the C base expression
+   from a backward trace through `addiu`/`lui+addiu`/`addu`/`sll`, and the `lq` to `sq`
+   register pairs.
+3. Generate candidate C directly from the shape
+   (`*(v4si *)(DST) = *(v4si *)(SRC);` or `v4si v = *(v4si *)p; ... *(v4si *)q = v;`). The
+   code translates a decidable integer, memory, float, or control-flow instruction at the
+   same time.
+4. `batch`: serial compile (`-O2/-O1/-O3`, stop on a 100% hit) -> objdiff compare -> JSON.
+
+CLI
+---
+    python3 tools/project/shape_lq_sq.py list
+    python3 tools/project/shape_lq_sq.py analyze <sym>
+    python3 tools/project/shape_lq_sq.py emit <sym> <outdir>
+    python3 tools/project/shape_lq_sq.py batch --samples 22 --max-compiles 67
+
+Evidence class: every number that this tool prints is `[measured]`. The compile and the
+compare run in series and have a hard limit (default 60).
+
+D 档（MMI 池中只用 ``lq/sq``，可含 ``por/pand/pxor/pnor`` 的 128 位搬运/逻辑）
 的**向量形状合成**原型。
 
 背景
@@ -22,13 +58,15 @@
 
 CLI
 ---
-    python3 routebjp/tools/shape_lq_sq.py list
-    python3 routebjp/tools/shape_lq_sq.py analyze <sym>
-    python3 routebjp/tools/shape_lq_sq.py emit <sym> <outdir>
-    python3 routebjp/tools/shape_lq_sq.py batch --samples 22 --max-compiles 67
+    python3 tools/project/shape_lq_sq.py list
+    python3 tools/project/shape_lq_sq.py analyze <sym>
+    python3 tools/project/shape_lq_sq.py emit <sym> <outdir>
+    python3 tools/project/shape_lq_sq.py batch --samples 22 --max-compiles 67
 
 证据等级：本工具输出的数字均为 `[实测]`。编译/比对串行执行并有硬上限（默认 60）。
 """
+
+# Private layout path (routebjp/config/matched_symbols.txt), do not rename.  私有布局路径（routebjp/config/matched_symbols.txt），勿改名。
 
 from __future__ import annotations
 
@@ -42,7 +80,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from at2_paths import (  # noqa: E402  布局无关的路径解析
+from at2_paths import (  # noqa: E402  layout-independent path resolution
     PROJECT_ROOT as REPO,
     PROJECT_ROOT as PROJ,
     PRIVATE_ROOT,
@@ -77,7 +115,7 @@ INS_RE = re.compile(r"/\*\s*[0-9A-Fa-f]+\s+[0-9A-Fa-f]+\s+[0-9A-Fa-f]+\s*\*/\s*(
 LABEL_RE = re.compile(r"^\s*(\.L[0-9A-Fa-f]+)\s*:\s*$")
 
 
-# ---------------------------------------------------------------- asm 解析
+# ---------------------------------------------------------------- asm parsing  asm 解析
 
 class Insn:
     __slots__ = ("m", "ops", "raw")
@@ -115,7 +153,10 @@ def block_bounds(sym):
 
 
 def parse_block(sym):
-    """返回 (insns, labels) —— labels: .Lxxx -> 其后的第一条指令下标。"""
+    """Return (insns, labels). labels maps .Lxxx to the index of the first instruction after it.
+
+    返回 (insns, labels) —— labels: .Lxxx -> 其后的第一条指令下标。
+    """
     p, gi, en = block_bounds(sym)
     if gi is None:
         return None, None
@@ -142,7 +183,7 @@ def target_s(sym):
     return PRE + "\n".join(L[gi:en + 1]) + "\n"
 
 
-# ---------------------------------------------------------------- D 池
+# ---------------------------------------------------------------- D pool  D 池
 
 def d_pool():
     matched = set()
@@ -172,7 +213,7 @@ def d_pool():
     return out
 
 
-# ---------------------------------------------------------------- 形状抽取
+# ---------------------------------------------------------------- shape extraction  形状抽取
 
 def _imm(tok):
     tok = tok.strip()
@@ -204,7 +245,10 @@ def mem_operand(ops):
 
 
 class V:
-    """寄存器值的符号表示：kind=i(int) / p(pointer,expr+off) / g(全局地址) / f(float) / v(v4si)。"""
+    """Symbolic value of a register: kind=i(int) / p(pointer,expr+off) / g(global address) / f(float) / v(v4si).
+
+    寄存器值的符号表示：kind=i(int) / p(pointer,expr+off) / g(全局地址) / f(float) / v(v4si)。
+    """
     __slots__ = ("kind", "expr", "off")
 
     def __init__(self, kind="i", expr=None, off=0):
@@ -217,7 +261,10 @@ class V:
 
 
 def _step(i, R):
-    """更新寄存器符号状态（只求基址表达式，不求完整数据流）。"""
+    """Update the symbolic register state. The code computes only the base expression, not the full data flow.
+
+    更新寄存器符号状态（只求基址表达式，不求完整数据流）。
+    """
     m, ops, rs = i.m, i.ops, i.regs()
     if not rs:
         return
@@ -273,6 +320,7 @@ def _step(i, R):
     elif m == "lwc1":
         pass
     else:
+        # Another instruction writes a register: the target register value is unknown
         # 其它写寄存器的指令：目标寄存器值未知
         if m not in ("sw", "sd", "sh", "sb", "swc1", "sq", "jr", "j", "b", "nop") and not m.startswith("b"):
             R[rs[0]] = V("i", None)
@@ -325,7 +373,7 @@ def trace_shapes(ins):
     return shapes
 
 
-# ---------------------------------------------------------------- 领域判定
+# ---------------------------------------------------------------- domain decision  领域判定
 
 INT_OK = {"addiu", "daddiu", "addu", "daddu", "ori", "andi", "xori", "lui", "sll", "srl", "sra",
           "dsll", "dsll32", "dsrl", "dsrl32", "dsra", "dsra32", "dsllv", "dsrlv", "sllv", "srlv", "srav", "and", "or",
@@ -355,13 +403,14 @@ def domain_check(ins, labels):
             return "fpu_branch"
         if m not in INT_OK | MEM_OK | FP_OK | CTL_OK | VEC_OK:
             return "unsupported:" + m
-    # 反向分支 = 循环
+    # A backward branch = a loop  反向分支 = 循环
     for k, i in enumerate(ins):
         if i.m.startswith("b") or i.m in ("beq", "bne", "j"):
             for lab in re.findall(r"\.L[0-9A-Fa-f]+", i.ops):
                 t = labels.get(lab)
                 if t is not None and t <= k:
                     return "loop"
+    # A nested branch (a branch inside the skipped range) makes a simple if-then expansion fail.
     # 嵌套分支（被跳过的区间里还有分支）会让简单 if-then 展开失效
     if has_branch:
         for k, i in enumerate(ins):
@@ -382,14 +431,25 @@ def domain_check(ins, labels):
     return None
 
 
-# ---------------------------------------------------------------- C 生成
+# ---------------------------------------------------------------- C generation  C 生成
 
 def _cint(v):
     return f"(-{-v})" if v < 0 else (str(v) if -9 <= v <= 9 else f"0x{v:x}")
 
 
 class Emitter:
-    """把目标块按「寄存器机器」逐条翻成 C；128 位访存/搬运走 v4si 形状。
+    """Translate the target block instruction by instruction as a "register machine". The 128-bit memory and move forms use the v4si shape.
+
+    Type model (the goal: ee-gcc 3.2 always compiles the output):
+      - A non-parameter register: char * (a memory base) or unsigned long (another integer).
+        A vector temporary gets its own name.
+      - Parameters arg0..arg3: void * (a memory base) or int (otherwise).
+      - Every mixed pointer/integer operation uses the explicit form
+        `(char *)(unsigned long)(E)`.
+      - $29 becomes the local byte buffer sb (GCC makes the frame). The code skips every
+        save and restore inside the frame.
+
+    把目标块按「寄存器机器」逐条翻成 C；128 位访存/搬运走 v4si 形状。
 
     类型模型（目标：ee-gcc 3.2 一定能编译）：
       - 非参数寄存器：char *（访存基址）/ unsigned long（其它整数）；向量临时单独命名；
@@ -415,7 +475,7 @@ class Emitter:
         self.n = 0
         self.stackbuf = False
 
-    # ---- 类型推断
+    # ---- Type inference  类型推断
     def infer(self):
         membase = set()
         for i in self.ins:
@@ -447,7 +507,10 @@ class Emitter:
         return n, ty
 
     def oexpr(self, r):
-        """整数上下文中的寄存器表达式（顺带声明只读寄存器）。"""
+        """Register expression in an integer context. This function also declares a read-only register.
+
+        整数上下文中的寄存器表达式（顺带声明只读寄存器）。
+        """
         if r == 0:
             return "0"
         self.ensure(r)
@@ -455,7 +518,7 @@ class Emitter:
             return f"(unsigned long){self.rn(r)}"
         return self.rn(r)
 
-    # ---- 地址
+    # ---- Address  地址
     def addr(self, ops):
         mo = mem_operand(ops)
         if mo is None:
@@ -476,7 +539,7 @@ class Emitter:
         self.ensure(base)
         return f"((char *)(unsigned long)({self.rn(base)}) + {off})" if off else f"((char *)(unsigned long)({self.rn(base)}))"
 
-    # ---- 主翻译
+    # ---- Main translation  主翻译
     def emit(self):
         ins, labels = self.ins, self.labels
         k, n = 0, len(ins)
@@ -590,7 +653,7 @@ class Emitter:
         s = f"(char *)(unsigned long)({e})"
         return f"{s} + {_cint(o)}" if o else s
 
-    # ---- 整数 / 调用
+    # ---- Integer / call  整数 / 调用
     def do_int(self, k):
         i, m, ops, rs = self.ins[k], self.ins[k].m, self.ins[k].ops, self.ins[k].regs()
         if not rs:
@@ -837,7 +900,7 @@ class Emitter:
             self.fp[fs[0]] = self.fp.get(fs[1], "0.0f")
             return
 
-    # ---- 组装
+    # ---- Assembly  组装
     def build(self):
         self.infer()
         self.ret_kind = "int" if any(
@@ -894,7 +957,7 @@ def refs_of(sym, ins):
     return out
 
 
-# ---------------------------------------------------------------- 编译 / 比对
+# ---------------------------------------------------------------- compile / compare  编译 / 比对
 
 def run(cmd, cwd=None):
     return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
@@ -933,12 +996,12 @@ def match(sym, tgt, cand, work):
 
 def cmd_list(args):
     pool = d_pool()
-    print(f"D 档：{len(pool)} 个 / {sum(p['size'] for p in pool)} B")
+    print(f"D class: {len(pool)} / {sum(p['size'] for p in pool)} B")
     kinds = collections.Counter()
     for p in pool:
         for s in trace_shapes(p["insns"]):
             kinds[s.kind] += 1
-    print("形状计数:", dict(kinds))
+    print("shape counts:", dict(kinds))
     dom = collections.Counter()
     for p in pool:
         ins, labels = p["insns"], parse_block(p["name"])[1]
@@ -1020,16 +1083,16 @@ def cmd_batch(args):
         else:
             reasons[r.split(":")[0]] += 1
             rbytes[r.split(":")[0]] += p["size"]
-    print("D 档全池：%d 个 / %d B；形状域内 %d 个 / %d B (%.1f%% fn, %.1f%% B)"
+    print("D class full pool: %d / %d B; in shape domain %d / %d B (%.1f%% fn, %.1f%% B)"
           % (len(pool), sum(p["size"] for p in pool), len(dom), sum(p["size"] for p in dom),
              100.0 * len(dom) / len(pool), 100.0 * sum(p["size"] for p in dom) / sum(p["size"] for p in pool)))
-    print("域外主因:", ", ".join("%s %d fn/%d B" % (k, reasons[k], rbytes[k]) for k, _ in reasons.most_common()))
+    print("top out-of-domain reasons:", ", ".join("%s %d fn/%d B" % (k, reasons[k], rbytes[k]) for k, _ in reasons.most_common()))
     samples = pick_samples(dom, args.samples)
     work = REPO / ".tmp/lqsq/work/batch"
     work.mkdir(parents=True, exist_ok=True)
     used = 0
     results = []
-    print(f"样本 {len(samples)} 个；编译上限 {args.max_compiles}")
+    print(f"samples {len(samples)}; compile limit {args.max_compiles}")
     for p in samples:
         sym, size = p["name"], p["size"]
         ins, labels = p["insns"], parse_block(p["name"])[1]
@@ -1078,21 +1141,24 @@ def cmd_batch(args):
     ok = [r for r in results if r["best"]]
     hit100 = [r for r in ok if r["best"][0] == 100.0]
     ge80 = [r for r in ok if r["best"][0] >= 80.0]
-    print("\n=== 汇总 ===")
-    print(f"样本 {len(results)}；有候选 {sum(1 for r in results if r['domain'] == 'in')}；"
-          f"有评分 {len(ok)}；100% {len(hit100)}；≥80% {len(ge80)}")
-    print(f"编译次数 {used}/{args.max_compiles}")
+    print("\n=== Summary ===")
+    print(f"samples {len(results)}; with a candidate {sum(1 for r in results if r['domain'] == 'in')}; "
+          f"with a score {len(ok)}; 100% {len(hit100)}; >=80% {len(ge80)}")
+    print(f"compile runs {used}/{args.max_compiles}")
     if ok:
         vals = sorted(r["best"][0] for r in ok)
-        print("best 中位 %.2f 均值 %.2f 最小 %.2f 最大 %.2f" %
+        print("best median %.2f mean %.2f min %.2f max %.2f" %
               (vals[len(vals) // 2], sum(vals) / len(vals), vals[0], vals[-1]))
         bc = collections.Counter(r["best"][1] for r in ok)
-        print("最佳档位分布:", dict(bc))
+        print("winning flag level distribution:", dict(bc))
     return 0
 
 
 def write_target_multi(syms, path):
-    """把多个 glabel..endlabel 块拼成一个目标 .s（仓库 auto_match_trivial.py 同款做法）。"""
+    """Join several glabel..endlabel blocks into one target .s (the same method as auto_match_trivial.py in this repository).
+
+    把多个 glabel..endlabel 块拼成一个目标 .s（仓库 auto_match_trivial.py 同款做法）。
+    """
     chunks = [PRE.rstrip("\n")]
     for sym in syms:
         p, gi, en = block_bounds(sym)
@@ -1104,7 +1170,10 @@ def write_target_multi(syms, path):
 
 
 def cmd_combined(args):
-    """合并单 TU 批量：N 个候选合成一个 .c，每档只调用 ee-gcc 1 次。"""
+    """Merged single-TU batch: join N candidates into one .c and call ee-gcc once per flag level.
+
+    合并单 TU 批量：N 个候选合成一个 .c，每档只调用 ee-gcc 1 次。
+    """
     pool = d_pool()
     dom, reasons, rbytes = [], collections.Counter(), collections.Counter()
     for p in pool:
@@ -1116,12 +1185,12 @@ def cmd_combined(args):
             reasons[r.split(":")[0]] += 1
             rbytes[r.split(":")[0]] += p["size"]
     allbytes = sum(p["size"] for p in pool)
-    print("D 档全池：%d 个 / %d B" % (len(pool), allbytes))
-    print("形状域内：%d 个 / %d B (%.1f%% fn, %.1f%% B)"
+    print("D class full pool: %d / %d B" % (len(pool), allbytes))
+    print("in shape domain: %d / %d B (%.1f%% fn, %.1f%% B)"
           % (len(dom), sum(p["size"] for p in dom), 100.0 * len(dom) / len(pool),
              100.0 * sum(p["size"] for p in dom) / allbytes))
-    print("域外主因：" + ", ".join("%s %d fn/%dB" % (k, reasons[k], rbytes[k])
-                                 for k, _ in reasons.most_common()))
+    print("top out-of-domain reasons: " + ", ".join("%s %d fn/%dB" % (k, reasons[k], rbytes[k])
+                                                    for k, _ in reasons.most_common()))
     names = [p["name"] for p in dom]
     S = set(names)
     callers = [n for n in names if refs_of(n, parse_block(n)[0]) & S]
@@ -1129,7 +1198,7 @@ def cmd_combined(args):
     if args.samples and args.samples < len(names):
         keep = {p["name"] for p in pick_samples([p for p in dom if p["name"] in set(names)], args.samples)}
         names = [n for n in names if n in keep]
-    print("合并 TU：%d 个符号；因同 TU 内互相调用而排除 %d 个：%s"
+    print("merged TU: %d symbols; excluded %d because of calls inside the same TU: %s"
           % (len(names), len(callers), ",".join(callers)))
     work = REPO / ".tmp/lqsq/work/combined"
     work.mkdir(parents=True, exist_ok=True)
@@ -1169,7 +1238,7 @@ def cmd_combined(args):
         for n in names:
             res[n][fl] = mp.get(n)
         got = sum(1 for n in names if mp.get(n) is not None)
-        print(f"{fl}: 评分 {got}/{len(names)}；100% {sum(1 for n in names if mp.get(n)==100.0)}")
+        print(f"{fl}: score {got}/{len(names)}; 100% {sum(1 for n in names if mp.get(n)==100.0)}")
     out = []
     for n in names:
         vals = {k: v for k, v in res[n].items() if v is not None}
@@ -1179,16 +1248,16 @@ def cmd_combined(args):
                     "by_flag": vals, "best": best, "best_flag": bestf})
     (work / "combined_result.json").write_text(json.dumps(out, indent=1))
     ok = [r for r in out if r["best"] is not None]
-    print("\n=== 合并 TU 汇总（%d 符号，%d 次 ee-gcc）===" % (len(names), used))
-    print("有评分 %d；100%% %d；≥90%% %d；≥80%% %d"
+    print("\n=== Merged TU summary (%d symbols, %d ee-gcc runs) ===" % (len(names), used))
+    print("with a score %d; 100%% %d; >=90%% %d; >=80%% %d"
           % (len(ok), sum(1 for r in ok if r["best"] == 100.0),
              sum(1 for r in ok if r["best"] >= 90), sum(1 for r in ok if r["best"] >= 80)))
     if ok:
         vals = sorted(r["best"] for r in ok)
-        print("best 中位 %.2f 均值 %.2f 最小 %.2f 最大 %.2f"
+        print("best median %.2f mean %.2f min %.2f max %.2f"
               % (vals[len(vals)//2], sum(vals)/len(vals), vals[0], vals[-1]))
         bc = collections.Counter(r["best_flag"] for r in ok)
-        print("最佳档位分布:", dict(bc))
+        print("winning flag level distribution:", dict(bc))
     return 0
 
 
@@ -1214,7 +1283,7 @@ def main():
     a.add_argument("--max-compiles", type=int, default=60)
     a.set_defaults(func=cmd_batch)
     a = sub.add_parser("combined")
-    a.add_argument("--samples", type=int, default=0, help="0 = 全部形状域内样本")
+    a.add_argument("--samples", type=int, default=0, help="0 = all samples in the shape domain")
     a.add_argument("--max-compiles", type=int, default=3)
     a.set_defaults(func=cmd_combined)
     args = ap.parse_args()

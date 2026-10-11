@@ -1,6 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""P1a 实验：Ghidra 伪 C 作为「匹配草稿」到底能不能用（闸门 G1）。
+"""P1a experiment: can Ghidra pseudo C serve as a "matching draft" (gate G1)?
+
+Method: take a stratified sample of unmatched functions (default 10 per class: B straight,
+D single call, E branch only, F branch plus call). For each function: extract the pseudo C,
+add the shim, compile with the ee-gcc default flags, and objdiff against the target block of
+the original function. Record "does the compile pass" and "the objdiff match rate". Then
+give the G1 conclusion.
+
+Decision line (long-term plan section 4/P1a): a hit rate of 15% or more for class B/D means
+that the project adopts pseudo C as a draft source. A rate below 5% means the project drops
+pseudo C.
+
+Usage:
+  python3 tools/project/p1a_pseudoc_probe.py [--per-class 10] [--classes B_straight,D_single_call]
+
+P1a 实验：Ghidra 伪 C 作为「匹配草稿」到底能不能用（闸门 G1）。
 
 做法：分层抽样未匹配函数（默认每类 10 个：B 直筒 / D 单调用 / E 仅分支 / F 分支+调用），
 对每个函数：抽伪 C → 补 shim → 用 ee-gcc 默认标志编译 → 与原函数目标块 objdiff。
@@ -9,8 +24,10 @@
 判定线（长期计划 §4/P1a）：B/D 类命中 ≥15% ⇒ 伪 C 作为草稿来源全面接入；<5% ⇒ 放弃伪 C。
 
 用法：
-  python3 routebjp/tools/p1a_pseudoc_probe.py [--per-class 10] [--classes B_straight,D_single_call]
+  python3 tools/project/p1a_pseudoc_probe.py [--per-class 10] [--classes B_straight,D_single_call]
 """
+
+# Private layout names (routebjp/build/m2, jp_m3_workqueue.tsv), do not rename.  私有布局名（routebjp/build/m2、jp_m3_workqueue.tsv），勿改名。
 
 from __future__ import annotations
 
@@ -24,7 +41,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ghidra_draft  # noqa: E402
 
-from at2_paths import (  # noqa: E402  布局无关的路径解析（说明见 at2_paths.py 顶部）
+from at2_paths import (  # noqa: E402  layout-independent path resolution (see the top of at2_paths.py)
     PROJECT_ROOT as ROOT,
     PRIVATE_ROOT,
     EVIDENCE_ROOT,
@@ -125,7 +142,7 @@ def main() -> int:
     ap.add_argument("--per-class", type=int, default=10)
     ap.add_argument("--classes", default="B_straight,D_single_call,E_branch_only,F_branch_call")
     ap.add_argument("--mode", choices=["smallest", "random"], default="smallest",
-                    help="smallest=取该类最小函数（上界）；random=无偏随机抽样（估真实命中率）")
+                    help="smallest=use the smallest functions of the class (upper bound); random=unbiased random sample (estimate the true hit rate)")
     ap.add_argument("--seed", type=int, default=20261003)
     args = ap.parse_args()
     classes = args.classes.split(",")
@@ -149,7 +166,7 @@ def main() -> int:
             out.append(rec)
 
     (BUILD / "result.json").write_text(json.dumps(out, indent=1, ensure_ascii=False), encoding="utf-8")
-    print(f"== P1a 伪 C 草稿实验（每类 {args.per_class} 个，共 {len(out)}）==")
+    print(f"== P1a pseudo C draft experiment ({args.per_class} per class, {len(out)} in total) ==")
     by = {}
     for rec in out:
         k = rec["class"]
@@ -163,13 +180,13 @@ def main() -> int:
             by[k]["best"] = max(by[k]["best"], m)
     tot_c = tot_m = tot_n = 0
     for k, v in by.items():
-        print(f"  {k:16s} n={v['n']:3d}  编译通过 {v['compile']:3d}  objdiff100 {v['match100']:3d}  最高 {v['best']:.1f}%")
+        print(f"  {k:16s} n={v['n']:3d}  compile pass {v['compile']:3d}  objdiff100 {v['match100']:3d}  best {v['best']:.1f}%")
         tot_c += v["compile"]; tot_m += v["match100"]; tot_n += v["n"]
-    print(f"  合计：编译通过 {tot_c}/{tot_n}；objdiff 100% = {tot_m}/{tot_n}")
+    print(f"  total: compile pass {tot_c}/{tot_n}; objdiff 100% = {tot_m}/{tot_n}")
     errs = Counter(r.get("compile_error", "")[:60] for r in out if not r.get("compile_ok"))
     for e, c in errs.most_common(5):
-        print(f"    编译失败 [{c}] {e}")
-    print(f"结果 JSON -> {BUILD / 'result.json'}")
+        print(f"    compile failure [{c}] {e}")
+    print(f"result JSON -> {BUILD / 'result.json'}")
     return 0
 
 

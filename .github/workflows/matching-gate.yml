@@ -86,12 +86,14 @@ jobs:
                   sys.exit(f"sha256 mismatch for {name}: {got} != {digest}")
               print(f"ok {name} {got}")
           PY
-          # 每个归档解到自己的目录：两个 ee-gcc 归档里都有 bin/ee-gcc，混在一起会互相覆盖
+          # Extract each archive into its own directory. Both ee-gcc archives contain
+          # bin/ee-gcc, so one archive would overwrite the other.
+          # 每个归档解到自己的目录：两个 ee-gcc 归档里都有 bin/ee-gcc，混在一起会互相覆盖。
           mkdir -p "$HOME/tc/e32" "$HOME/tc/cri" "$HOME/tc/bin" "$HOME/tc/ld"
           tar -xf "$HOME/tc/e32.tar.xz"        -C "$HOME/tc/e32"   # ee-gcc 3.2-ee-040921
-          tar -xf "$HOME/tc/ee-gcc2.96.tar.xz" -C "$HOME/tc/cri"   # ee-gcc 2.96（备用）
-          tar -xf "$HOME/tc/b10.tar.gz"        -C "$HOME/tc/bin"   # PS2 binutils（归档是扁平结构）
-          tar -xf "$HOME/tc/ld244.tar.xz"      -C "$HOME/tc/ld"    # Debian 2.44 的 ld + 依赖库
+          tar -xf "$HOME/tc/ee-gcc2.96.tar.xz" -C "$HOME/tc/cri"   # ee-gcc 2.96 (spare)
+          tar -xf "$HOME/tc/b10.tar.gz"        -C "$HOME/tc/bin"   # PS2 binutils (the archive is flat)
+          tar -xf "$HOME/tc/ld244.tar.xz"      -C "$HOME/tc/ld"    # the Debian 2.44 ld and its libraries
 
       # The build scripts read these variables. Without them they fall back to
       # the maintainer's home directory, which does not exist on the runner.
@@ -103,12 +105,13 @@ jobs:
           GCC="$HOME/tc/e32/bin/ee-gcc"
           LD="$HOME/tc/ld/bin/mips-linux-gnu-ld.bfd"
           LIBDIR="$HOME/tc/ld/lib/x86_64-linux-gnu"
+          # Shared libraries that ship with ee-gcc. The value is empty when the archive has none, and that is harmless.
           # ee-gcc 自带的共享库（若归档里没有就是空，不影响）
           for d in $(find "$HOME/tc/e32" -type d -name lib | head -5); do LIBDIR="$LIBDIR:$d"; done
           for f in "$BIN/mips-ps2-decompals-as" "$GCC" "$LD"; do
             [ -x "$f" ] || { echo "::error::toolchain component missing or not executable: $f"; exit 1; }
           done
-          export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:$LIBDIR"   # 本步也要用（下面要打印 ld 版本）
+          export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:$LIBDIR"   # this step needs the path too (it prints the ld version below)
           {
             echo "BINUTILS=$BIN"
             echo "GCC=$GCC"
@@ -140,7 +143,7 @@ jobs:
           echo "$(python3 -c 'import json;print(json.load(open("toolchain.lock.json"))["tools"]["objdiff-cli"]["sha256"])')  objdiff-cli" | sha256sum -c -
           chmod +x objdiff-cli
           echo "$PWD" >> "$GITHUB_PATH"
-          echo "$BINUTILS" >> "$GITHUB_PATH"      # as/objcopy/readelf 也要能被找到
+          echo "$BINUTILS" >> "$GITHUB_PATH"      # the step must also find as, objcopy, and readelf
 
       - name: Install splat (pinned, the version in toolchain.lock.json)
         if: env.HAS_ORIG == 'true'

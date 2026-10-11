@@ -33,7 +33,7 @@ make report         # 生成进度报告
 
 这是**混合编译器**构建：游戏代码用 `ee-gcc 3.2-ee-040921`，CRI 中间件用 `ee-gcc 2.96-ee-001003-1`。
 `config/compiler_map.tsv` 逐源写明用哪个（缺省 = 游戏编译器），两个路径来自 `EE_GCC` / `EE_GCC_CRI`（或 `GCC` / `GCC_CRI`）；
-走 CRI 编译器的源还需要在 `config/source_flags.tsv` 里给 `-G0`。
+走 CRI 编译器的源还需要在 `config/source_flags.tsv` 里给 `-G0`。配置文件说明见 [docs/CONFIG.zh-CN.md](CONFIG.zh-CN.md)。
 
 `make build` 先从零售可执行文件派生载荷，再切分载荷、汇编源码、链接结果，并在每个阶段后校验载荷 sha1。
 期望值是 `7cc42d275750600d1f232b2632447f77205f3fc0`。**差一个字节就停止**。
@@ -49,7 +49,7 @@ make check                       # 仓库自检；不需要原版可执行文件
 
 | workflow | 何时跑 | 做什么 |
 | --- | --- | --- |
-| `validate` | 每次 push、每个 PR、手动触发 | push 校验**发布记录**（`PUBLISHED.json`）、禁止材料、报告 schema 与基线；PR 允许任何改动，**只读** `progress/**` 与 `PUBLISHED.json`。见 [CONTRIBUTING.zh-CN.md](../CONTRIBUTING.zh-CN.md) |
+| `validate` | 每次 push、每个 PR、手动触发 | push 校验**发布记录**（`PUBLISHED.json`）、禁止材料、报告 schema 与基线；PR 允许任何改动，**只读** `progress/**` 与 `PUBLISHED.json`。本仓库自己的分支还可以重命名或删除文件；外部 fork 的 PR 仍只能新增或修改。见 [CONTRIBUTING.zh-CN.md](../CONTRIBUTING.zh-CN.md) |
 | `matching-gate` | 默认分支 push、同仓库 PR、手动触发 | 从私有伴生仓库取原版可执行文件与工具链，跑 `make build` / `make delta` / `make report`；**全部通过才发布 artifact** |
 
 `matching-gate` 需要 secret `ORIG_DEPLOY_KEY` 与变量 `PRIVATE_ORIG_REPO`。

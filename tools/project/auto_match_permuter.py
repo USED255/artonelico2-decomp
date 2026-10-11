@@ -1,6 +1,29 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""近失收敛：把 decomp-permuter 接进路线 B 的「objdiff 只收 100%」流水线（P1c）。
+"""Near-miss convergence: connect decomp-permuter to the route B pipeline ("objdiff keeps 100% only", P1c).
+
+Background (measured 2026-10-03):
+  The Ghidra draft batch leaves many **near-miss** functions (objdiff 80-99%). Of 8,111
+  unhit candidates, **1,197 are at 80% or more**, and 319 of those are at 95-99%. The
+  meaning and the structure of these functions already agree. The difference is the
+  **register allocation and the schedule**, which is the domain of decomp-permuter. One
+  example, `func_00277d50` (99.75%), converged to score 0 in about 580 permuter iterations.
+
+Method (for each candidate):
+  1. Make the directory build/m2/perm/<sym>/ with base.c (the Ghidra draft), target.o (the
+     assembled target block), compile.sh (fixed ee-gcc flags), and settings.toml
+     (func_name/compiler_type/objdump_command).
+  2. Run the permuter (`--stop-on-zero`, external timeout). It writes the converged source
+     to output-0-*/source.c.
+  3. **Verify the 100% result with objdiff**. The permuter score is only its own diff
+     penalty, so the tool does not use it as acceptance.
+  4. `--apply`: write src/matched/<sym>.c and merge the list (the same as the other matchers).
+
+Usage:
+  python3 tools/project/auto_match_permuter.py run --from routebjp/build/m2/ghidra_batch/result.json \
+      --min-match 95 --limit 30 --timeout 120 --jobs 3 [--apply]
+
+近失收敛：把 decomp-permuter 接进路线 B 的「objdiff 只收 100%」流水线（P1c）。
 
 背景（2026-10-03 实测）：
   Ghidra 草稿批留下大量**近失**函数（objdiff 80–99%）：8,111 个未命中候选里
@@ -16,9 +39,11 @@
   4. `--apply`：写入 src/matched/<sym>.c + 合并清单（与其它匹配器一致）。
 
 用法：
-  python3 routebjp/tools/auto_match_permuter.py run --from routebjp/build/m2/ghidra_batch/result.json \
+  python3 tools/project/auto_match_permuter.py run --from routebjp/build/m2/ghidra_batch/result.json \
       --min-match 95 --limit 30 --timeout 120 --jobs 3 [--apply]
 """
+
+# Private layout names (routebjp/build/m2/perm, routebjp/.tmp/permvenv, routebjp/build/llm_eval), do not rename.  私有布局名（routebjp/build/m2/perm、routebjp/.tmp/permvenv、routebjp/build/llm_eval），勿改名。
 
 from __future__ import annotations
 
@@ -42,17 +67,25 @@ from auto_match_trivial import (  # noqa: E402
     WORKQUEUE, GCC, AS, OBJDIFF, CFLAGS, M3_BEGIN, M3_END,
 )
 
-REPO = PRIVATE_ROOT or ROOT            # 私有工作面（.tmp/permvenv 在这里）
+REPO = PRIVATE_ROOT or ROOT            # Private work area (the .tmp/permvenv directory lives here)
 PERMUTER = Path(os.environ.get("PERMUTER", Path.home() / "eecc" / "decomp-permuter" / "permuter.py"))
 PYTHON = os.environ.get("PERMUTER_PYTHON", str(REPO / ".tmp" / "permvenv" / "bin" / "python"))
 WORK = WORK_ROOT / "m2" / "perm"
+# Output directory of the LLM candidate generator (written by `llm_match_eval.py`). It is a
+# private work state, at the same level as the m2c drafts.
+# Structure: <WORK_ROOT>/llm_eval/{llm,llm-fix}/<model>/<sym>/cand.c
 # LLM 候选生成器的产物目录（`llm_match_eval.py` 写；私有侧工作状态，与 m2c 草稿同级）。
 # 结构：<WORK_ROOT>/llm_eval/{llm,llm-fix}/<model>/<sym>/cand.c
 LLM_EVAL = WORK_ROOT / "llm_eval"
 
 
 def llm_drafts(sym: str) -> list[Path]:
-    """收集该符号的所有 LLM 草稿（多模型 / 多臂）。轮次 66 新增：把 LLM 近失当 permuter 种子。"""
+    """Collect all LLM drafts of this symbol (several models and several arms).
+
+    Added in round 66: use an LLM near-miss as a permuter seed.
+
+    收集该符号的所有 LLM 草稿（多模型 / 多臂）。轮次 66 新增：把 LLM 近失当 permuter 种子。
+    """
     if not LLM_EVAL.is_dir():
         return []
     return sorted(LLM_EVAL.glob(f"*/*/{sym}/cand.c"))
@@ -62,7 +95,10 @@ OBJDUMP = str(Path.home() / "eecc" / "ps2binutils" / "mips-ps2-decompals-objdump
 
 
 def _score(sym: str, src: Path, d: Path) -> float | None:
-    """编译 + objdiff，返回 match%；用于 best 前端挑草稿。"""
+    """Compile and run objdiff. Return the match percentage. Use it to select the best front end draft.
+
+    编译 + objdiff，返回 match%；用于 best 前端挑草稿。
+    """
     o = d / "score.o"
     r = subprocess.run([GCC, *CFLAGS, "-I", str(Path.home() / "eecc" / "m2c"), "-I", "include",
                         "-c", "-o", str(o), str(src)], cwd=str(ROOT), capture_output=True, text=True)
@@ -83,17 +119,27 @@ def _score(sym: str, src: Path, d: Path) -> float | None:
     return float(m) if m is not None else None
 
 
+# Flag matrix (P-32/P-40): try every -O level, every -G value, and every -f* option.
+# `-Os` became known as an effective level only on 2026-10-05.
 # 档位矩阵（P-32/P-40）：-O 级别 × -G × -f* 都要试；`-Os` 是 2026-10-05 才发现的有效档位。
 FLAG_SETS = [["-Os"], ["-O2"], ["-O1"], ["-O3"], ["-O2", "-G8"], ["-O1", "-G8"], ["-O3", "-G8"],
              ["-Os", "-G8"], ["-O2", "-fno-common"], ["-O2", "-fomit-frame-pointer"],
              ["-O1", "-fomit-frame-pointer"], ["-O2", "-fno-builtin"],
+             # R22 section 7-P4 (measured in round 70): the tail-call form lever j <-> jal+jr
+             # (see O-05), and address splitting
              # R22 §7-P4（轮次 70 实测有效）：尾调用形态杠杆 j ↔ jal+jr（见 O-05），以及地址拆分
              ["-O2", "-fno-optimize-sibling-calls"], ["-Os", "-fno-optimize-sibling-calls"],
              ["-O1", "-fno-optimize-sibling-calls"], ["-O2", "-mno-split-addresses"]]
 
 
 def best_flags(sym: str, src: Path, d: Path) -> list:
-    """在若干编译档里挑与目标最接近的一档。
+    """Select the flag level that is closest to the target.
+
+    Measurement on 2026-10-04 (a teammate found it and the Lead verified it): `-O1` brings
+    `func_001f72d0` from objdiff 75.2% directly to **100%**. All earlier batches used only
+    `-O2`, so nobody had explored the compile flag axis.
+
+    在若干编译档里挑与目标最接近的一档。
 
     2026-10-04 实测（由队友分析发现、Lead 复核）：`-O1` 能让 `func_001f72d0` 从 objdiff 75.2% 直接到 **100%**；
     此前所有批次都只用 `-O2`，编译档轴从未被探索。
@@ -159,7 +205,7 @@ def setup_dir(sym: str, frontend: str = "ghidra") -> Path | None:
                        cwd=str(ROOT), capture_output=True, text=True)
     if r.returncode:
         return None
-    fl = best_flags(sym, d / "base.c", d)          # 先挑编译档（见 best_flags）
+    fl = best_flags(sym, d / "base.c", d)          # Select the flag level first (see best_flags).
     (d / "compile.sh").write_text(
         "#!/bin/bash\nexec %s %s -falign-functions=4 -ffunction-sections -c -I %s/include -I %s \"$@\"\n"
         % (GCC, " ".join(fl), ROOT, Path.home() / "eecc" / "m2c"), encoding="utf-8")
@@ -167,7 +213,7 @@ def setup_dir(sym: str, frontend: str = "ghidra") -> Path | None:
     (d / "settings.toml").write_text(
         'func_name = "%s"\ncompiler_type = "gcc"\nobjdump_command = "%s -d"\n' % (sym, OBJDUMP),
         encoding="utf-8")
-    cf = d / "_cands.txt"          # best-of-both：按与目标的匹配率挑草稿
+    cf = d / "_cands.txt"          # best-of-both: select the draft by its match rate against the target
     if cf.is_file():
         scored = []
         for line in cf.read_text(encoding="utf-8").splitlines():
@@ -186,10 +232,15 @@ def setup_dir(sym: str, frontend: str = "ghidra") -> Path | None:
 
 
 def best_output(sym: str) -> Path | None:
-    """取 permuter 写出的最优（score 0）源码。"""
+    """Return the best source that the permuter wrote (score 0).
+
+    取 permuter 写出的最优（score 0）源码。
+    """
     d = WORK / sym
     cands = sorted(d.glob("output-0-*"))
     if not cands:
+        # Also accept an output with a lower score. A non-zero score does not go to the
+        # repository, but the code records it for a later analysis.
         # 也接受 score 更小的输出（非 0 不落地，但记录下来供后续分析）
         cands = sorted(d.glob("output-*"), key=lambda p: int(p.name.split("-")[1]) if p.name.split("-")[1].isdigit() else 999)
     for c in cands:
@@ -216,7 +267,14 @@ def _match_of(sym: str, c_o: Path, d: Path) -> float | None:
 
 
 def verify(sym: str, source: Path) -> float | None:
-    """复核一个候选源码，返回**所有编译档里的最好命中率**。
+    """Verify one candidate source and return the **best match rate over all compile flag levels**.
+
+    Warning, 2026-10-05: earlier code verified with the default CFLAGS (-O2) only, but the
+    permuter had converged at the level from best_flags() (-O1/-O3). The verification then
+    rejected a converged result by mistake. That is why only 18 of 66 score-0 results in
+    that batch passed.
+
+    复核一个候选源码，返回**所有编译档里的最好命中率**。
 
     ⚠️ 2026-10-05：此前只用默认 CFLAGS（-O2）复核，而 permuter 是在 best_flags() 选出的档位下收敛的
     （-O1/-O3）⇒ 收敛结果在复核时被误判。该批 66 个 score-0 里只有 18 个过检，就是这个原因。
@@ -224,6 +282,7 @@ def verify(sym: str, source: Path) -> float | None:
     d = WORK / sym
     best: float | None = None
     flags_list = list(FLAG_SETS)
+    # Try the flag level recorded for this candidate first (if one exists). Then try the other levels.
     # 先用本候选记录的档位（若有），再依次试其余档位
     try:
         rec = (d / "_flags.txt").read_text(encoding="utf-8").split("\t")[0].split()
@@ -257,6 +316,9 @@ def attempt(rec: dict, timeout: int, frontend: str = "ghidra") -> dict:
     for old in d.glob("output-*"):
         shutil.rmtree(old, ignore_errors=True)
     cmd = [PYTHON, str(PERMUTER), str(d), "-j1", "--stop-on-zero", "--quiet"]
+    # ⚠️ Use a **separate process group** and kill the whole group on a timeout. permuter.py
+    #    forks more child processes. A kill of the direct child only leaves orphans that
+    #    continue to use CPU. (Measured 2026-10-05: 9 orphans, the oldest ran for 29 hours.)
     # ⚠️ 必须用**独立进程组**并在超时时杀整组：permuter.py 会再 fork 子进程，
     #    只杀直接子进程会留下孤儿继续吃 CPU（2026-10-05 实测清出 9 个，最久的跑了 29 小时）。
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -272,6 +334,8 @@ def attempt(rec: dict, timeout: int, frontend: str = "ghidra") -> dict:
             proc.communicate(timeout=30)
         except Exception:
             pass
+    # The output-0-* file from the permuter decides convergence. The code does not parse
+    # stdout in --quiet mode.
     # 「是否收敛」以 permuter 自己写出的 output-0-* 为准（--quiet 下不解析 stdout）
     zero = any(p.name.startswith("output-0-") for p in d.glob("output-*"))
     out["permuter"] = "zero" if zero else "no_zero"
@@ -284,8 +348,12 @@ def attempt(rec: dict, timeout: int, frontend: str = "ghidra") -> dict:
 
 def do_apply(winners: dict):
     SRCDIR.mkdir(parents=True, exist_ok=True)
+    # Write the compile flag level of each converged candidate into source_flags.tsv. The key
+    # is the second list column, that is the symbol name without extension (see P-34). Without
+    # this, the build recompiles with the default -O2. The level then differs from the
+    # verified level, and the payload check fails.
     # 把每个候选收敛时的编译档写进 source_flags.tsv（键 = 清单第二列，即符号名，无扩展名；见 P-34），
-    # 否则构建会用默认 -O2 重编 ⇒ 与复核时的档位不一致 ⇒ 棘轮红。
+    # 否则构建会用默认 -O2 重编 ⇒ 与复核时的档位不一致 ⇒ 载荷校验红。
     fmap: dict[str, str] = {}
     if FLAGS_TSV.is_file():
         for line in FLAGS_TSV.read_text(encoding="utf-8").splitlines():
@@ -302,7 +370,7 @@ def do_apply(winners: dict):
             fmap[sym] = rec
         elif rec == "-O2" and sym in fmap:
             del fmap[sym]
-    FLAGS_TSV.write_text("\n".join(["# 格式：<source-basename>\t<extra-cflags>"]
+    FLAGS_TSV.write_text("\n".join(["# <source-basename><TAB><extra-cflags>  See docs/CONFIG.md"]
                                      + [f"{k}\t{fmap[k]}" for k in sorted(fmap)]) + "\n", encoding="utf-8")
     text = MATCHED_LIST.read_text(encoding="utf-8")
     pre = text.split(M3_BEGIN)[0].rstrip("\n") if M3_BEGIN in text else text.rstrip("\n")
@@ -322,7 +390,7 @@ def do_apply(winners: dict):
     if post:
         body = body.rstrip("\n") + "\n" + post
     MATCHED_LIST.write_text(body.rstrip("\n") + "\n", encoding="utf-8")
-    print(f"apply: 写 {len(winners)} 个 C 源；清单 M3 段 {n0} -> {len(existing)}")
+    print(f"apply: wrote {len(winners)} C sources; matching batch section {n0} -> {len(existing)}")
 
 
 def main() -> int:
@@ -341,6 +409,8 @@ def main() -> int:
     args = ap.parse_args()
 
     if args.mode == "apply-workdir":
+        # Harvest from build/m2/perm/*/output-0-*/source.c. This form commits the converged
+        # results while a batch is still running.
         # 从 build/m2/perm/*/output-0-*/source.c 收割（可在批量跑一半时落地已收敛的结果）
         winners = {}
         for d in sorted(WORK.glob("*")):
@@ -352,13 +422,14 @@ def main() -> int:
             if m == 100.0:
                 winners[sym] = {"source": str(outs[-1] / "source.c"), "objdiff": m}
             print(f"  {sym}: objdiff={m}")
-        print(f"工作目录收割：{len(winners)} 个 objdiff 100%")
+        print(f"workdir harvest: {len(winners)} at objdiff 100%")
         if args.apply and winners:
             do_apply(winners)
         (WORK / "accepted.json").write_text(json.dumps(winners, indent=1, ensure_ascii=False), encoding="utf-8")
         return 0
 
     data = json.loads(Path(args.src_json).read_text(encoding="utf-8"))
+    # Skip a symbol that is already in the list. A second run only wastes CPU.
     # 已在清单里的符号跳过（重复跑只是浪费 CPU）
     have = set()
     if MATCHED_LIST.is_file():
@@ -378,7 +449,7 @@ def main() -> int:
     sel.sort(key=lambda r: -r["match"])
     if args.limit:
         sel = sel[:args.limit]
-    print(f"== 近失收敛：候选 {len(sel)} 个（前端 {args.frontend}，match ∈ [{args.min_match},{args.max_match})，超时 {args.timeout}s，并行 {args.jobs}）==")
+    print(f"== near-miss convergence: {len(sel)} candidates (frontend {args.frontend}, match in [{args.min_match},{args.max_match}), timeout {args.timeout}s, parallel {args.jobs}) ==")
     WORK.mkdir(parents=True, exist_ok=True)
 
     results = []
@@ -387,13 +458,13 @@ def main() -> int:
             results.append(res)
             if i % 5 == 0 or i == len(sel):
                 ok = sum(1 for x in results if x.get("objdiff") == 100.0)
-                print(f"   ... {i}/{len(sel)}（objdiff 100% = {ok}）")
+                print(f"   ... {i}/{len(sel)} (objdiff 100% = {ok})")
     winners = {r["sym"]: r for r in results if r.get("objdiff") == 100.0}
     (WORK / "result.json").write_text(json.dumps(results, indent=1, ensure_ascii=False), encoding="utf-8")
     c = Counter(r["permuter"] for r in results)
-    print("  permuter 状态:", dict(c))
+    print("  permuter status:", dict(c))
     if sel:
-        print(f"  命中：{len(winners)}/{len(sel)} = {100.0*len(winners)/len(sel):.1f}%")
+        print(f"  hits: {len(winners)}/{len(sel)} = {100.0*len(winners)/len(sel):.1f}%")
     if args.apply and winners:
         do_apply(winners)
     return 0

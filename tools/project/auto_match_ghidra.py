@@ -1,22 +1,46 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""M3 批量匹配：Ghidra 伪 C 草稿 → 编译 → objdiff 裁决 → 落地（P1a/P1d 的生产版）。
+"""Matching batch: Ghidra pseudo C draft -> compile -> objdiff decision -> commit (the production version of P1a/P1d).
+
+Flow (for each candidate symbol):
+  1. Extract the pseudo C of the function from
+     `routebjp/build/ghidra/SLPS_258.19.decomp.c`. Add the shim. Change `FUN_x` back to our
+     symbol name. Change `DAT_x/_DAT_x/PTR_..._x` back to `D_<HEX>`. Without that, the
+     relocation name does not agree.
+  2. Compile with the given flag level (default `-O2`; an optional `-O1` fallback).
+  3. Run objdiff against the target block of `asm/cod/<sym>.s`. Keep **100% only**.
+  4. `--apply`: write `src/matched/<sym>.c`, merge the matching batch section of the list,
+     and update `config/source_flags.tsv`.
+
+Rule (the same as the existing pipeline): the code commits only objdiff == 100.0. After the
+commit, the mixed build payload check is the backstop.
+G1 measurement (docs/R11 section 4, 2026-10-03): 60 random cases (15 each of B/D/E/F) gave
+87% compile and 13.3% objdiff 100%. Class B and D gave 27%/20%, above the 15% decision line.
+The project therefore accepts the pseudo C draft route.
+
+Usage:
+  python3 tools/project/auto_match_ghidra.py run [--classes B_straight,D_single_call,...] \
+      [--limit N] [--flags "-O2,-O1"] [--jobs 4] [--apply]
+
+matching batch 批量匹配：Ghidra 伪 C 草稿 → 编译 → objdiff 裁决 → 落地（P1a/P1d 的生产版）。
 
 流程（每个候选符号）：
   1. 从 `routebjp/build/ghidra/SLPS_258.19.decomp.c` 抽该函数的伪 C，补 shim、
      把 `FUN_x` 改回我们的符号名、`DAT_x/_DAT_x/PTR_..._x` 改回 `D_<HEX>`（否则重定位名不匹配）；
   2. 用指定编译档（默认 `-O2`，可选追加 `-O1` 回退）编译；
   3. 与 `asm/cod/<sym>.s` 的目标块做 objdiff，**只收 100%**；
-  4. `--apply`：写入 `src/matched/<sym>.c`、合并清单 M3 段、维护 `config/source_flags.tsv`。
+  4. `--apply`：写入 `src/matched/<sym>.c`、合并清单 matching batch 段、维护 `config/source_flags.tsv`。
 
-判据（与既有流水线一致）：objdiff == 100.0 才落地；落地后由 hybrid 载荷棘轮兜底。
+判据（与既有流水线一致）：objdiff == 100.0 才落地；落地后由 mixed build 载荷校验兜底。
 G1 实测（docs/R11 §4，2026-10-03）：随机 60 例（B/D/E/F 各 15）编译 87%、objdiff 100% 13.3%；
 B/D 两类 27%/20%，高于 15% 判定线 ⇒ 采信伪 C 草稿路线。
 
 用法：
-  python3 routebjp/tools/auto_match_ghidra.py run [--classes B_straight,D_single_call,...] \
+  python3 tools/project/auto_match_ghidra.py run [--classes B_straight,D_single_call,...] \
       [--limit N] [--flags "-O2,-O1"] [--jobs 4] [--apply]
 """
+
+# Private layout names (routebjp/build/ghidra, routebjp/build/m2, jp_m3_workqueue.tsv), do not rename.  私有布局名（routebjp/build/ghidra、routebjp/build/m2、jp_m3_workqueue.tsv），勿改名。
 
 from __future__ import annotations
 
@@ -38,8 +62,11 @@ from auto_match_trivial import (  # noqa: E402
 )
 
 BUILD = WORK_ROOT / "m2" / "ghidra_batch"
-FLAGS_FILE = ROOT / "config" / "source_flags.tsv"   # 配置在项目根（公开仓库）
+FLAGS_FILE = ROOT / "config" / "source_flags.tsv"   # The config lives at the project root (public repo)
 PREAMBLE = '.include "macro.inc"\n\n.set noat\n.set noreorder\n\n.section .text, "ax"\n'
+# Do not skip G_mmi: the r5900 language of Ghidra expands lq/sq into 4 32-bit memory
+# accesses. Measurement shows that many MMI functions give **plain C**
+# (see out/evidence/jp_m3_p1_result.txt), so the batch tries them too.
 # G_mmi 不跳过：Ghidra 的 r5900 语言把 lq/sq 展开成 4 次 32 位访存，实测不少
 # MMI 函数能出**普通 C**（见 out/evidence/jp_m3_p1_result.txt），值得一起试。
 SKIP_CLASSES = {"jtbl", "gp_rel", "no_asm", "unknown"}
@@ -70,6 +97,8 @@ def candidates(classes: set[str], limit: int):
     for r in rows():
         if r["name"] in have:
             continue
+        # A named class does not use the default skip list (for an experiment outside the
+        # mechanism, such as gp_rel or jtbl)
         # 显式点名类别时不套用默认跳过表（用于 gp_rel/jtbl 这类"机制外"的实验）
         if classes:
             if r["class"] not in classes:
@@ -92,8 +121,12 @@ def probe(rec: dict, flags_sets: list[list[str]]) -> dict:
     d.mkdir(parents=True, exist_ok=True)
     res = {"sym": sym, "class": rec["class"], "size": int(rec["size"]), "flags": "", "match": None,
            "compile_ok": False}
+    # gp_rel class: read the symbol of %gp_rel(D_x) from the assembly, and let the draft
+    # write it as a **weak definition** (in .sdata/.sbss). Then GCC uses gp-relative
+    # addressing. These sections are not in the mixed link script, so the link discards them
+    # with /DISCARD/. The storage still comes from the original data object.
     # gp_rel 类：从汇编里取 %gp_rel(D_x) 的符号，让草稿把它们写成 **weak 定义**（放在 .sdata/.sbss），
-    # 这样 GCC 才发 gp 相对寻址；这些段不在 hybrid 链接脚本里 → 被 /DISCARD/ 丢弃，存储仍来自原数据对象。
+    # 这样 GCC 才发 gp 相对寻址；这些段不在 mixed 链接脚本里 → 被 /DISCARD/ 丢弃，存储仍来自原数据对象。
     gprel = None
     if rec.get("class") == "gp_rel":
         asm = (ROOT / "asm" / "cod" / f"{sym}.s").read_text(encoding="utf-8", errors="replace")
@@ -175,24 +208,23 @@ def do_apply(winners: dict):
                 flags[a[0]] = " ".join(a[1:])
     for sym, info in winners.items():
         fl = info["flags"]
-        if fl and fl != "-O2":          # -O2 是默认档，不写进标志表（避免噪声）
+        if fl and fl != "-O2":          # -O2 is the default level. Do not write it to the flag table (noise).
             flags[sym] = fl
         else:
             flags.pop(sym, None)
-    out = ["# 每源额外编译标志（build_hybrid.sh 读取；-O2 为默认，不写）",
-           "# 格式：<source-basename>\t<extra-cflags>"]
+    out = ["# <source-basename><TAB><extra-cflags>  See docs/CONFIG.md"]
     out += [f"{s}\t{flags[s]}" for s in sorted(flags)]
     FLAGS_FILE.write_text("\n".join(out) + "\n", encoding="utf-8")
-    print(f"apply: 写 {len(winners)} 个 C 源；清单 M3 段 {n0} -> {len(existing)}；标志表 {len(flags)} 条")
+    print(f"apply: wrote {len(winners)} C sources; matching batch section {n0} -> {len(existing)}; flag table {len(flags)} entries")
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("mode", nargs="?", default="run", choices=["run", "apply-only"])
-    ap.add_argument("--classes", default="", help="逗号分隔；空=所有非跳过类")
+    ap.add_argument("--classes", default="", help="comma-separated. Empty = all classes except the skip list")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--flags", default="Os,O2,O1,O3,O2 -G8,O1 -G8,O3 -G8,O2 -fno-common,O2 -fomit-frame-pointer,O1 -fomit-frame-pointer,O2 -fno-builtin,O2 -fno-optimize-sibling-calls,Os -fno-optimize-sibling-calls,O2 -mno-split-addresses",
-                    help="逗号分隔的编译档候选（**不要带前导 -**，如 O2,O1）。P-32：编译档轴必须探索")
+                    help="comma-separated compile flag candidates (**no leading -**, for example O2,O1). P-32: the compile flag axis must be explored")
     ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--apply", action="store_true")
     args = ap.parse_args()
@@ -200,11 +232,12 @@ def main() -> int:
     if args.mode == "apply-only":
         res = json.loads((BUILD / "result.json").read_text(encoding="utf-8"))
         winners = {r["sym"]: r for r in res if r.get("match") == 100.0}
-        print(f"apply-only：从 result.json 取 {len(winners)} 个 objdiff 100% 的符号")
+        print(f"apply-only: {len(winners)} symbols at objdiff 100% from result.json")
         do_apply(winners)
         return 0
 
     classes = {c for c in args.classes.split(",") if c}
+    # Each comma-separated item is one flag group. A group can hold spaces (for example "O2 -G8").
     # 每个逗号分隔项 = 一组标志，组内可含空格（如 "O2 -G8"）
     flags_sets = []
     for item in args.flags.split(","):
@@ -217,7 +250,7 @@ def main() -> int:
             toks.append(tok if tok.startswith("-") else "-" + tok)
         flags_sets.append(toks)
     cands = candidates(classes, args.limit)
-    print(f"== Ghidra 草稿批：候选 {len(cands)} 个（编译档 {args.flags}）==")
+    print(f"== Ghidra draft batch: {len(cands)} candidates (flag levels {args.flags}) ==")
     BUILD.mkdir(parents=True, exist_ok=True)
 
     results = []
@@ -225,7 +258,7 @@ def main() -> int:
         for i, res in enumerate(pool.map(lambda r: probe(r, flags_sets), cands), 1):
             results.append(res)
             if i % 200 == 0:
-                print(f"   ... {i}/{len(cands)}（已命中 {sum(1 for x in results if x.get('match') == 100.0)}）")
+                print(f"   ... {i}/{len(cands)} (hits so far {sum(1 for x in results if x.get('match') == 100.0)})")
 
     winners = {r["sym"]: r for r in results if r.get("match") == 100.0}
     (BUILD / "result.json").write_text(json.dumps(results, indent=1, ensure_ascii=False), encoding="utf-8")
@@ -235,17 +268,17 @@ def main() -> int:
         v["n"] += 1
         v["compile"] += 1 if r.get("compile_ok") else 0
         v["hit"] += 1 if r.get("match") == 100.0 else 0
-    print("  " + f"{'class':16s}{'n':>7}{'编译':>8}{'命中':>7}{'命中率':>8}")
+    print("  " + f"{'class':16s}{'n':>7}{'compile':>8}{'hit':>7}{'rate':>8}")
     for k in sorted(by):
         v = by[k]
         print(f"  {k:16s}{v['n']:>7}{v['compile']:>8}{v['hit']:>7}{(100.0*v['hit']/v['n']):>7.1f}%")
     n = len(results)
-    print(f"  合计：候选 {n}，编译通过 {sum(1 for r in results if r.get('compile_ok'))}，"
-          f"objdiff 100% = {len(winners)}（{100.0*len(winners)/max(n,1):.1f}%）")
+    print(f"  total: candidates {n}, compile pass {sum(1 for r in results if r.get('compile_ok'))}, "
+          f"objdiff 100% = {len(winners)} ({100.0*len(winners)/max(n,1):.1f}%)")
     fl = Counter(w["flags"] for w in winners.values())
     for k, v in fl.most_common():
-        print(f"    命中档位 {k or '-O2(默认)'}: {v}")
-    print(f"结果 JSON -> {BUILD / 'result.json'}")
+        print(f"    winning flag level {k or '-O2(default)'}: {v}")
+    print(f"result JSON -> {BUILD / 'result.json'}")
     if args.apply:
         do_apply(winners)
     return 0

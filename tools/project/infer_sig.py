@@ -1,6 +1,40 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""签名推断原型：从 `jal <sym>` 调用点恢复被调用者的参数/返回类型，并可把签名替换进 m2c 草稿。
+"""Signature inference prototype: recover the parameter and return types of a callee at `jal <sym>` call sites.
+
+The tool can also write the signature into an m2c draft.
+
+Motivation (2026-10-05, route B / task-3):
+  [docs/R16-F类结构阻塞分析.md](../docs/R16-F类结构阻塞分析.md) concludes that the F class
+  <80% pool has "a similar length, but a different equivalent instruction selection or
+  allocation". In the first difference, 85% falls on the stack frame or the saved
+  registers. One class of **mechanically fixable** causes is a **wrong function signature
+  (parameter or return type)**. Two examples: m2c infers a `u64` parameter for
+  `LibgccCommon_71` (the target uses `srl`/`sw`, so the parameter is 32-bit), and a
+  variable in `func_00303730` becomes unsigned (the target uses `slti`, so the compiler
+  makes `sltiu`). The m2c tool sees only the **function body**. This tool adds the
+  **call site** evidence.
+
+What this tool does:
+  1. Scan every `jal <sym>` in `routebjp/asm/cod/*.s` (including the noreorder form with
+     a delay slot). At each call site, look back at how `$a0` to `$a3` are set. Then look
+     forward at how `$v0` is used.
+  2. Print a **suggested signature** (return type, each parameter type, confidence, and
+     the evidence per call site).
+  3. `replace_signature()` and `suggest_and_replace()` write the suggestion back into the
+     m2c draft. They change **only the types** and keep the parameter names and the
+     parameter count, so the `argN` references in the body stay valid.
+
+Evidence classes: the call site evidence is `[measured]` (read from asm). The inferred
+types are `[inferred]`. The tool makes no correctness claim. objdiff decides a hit.
+
+Usage:
+  python3 tools/project/infer_sig.py scan <sym> [--json]
+  python3 tools/project/infer_sig.py scan-file <sym> <draft.c>      # show suggestion vs current
+  python3 tools/project/infer_sig.py apply <sym> <in.c> <out.c>     # write the replaced draft
+  python3 tools/project/infer_sig.py batch --classes F_branch_call,D2_multi_call [--limit N]
+
+签名推断原型：从 `jal <sym>` 调用点恢复被调用者的参数/返回类型，并可把签名替换进 m2c 草稿。
 
 动机（2026-10-05，路线 B / task-3）：
   [docs/R16-F类结构阻塞分析.md](../docs/R16-F类结构阻塞分析.md) 的结论是：F 类 <80% 池
@@ -21,11 +55,13 @@
 工具本身不做正确性断言——是否命中由 objdiff 决定。
 
 用法：
-  python3 routebjp/tools/infer_sig.py scan <sym> [--json]
-  python3 routebjp/tools/infer_sig.py scan-file <sym> <draft.c>      # 显示 建议 vs 现状 的差异
-  python3 routebjp/tools/infer_sig.py apply <sym> <in.c> <out.c>     # 写替换后的草稿
-  python3 routebjp/tools/infer_sig.py batch --classes F_branch_call,D2_multi_call [--limit N]
+  python3 tools/project/infer_sig.py scan <sym> [--json]
+  python3 tools/project/infer_sig.py scan-file <sym> <draft.c>      # 显示 建议 vs 现状 的差异
+  python3 tools/project/infer_sig.py apply <sym> <in.c> <out.c>     # 写替换后的草稿
+  python3 tools/project/infer_sig.py batch --classes F_branch_call,D2_multi_call [--limit N]
 """
+
+# Private layout names (routebjp/asm/cod, routebjp/build/m2c, jp_m3_workqueue.tsv), do not rename.  私有布局名（routebjp/asm/cod、routebjp/build/m2c、jp_m3_workqueue.tsv），勿改名。
 
 from __future__ import annotations
 
@@ -35,17 +71,18 @@ import re
 import sys
 from pathlib import Path
 
-from at2_paths import PROJECT_ROOT as ROOT, PRIVATE_ROOT, WORK_ROOT, ASMDIR  # noqa: E402  布局无关
+from at2_paths import PROJECT_ROOT as ROOT, PRIVATE_ROOT, WORK_ROOT, ASMDIR  # noqa: E402  layout independent
 
-REPO = PRIVATE_ROOT or ROOT                            # 私有工作面
+REPO = PRIVATE_ROOT or ROOT                            # Private work area
 ASM = ASMDIR
 CACHE = REPO / ".tmp" / "sig-analysis" / "callsites.json"
 
-# --- 汇编行解析 -------------------------------------------------------------
+# --- Assembly line parsing  汇编行解析 --------------------------------------
 INSTR_RE = re.compile(r"^\s*/\*\s*(?:[0-9A-Fa-f]+\s+)+\*/\s*([a-z][a-z0-9._]*)\s*(.*)$")
 LABEL_RE = re.compile(r"^\s*([.A-Za-z_][\w.]*)\s*:")
 GLOB_RE = re.compile(r"^\s*(glabel|endlabel)\s+(\S+)")
 
+# Mnemonics that write ops[0] (the GPR destination). All other mnemonics read their operands.
 # 写入 ops[0]（GPR 目标）的助记符；其余按「读 ops」处理
 _WRITE0 = {
     "addiu", "addi", "addu", "add", "subu", "sub", "daddu", "dadd", "dsubu", "dsub",
@@ -55,6 +92,7 @@ _WRITE0 = {
     "movz", "movn", "mfhi", "mflo", "mfc1", "cfc1", "mul", "madd", "maddu", "msub", "msubu",
     "max", "min", "plzcw", "pabsh", "por", "pand", "pxor", "pnor",
 }
+# Mnemonics that write no GPR at all (branch, jump, store, NOP, float move)
 # 完全不写 GPR 的助记符（分支/跳转/存储/NOP/浮点搬运）
 _NO_WRITE0 = {
     "sb", "sh", "sw", "sd", "sq", "swl", "swr", "sdl", "sdr",
@@ -77,7 +115,10 @@ def split_ops(s: str) -> list[str]:
 
 
 def regnum(tok: str) -> int | None:
-    """`$4` / `$a0` → 寄存器号；不是寄存器返回 None。"""
+    """Turn `$4` or `$a0` into a register number. Return None for a non-register token.
+
+    `$4` / `$a0` → 寄存器号；不是寄存器返回 None。
+    """
     m = re.fullmatch(r"\$(\d{1,2})", tok)
     if m:
         n = int(m.group(1))
@@ -111,7 +152,7 @@ def imm_of(op: str) -> int | None:
     return int(m.group(1)) if m else None
 
 
-# --- 文件解析 ---------------------------------------------------------------
+# --- File parsing  文件解析 -------------------------------------------------
 class Parsed:
     __slots__ = ("name", "items", "labels")
 
@@ -143,7 +184,7 @@ def parse_file(path: Path) -> Parsed:
     return Parsed(path.name, items)
 
 
-# --- 索引：callee -> [(file, lineno)] --------------------------------------
+# --- Index: callee -> [(file, lineno)]  索引：callee -> [(file, lineno)] -----
 def build_index(force: bool = False) -> dict[str, list]:
     if not force and CACHE.is_file():
         try:
@@ -162,7 +203,7 @@ def build_index(force: bool = False) -> dict[str, list]:
     return idx
 
 
-# --- 被调用者自身：arity + 内部类型线索 ------------------------------------
+# --- The callee itself: arity and internal type hints  被调用者自身：arity + 内部类型线索 ---
 def callee_body(sym: str) -> list[dict] | None:
     f = ASM / f"{sym}.s"
     if not f.is_file():
@@ -181,7 +222,12 @@ def callee_body(sym: str) -> list[dict] | None:
 
 
 def arity_and_hints(sym: str) -> tuple[int, dict]:
-    """返回 (arity, hints)。arity = 在**被写之前**被读到的最大参数寄存器号+1。
+    """Return (arity, hints). arity = the highest parameter register number read before a write, plus 1.
+
+    hints: {'signed':bool|None, 'wide64':bool, 'float':bool}. These are weak hints from the
+    function body.
+
+    返回 (arity, hints)。arity = 在**被写之前**被读到的最大参数寄存器号+1。
 
     hints: {'signed':bool|None, 'wide64':bool, 'float':bool} —— 来自函数体内部的弱线索。
     """
@@ -195,7 +241,7 @@ def arity_and_hints(sym: str) -> tuple[int, dict]:
         if it["kind"] != "ins":
             continue
         mnem, ops = it["mnem"], it["ops"]
-        # 读寄存器位置
+        # Read register positions  读寄存器位置
         if mnem in _WRITE0:
             reads, dest = ops[1:], (ops[0] if ops else None)
         elif mnem in _NO_WRITE0:
@@ -223,16 +269,18 @@ def arity_and_hints(sym: str) -> tuple[int, dict]:
             hint["wide64"] = True
         if mnem in ("mtc1", "cvt.s.w", "cvt.d.w", "lwc1", "swc1", "add.s", "sub.s", "mul.s", "div.s", "mov.s"):
             hint["float"] = True
-        # 应用写入
+        # Apply the writes  应用写入
         if dest is not None:
             n = regnum(dest) if isinstance(dest, str) else None
             if n is not None:
                 written.add(n)
+    # maxp is a **register number** (4..7). arity = the count of parameter registers that
+    # the code really reads.
     # maxp 是**寄存器号**（4..7）；arity = 真正被读到的参数个数
     return (maxp - 3 if maxp >= 4 else 0), hint
 
 
-# --- 调用点分析 -------------------------------------------------------------
+# --- Call site analysis  调用点分析 -----------------------------------------
 def _is_barrier(it: dict) -> bool:
     if it["kind"] in ("label", "glabel", "endlabel"):
         return True
@@ -243,7 +291,10 @@ def _is_barrier(it: dict) -> bool:
 
 
 def _alias_info(items: list[dict], idx: int) -> tuple[str, str] | None:
-    """判断 items[idx] 是否是 `dest = src` 的搬运；返回 (dest_reg, src_reg)。"""
+    """Report whether items[idx] is the move `dest = src`. Return (dest_reg, src_reg).
+
+    判断 items[idx] 是否是 `dest = src` 的搬运；返回 (dest_reg, src_reg)。
+    """
     it = items[idx]
     m, ops = it["mnem"], it["ops"]
     if m in ("daddu", "addu", "or") and len(ops) >= 3 and regnum(ops[1]) == 0:
@@ -255,7 +306,10 @@ def _alias_info(items: list[dict], idx: int) -> tuple[str, str] | None:
 
 def _prov_backward(items: list[dict], j: int, reg: int, depth: int = 0,
                    memo: dict | None = None) -> dict:
-    """从 jal（items[j]）往前找 reg 的最近一次写入并分类。"""
+    """Find the most recent write of reg before the jal at items[j], and classify it.
+
+    从 jal（items[j]）往前找 reg 的最近一次写入并分类。
+    """
     if depth > 6:
         return {"kind": "unk"}
     seen = 0
@@ -265,6 +319,7 @@ def _prov_backward(items: list[dict], j: int, reg: int, depth: int = 0,
         if it["kind"] in ("label", "glabel"):
             break
         if it["kind"] == "ins" and _is_barrier(it):
+            # Branch or jal: its delay slot is at i+1 (already scanned). A jal defines $2/$31.
             # 分支/jal：其 delay slot 在 i+1（已扫过）；jal 会定义 $2/$31
             if it["mnem"] == "jal" and it["ops"] and reg == 2:
                 callee = it["ops"][0].strip()
@@ -282,12 +337,14 @@ def _prov_backward(items: list[dict], j: int, reg: int, depth: int = 0,
             elif m in ("jal", "jalr"):
                 dest = 31 if reg == 31 else None
             if dest == reg:
+                # In-place operation (dest == source register): do not stop the backward
+                # search. Continue to the previous write of this register.
                 # 原地运算（dest == 源寄存器）：不终止回溯，继续往前找该寄存器的前一次写入
                 if n >= 2 and regnum(ops[1]) == reg:
                     i -= 1
                     seen += 1
                     continue
-                # 精确分类
+                # Exact classification  精确分类
                 if m in ("addiu", "addi", "ori", "andi", "xori") and n >= 3:
                     s = regnum(ops[1])
                     imm = imm_of(ops[2])
@@ -336,7 +393,10 @@ def _prov_backward(items: list[dict], j: int, reg: int, depth: int = 0,
 
 
 def _prov_forward_v0(items: list[dict], j: int) -> dict:
-    """jal 之后 $v0 怎么用（跳过 delay slot）。"""
+    """Report how the code uses $v0 after the jal (the delay slot is skipped).
+
+    jal 之后 $v0 怎么用（跳过 delay slot）。
+    """
     i = j + 2
     seen = 0
     while i < len(items) and seen < 16:
@@ -349,7 +409,7 @@ def _prov_forward_v0(items: list[dict], j: int) -> dict:
                 return {"use": "ret"}
             if m in _WRITE0 and ops and regnum(ops[0]) == 2:
                 return {"use": "overwritten"}
-            # $2 出现在哪里
+            # Where $2 appears  $2 出现在哪里
             positions = []
             for k, o in enumerate(ops):
                 if regnum(o) == 2:
@@ -377,7 +437,10 @@ def _prov_forward_v0(items: list[dict], j: int) -> dict:
 
 
 def _type_of_prov(prov: dict, memo: dict, depth: int) -> tuple[str, float]:
-    """把调用点证据投影成一个类型 + 置信度。"""
+    """Project the call site evidence into one type and a confidence value.
+
+    把调用点证据投影成一个类型 + 置信度。
+    """
     k = prov.get("kind")
     if k == "int":
         return ("s32", 0.8)
@@ -431,14 +494,17 @@ def _ret_type_from_use(use: dict) -> tuple[str, float]:
 
 
 def _merge(types: list[tuple[str, float]]) -> tuple[str, float, bool]:
-    """按置信度加权合并；返回 (type, confidence, conflicting)。"""
+    """Merge types with a confidence weight. Return (type, confidence, conflicting).
+
+    按置信度加权合并；返回 (type, confidence, conflicting)。
+    """
     types = [(t, c) for t, c in types if c > 0 and t != "unk"]
     if not types:
         return ("unk", 0.0, False)
     score: dict[str, float] = {}
     for t, c in types:
         score[t] = score.get(t, 0.0) + c
-    # 指针 vs 整数 冲突标记
+    # Pointer vs integer conflict flag  指针 vs 整数 冲突标记
     ptr = sum(v for k, v in score.items() if "ptr" in k or k.endswith("*"))
     ints = sum(v for k, v in score.items() if k in _TY_INT or k in ("f32", "f64"))
     best = max(score, key=lambda k: score[k])
@@ -448,7 +514,10 @@ def _merge(types: list[tuple[str, float]]) -> tuple[str, float, bool]:
 
 
 def infer(sym: str, memo: dict | None = None, depth: int = 0) -> dict | None:
-    """推断 sym 的签名。返回 {ret, params:[{i,type,conf,evidence}], arity, hints, callsites}。"""
+    """Infer the signature of sym. Return {ret, params:[{i,type,conf,evidence}], arity, hints, callsites}.
+
+    推断 sym 的签名。返回 {ret, params:[{i,type,conf,evidence}], arity, hints, callsites}。
+    """
     if memo is None:
         memo = {}
     if sym in memo:
@@ -462,6 +531,7 @@ def infer(sym: str, memo: dict | None = None, depth: int = 0) -> dict | None:
              "arity": arity, "hints": hints, "callsites": 0, "ret_evidence": []}
         memo[sym] = r
         return r
+    # Limit the number of analyzed call sites. A very popular function is then not too expensive.
     # 限制分析调用点数量，避免极热门函数开销过大
     sites = sites[:24]
     votes: dict[int, list] = {i: [] for i in range(max(arity, 1))}
@@ -496,7 +566,7 @@ def infer(sym: str, memo: dict | None = None, depth: int = 0) -> dict | None:
     return r
 
 
-# --- 草稿签名的读取与替换 ---------------------------------------------------
+# --- Read and replace a draft signature  草稿签名的读取与替换 -----------------
 DEF_RE_TMPL = r"(?m)^([ \t]*)([A-Za-z_][\w \t\*]*?)\b{sym}\s*\(([^()]*)\)\s*\{{"
 
 
@@ -506,6 +576,8 @@ def current_signature(src: str, sym: str) -> dict | None:
         return None
     ret = m.group(2).strip()
     raw_args = m.group(3).strip()
+    # `f(void)` has zero parameters. Do not treat it as one parameter named void. A
+    # replacement would then become `f(s32 void)`.
     # `f(void)` 是零参数；不要把它当成一个名叫 void 的参数（否则替换后变 `f(s32 void)`）
     args = [] if raw_args in ("", "void") else [a.strip() for a in raw_args.split(",") if a.strip()]
     parsed = []
@@ -519,10 +591,13 @@ def current_signature(src: str, sym: str) -> dict | None:
 
 
 def replace_signature(src: str, sym: str, ret: str | None, arg_types: list[str] | None) -> tuple[str, list]:
-    """只改类型（保留参数名与个数），返回 (新源码, 变更列表)。"""
+    """Change only the types, and keep the parameter names and count. Return (new source, change list).
+
+    只改类型（保留参数名与个数），返回 (新源码, 变更列表)。
+    """
     cur = current_signature(src, sym)
     if cur is None:
-        raise ValueError(f"草稿里找不到 {sym} 的定义")
+        raise ValueError(f"the draft has no definition of {sym}")
     changes = []
     new_ret = ret or cur["ret"]
     if new_ret != cur["ret"]:
@@ -541,7 +616,15 @@ def replace_signature(src: str, sym: str, ret: str | None, arg_types: list[str] 
 
 
 def context_source(sym: str, src: str, memo: dict | None = None) -> tuple[str, dict]:
-    """生成 m2c `--context` 用的函数声明（推断结果写进声明，m2c 会据此**重生成函数体**）。
+    """Make the function declaration for the m2c `--context` option.
+
+    The code writes the inference result into the declaration, and m2c then **regenerates
+    the function body** from it. This use is more correct than
+    `suggest_and_replace()`. A type change on the definition line alone does not
+    re-infer the body, but `--context` makes m2c re-infer the internal expressions and the
+    instruction selection from the given signature.
+
+    生成 m2c `--context` 用的函数声明（推断结果写进声明，m2c 会据此**重生成函数体**）。
 
     这是比 `suggest_and_replace()` 更「正确」的用法：只改定义行的类型不会重推函数体，
     而 `--context` 会让 m2c 按给定签名重新推断内部表达式/指令选择。
@@ -561,7 +644,10 @@ def context_source(sym: str, src: str, memo: dict | None = None) -> tuple[str, d
 
 
 def suggest_and_replace(sym: str, src: str, memo: dict | None = None) -> tuple[str, list, dict]:
-    """推断 → 替换草稿签名。返回 (新源码, 变更列表, 推断结果)。"""
+    """Infer the signature and replace it in the draft. Return (new source, change list, inference).
+
+    推断 → 替换草稿签名。返回 (新源码, 变更列表, 推断结果)。
+    """
     r = infer(sym, memo=memo) or {}
     cur = current_signature(src, sym)
     if cur is None:
@@ -577,7 +663,10 @@ def suggest_and_replace(sym: str, src: str, memo: dict | None = None) -> tuple[s
 
 
 def type_class(t: str) -> tuple:
-    """把一个类型归一成「对 codegen 有意义的等价类」。"""
+    """Reduce a type to an equivalence class that matters for codegen.
+
+    把一个类型归一成「对 codegen 有意义的等价类」。
+    """
     if not t:
         return ("unk",)
     s = t.replace("*", " *").replace("  ", " ").strip().lower()
@@ -612,12 +701,17 @@ def type_class(t: str) -> tuple:
 
 
 def is_effective(changes: list) -> tuple[bool, bool]:
-    """返回 (有参数级有效变更, 有返回级有效变更)。"""
+    """Return (an effective parameter change exists, an effective return change exists).
+
+    返回 (有参数级有效变更, 有返回级有效变更)。
+    """
     ea = er = False
     for k, o, n in changes:
         if type_class(o) == type_class(n):
             continue
         if k == "ret":
+            # Under ee-gcc, void <-> 32-bit int usually does not change the code output.
+            # Count it separately and do not call it effective.
             # void <-> 32 位 int 在 ee-gcc 下一般不改代码生成，单列不计有效
             if {type_class(o), type_class(n)} == {("void",), ("i", 32, "s")}:
                 continue
@@ -651,10 +745,10 @@ def main() -> int:
         if a.json:
             print(json.dumps(r, ensure_ascii=False, indent=1))
         else:
-            print(f"建议签名: {_fmt_sig(r)}   （调用点 {r['callsites']} 个，arity={r['arity']}，体线索={r['hints']}）")
+            print(f"suggested signature: {_fmt_sig(r)}   (call sites {r['callsites']}, arity={r['arity']}, body hints={r['hints']})")
             for p in r["params"]:
                 print(f"  $a{p['i']}: {p['type']:6s} conf={p['conf']:.2f}"
-                      f"{' ***冲突***' if p.get('conflict') else ''}")
+                      f"{' ***conflict***' if p.get('conflict') else ''}")
                 for e in p["evidence"]:
                     print(f"      {e['file']}:{e['line']}  {e['prov']}")
             print(f"  $v0 -> {r['ret']} (conf={r.get('ret_conf')})")
@@ -666,16 +760,16 @@ def main() -> int:
         src = Path(a.infile).read_text(encoding="utf-8")
         src2, ch, r = suggest_and_replace(a.sym, src)
         cur = current_signature(src, a.sym)
-        print(f"现状: {cur['ret']} {a.sym}({', '.join(x['raw'] for x in cur['args'])})")
-        print(f"建议: {_fmt_sig(r)}")
-        print("变更: " + (", ".join(f"{k}: {o} -> {n}" for k, o, n in ch) if ch else "(无)"))
+        print(f"current: {cur['ret']} {a.sym}({', '.join(x['raw'] for x in cur['args'])})")
+        print(f"suggestion: {_fmt_sig(r)}")
+        print("changes: " + (", ".join(f"{k}: {o} -> {n}" for k, o, n in ch) if ch else "(none)"))
         return 0
 
     if a.cmd == "apply":
         src = Path(a.infile).read_text(encoding="utf-8")
         src2, ch, _ = suggest_and_replace(a.sym, src)
         Path(a.outfile).write_text(src2, encoding="utf-8")
-        print(f"{a.sym}: {len(ch)} 处类型变更 -> {a.outfile}")
+        print(f"{a.sym}: {len(ch)} type changes -> {a.outfile}")
         for k, o, n in ch:
             print(f"  {k}: {o} -> {n}")
         return 0
@@ -686,6 +780,7 @@ def main() -> int:
         print(decl)
         return 0
 
+    # batch: one offline survey of the pool
     # batch：对池做一次离线普查
     res_path = REPO / "routebjp" / "build" / "m2c" / "batch" / "result.json"
     wq = {}
@@ -730,9 +825,9 @@ def main() -> int:
     n_ea = sum(1 for x in out if x.get("eff_arg"))
     n_er = sum(1 for x in out if x.get("eff_ret"))
     n_any = sum(1 for x in out if x.get("eff_arg") or x.get("eff_ret"))
-    print(f"扫描 {len(out)} 个符号：名义变更 {n_ch}（{100.0*n_ch/max(1,len(out)):.1f}%），"
-          f"有效参数变更 {n_ea}，有效返回变更 {n_er}，任一有效 {n_any}"
-          f"（{100.0*n_any/max(1,len(out)):.1f}%）-> {dst}")
+    print(f"scanned {len(out)} symbols: nominal changes {n_ch} ({100.0*n_ch/max(1,len(out)):.1f}%), "
+          f"effective parameter changes {n_ea}, effective return changes {n_er}, any effective {n_any}"
+          f" ({100.0*n_any/max(1,len(out)):.1f}%) -> {dst}")
     return 0
 
 
