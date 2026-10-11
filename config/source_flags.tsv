@@ -1,4 +1,4 @@
-# 格式：<source-basename>	<extra-cflags>
+# <source-basename><TAB><extra-cflags>  See docs/CONFIG.md
 LibcStdio_31	-O2
 LibcStdio_32	-O2
 LibcStdlib_10	-Os
@@ -91,7 +91,9 @@ func_001157f0	-Os
 func_00119a58	-Os
 func_00119b78	-Os
 func_00119bf8	-Os
+func_00119f4c	-Os
 func_0011a848	-Os
+func_0011a898	-Os
 func_0011b1a8	-O1
 func_0011e440	-Os
 func_0011ed64	-Os
@@ -235,6 +237,7 @@ func_00161590	-Os
 func_00161658	-Os
 func_00165bfc	-O2
 func_00166f9c	-Os
+func_0016791c	-Os
 func_001679e4	-Os
 func_0016a198	-Os
 func_0016a4c8	-Os
@@ -252,6 +255,7 @@ func_00178d84	-Os
 func_0017a174	-Os
 func_0017cc1c	-Os
 func_0017e158	-Os
+func_0017e548	-Os
 func_0017e6a8	-Os
 func_0017e790	-Os
 func_0017eb84	-Os
@@ -470,7 +474,6 @@ func_001de6e0	-Os
 func_001de94c	-Os
 func_001deb30	-Os
 func_001deec4	-Os
-func_001df944	-Os
 func_001dfb10	-Os
 func_001dfc10	-Os
 func_001dfc80	-Os
@@ -1064,6 +1067,8 @@ func_0027c690	-Os
 func_0027c79c	-Os
 func_0027c7e8	-Os
 func_0027c9d8	-Os
+func_0027d19c	-Os
+func_0027d1b8	-Os
 func_0027d400	-O2
 func_0027e684	-Os
 func_0027e6d0	-Os
@@ -1112,6 +1117,7 @@ func_0028b144	-O2
 func_0028b21c	-O2
 func_0028bc3c	-O2
 func_0028bd6c	-O2
+func_0028bd9c	-Os
 func_0028be38	-O2
 func_0028f254	-Os
 func_0028fae4	-O2
@@ -1119,6 +1125,7 @@ func_0028fb10	-O2
 func_0028fdd4	-O2
 func_002901e8	-O2
 func_00290268	-O2
+func_0029040c	-Os
 func_00291154	-Os
 func_00291338	-O2
 func_00293548	-O2 -fno-optimize-sibling-calls
@@ -1178,6 +1185,7 @@ func_0029cd3c	-Os
 func_0029d0c8	-Os
 func_0029d0f8	-Os
 func_0029d360	-O2
+func_0029e144	-Os
 func_0029e728	-Os
 func_0029e8f4	-Os
 func_0029e9b0	-Os

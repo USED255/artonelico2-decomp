@@ -42,13 +42,12 @@ typedef int BOOL;
 extern unsigned char D_007E8D50[];
 s32 func_002424b0(s32 arg0)
 {
-  unsigned char *new_var;
-  short new_var2;
   s32 i;
-  new_var2 = 0xC;
+  int new_var;
+  new_var = 0xC;
   for (i = 0; i < 5; ++i)
   {
-    s16 val = *((s16 *) ((((uint8_t *) (new_var = D_007E8D50)) + (10 * (i * 2))) + new_var2));
+    s16 val = *((s16 *) ((((uint8_t *) D_007E8D50) + (i * 0x14)) + new_var));
     if (val == arg0)
     {
       return i;
