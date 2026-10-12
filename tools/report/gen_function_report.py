@@ -95,15 +95,15 @@ DEFAULT_FLAGS_FILE = "config/source_flags.tsv"
 
 
 def parse_kv_tsv(path: Path) -> dict[str, str]:
-    """Read a `<key><TAB><value...>` table. `#` starts a comment (inline comments count). Empty lines are skipped. A later entry wins.
+    """Read a `<key><TAB><value...>` table. Line 1 is a header row and is skipped. `#` starts a comment (inline comments count). Empty lines are skipped. A later entry wins.
 
-    读 `<key><TAB><value...>` 表；`#` 起注释（含行内），空行跳过，
+    读 `<key><TAB><value...>` 表；第 1 行是表头，跳过；`#` 起注释（含行内），空行跳过，
     后出现者覆盖先出现者。
     """
     out: dict[str, str] = {}
     if not path.is_file():
         return out
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in path.read_text(encoding="utf-8").splitlines()[1:]:
         line = line.split("#", 1)[0].strip()
         if not line:
             continue

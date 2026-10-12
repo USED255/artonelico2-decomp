@@ -1,4 +1,4 @@
-# 格式：<source-basename>	<extra-cflags>
+source-basename	extra-cflags
 LibcStdio_31	-O2
 LibcStdio_32	-O2
 LibcStdlib_10	-Os

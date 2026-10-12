@@ -456,7 +456,9 @@ def cmd_delta(args) -> int:
             if ln.startswith(("+++", "---")) or not ln.startswith(("+", "-")):
                 continue
             first = ln[1:].strip().split("\t")[0].strip()
-            if first:
+            # Line 1 is the header row. Its key is source-basename, not a source name. Skip it.
+            # 第 1 行是表头，键 source-basename 不是源名，跳过。
+            if first and first != "source-basename":
                 flag_srcs.add(first)
         for x in sorted(flag_srcs):
             extra, _ = matched_ledger.resolve_changed(index, [f"{rel_src}/{x}.c"], rel_src)

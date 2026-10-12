@@ -14,8 +14,10 @@ Input (all files are temporary and derived):
                   output object name without .o.
   --objdir DIR    output object directory (the stamp goes to DIR/<key>.stamp)
   --cflags  ...   base flags for C
-  --flags-file    per-source extra flags TSV (<src-basename><TAB><flags>). The key is key.
-  --cc-map        per-source compiler TSV (<key><TAB><tag>). tag is game, cri, or an
+  --flags-file    per-source extra flags file: a header row and data rows
+                  (<src-basename><TAB><flags>). The key is key.
+  --cc-map        per-source compiler file: a header row and data rows
+                  (<key><TAB><tag>). tag is game, cri, or an
                   absolute path. With no entry, the code uses --gcc for all sources
                   (backward compatible). Game code uses ee-gcc 3.2-ee-040921. The CRI
                   middleware uses ee-gcc 2.96-ee-001003-1. Both archives are in
@@ -45,8 +47,8 @@ Usage (build_mixed.sh calls this script. A manual run is a consistency check):
   --sources TSV   每行 `key<TAB>kind<TAB>srcfile`；kind ∈ cc|as；key 是输出对象名（不含 .o）
   --objdir DIR    输出对象目录（stamp 写 DIR/<key>.stamp）
   --cflags  ...   基础标志（C）
-  --flags-file    每源额外标志 TSV（<src-basename><TAB><flags>），键 = key
-  --cc-map        每源编译器 TSV（<key><TAB><tag>），tag ∈ game|cri|<绝对路径>；
+  --flags-file    每源额外标志文件：表头行 + 数据行（<src-basename><TAB><flags>），键 = key
+  --cc-map        每源编译器文件：表头行 + 数据行（<key><TAB><tag>），tag ∈ game|cri|<绝对路径>；
                   缺省时全部走 --gcc（向后兼容）。游戏代码 = ee-gcc 3.2-ee-040921，
                   CRI 中间件 = ee-gcc 2.96-ee-001003-1（两个归档都在 toolchain.lock.json 里，
                   CI 早已安装并导出 GCC_CRI）——见 docs/kb/reports/R17 §4.2。
@@ -198,14 +200,15 @@ def main() -> int:
     ap.add_argument("--objdir", required=True)
     ap.add_argument("--gcc", required=True)
     ap.add_argument("--gcc-cri", default="", help="CRI section compiler (tag=cri). The code reports an error if it is necessary and absent.")
-    ap.add_argument("--cc-map", default="", help="per-source compiler TSV: <key><TAB><tag> (tag=game|cri|path)")
+    ap.add_argument("--cc-map", default="", help="per-source compiler file (line 1 is a header row): <key><TAB><tag> (tag=game|cri|path)")
     ap.add_argument("--as", dest="as_", required=True)
     ap.add_argument("--include", default="include")
     ap.add_argument("--cflags", default="")
     ap.add_argument("--asflags", default="-EL -march=r5900")
-    ap.add_argument("--flags-file", default="")
+    ap.add_argument("--flags-file", default="",
+                    help="per-source extra flags file (line 1 is a header row): <key><TAB><flags>")
     ap.add_argument("--jtbl-tables", default="",
-                    help="per-source jump table TSV: <key><TAB><jtbl_symbol>. After the compile, jtbl_patch redirects "
+                    help="per-source jump table file (line 1 is a header row): <key><TAB><jtbl_symbol>. After the compile, jtbl_patch redirects "
                          "the reference of the C jump table to the existing data symbol (see tools/project/jtbl_patch.py)")
     ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--no-cache", action="store_true")
@@ -217,18 +220,22 @@ def main() -> int:
 
     extra = {}
     if args.flags_file and Path(args.flags_file).is_file():
-        for line in Path(args.flags_file).read_text(encoding="utf-8").splitlines():
+        # Line 1 is the header row (source-basename<TAB>extra-cflags). Skip it.
+        # 第 1 行是表头（source-basename<TAB>extra-cflags），跳过。
+        for line in Path(args.flags_file).read_text(encoding="utf-8").splitlines()[1:]:
             line = line.split("#", 1)[0].strip()
             if line:
                 a = line.split()
                 extra[a[0]] = " ".join(a[1:])
 
-    # Jump table TSV (<key>\t<jtbl_symbol>): after the compile, redirect the reference of
-    # the C `.rodata` table to the existing data symbol.
-    # 跳转表 TSV（<key>\t<jtbl_符号>）：编译后把 C 自产 `.rodata` 表的引用改指到既有数据符号。
+    # Jump table file (a header row and data rows, <key>\t<jtbl_symbol>): after the compile,
+    # redirect the reference of the C `.rodata` table to the existing data symbol.
+    # 跳转表文件（表头行 + 数据行，<key>\t<jtbl_符号>）：编译后把 C 自产 `.rodata` 表的引用改指到既有数据符号。
     jtbl = {}
     if args.jtbl_tables and Path(args.jtbl_tables).is_file():
-        for line in Path(args.jtbl_tables).read_text(encoding="utf-8").splitlines():
+        # Line 1 is the header row (symbol<TAB>jtbl-symbol). Skip it.
+        # 第 1 行是表头（symbol<TAB>jtbl-symbol），跳过。
+        for line in Path(args.jtbl_tables).read_text(encoding="utf-8").splitlines()[1:]:
             line = line.split("#", 1)[0].strip()
             if line:
                 a = line.split()
@@ -239,7 +246,11 @@ def main() -> int:
     # 每源编译器（CRI 段用 ee-gcc 2.96，游戏代码用 3.2；见 R17 §4.2）
     cc_map = {}
     if args.cc_map and Path(args.cc_map).is_file():
-        for line in Path(args.cc_map).read_text(encoding="utf-8").splitlines():
+        # Line 1 is the header row (source-basename<TAB>compiler). Skip it here, before the
+        # format check below: the header is not a data row, and the check would report FAIL.
+        # 第 1 行是表头（source-basename<TAB>compiler）。必须在这里跳过——它先于下面的格式校验，
+        # 否则校验会把表头当成非法数据行并 FAIL。
+        for line in Path(args.cc_map).read_text(encoding="utf-8").splitlines()[1:]:
             line = line.split("#", 1)[0].strip()
             if not line:
                 continue
