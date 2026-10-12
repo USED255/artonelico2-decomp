@@ -1152,6 +1152,7 @@ func_0020867c    # permuter
 func_0020875c    # empty
 func_00208764    # ghidra_draft:-O1
 func_002087e8    # wrapper_o1_jal
+func_00208814    # llm_draft
 func_00208cd8    # permuter
 func_00208ff8    # empty
 func_00209008    # ret_const
