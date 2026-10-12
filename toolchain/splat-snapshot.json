@@ -2,19 +2,19 @@
   "schema": "at2-splat-snapshot/2",
   "target": "SLPS_258.19",
   "path": "toolchain/splat-SLPS_258.19.tar.zst",
-  "sha256": "5ed7ae72e9c60f3f7ed18d16da49d01e237c8c751cd5561a15afbdccf351a4ed",
+  "sha256": "9759ac9fd45a0cc34181465f29bff24749f7528bfdcdf01d0c8d48ccbde8447a",
   "game_sha1": "766836783c16b8616d3d84cfbd6af70a50b6c052",
   "splat_version": "0.50.0",
   "groups": {
     "splat": {
       "inputs": {
         "splat.yaml": "2388cd306df423292c27952c1ce4a4f1e189f101ab793b3dc4a223aa584401d7",
-        "config/symbol_addrs.txt": "de672e0b6641026f8486705ec8c3e71c1fbcffa6dfde15070d9de6d0c60653dc",
+        "config/symbol_addrs.txt": "9958d8282c9d818db9c4493777d43e1a0eb4444b39211d7328d443bb76b59901",
         "config/reloc_addrs.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "tools/ci/splat-requirements.txt": "67b798c03234cac2a6806f115551dba206aea098be7d09409d5ea34d11f2026b"
       },
       "entry_count": 10946,
-      "tree_sha256": "630c918234d746fb6ef11dadf18546fbec6831c5c3ebc6e823121550ab0f536a"
+      "tree_sha256": "ec5d291e5e4eab7515997ea8780ff1c5fbd0eaa4e9ecb3faa682c52fd49d4346"
     },
     "asm": {
       "inputs": {
@@ -22,9 +22,9 @@
       },
       "as_version": "GNU assembler (GNU Binutils) 2.40",
       "entry_count": 10938,
-      "tree_sha256": "28fa98d1c509131ccdd9b841db2b4c04f4334f56ef14c0784cc67c65ceec5711"
+      "tree_sha256": "150ecf3f0ebe0109cdf90ea82fcfb0ec181c80542ad80195fbc0fc9ccbd24235"
     }
   },
-  "created_at": "2026-10-12T14:53:02Z",
+  "created_at": "2026-10-12T15:17:19Z",
   "generator": "tools/ci/splat_snapshot.py"
 }
