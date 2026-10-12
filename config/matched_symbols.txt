@@ -3356,3 +3356,5 @@ func_0027b004    # m2c_draft+permuter
 func_002352b4    # m2c_draft+permuter
 func_0013f5e8    # m2c_draft+permuter
 func_00120730    # m2c_draft+permuter
+func_0023643c    # m2c_draft+permuter
+func_001a3f48    # m2c_draft+permuter

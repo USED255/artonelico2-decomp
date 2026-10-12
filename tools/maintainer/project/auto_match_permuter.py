@@ -362,6 +362,7 @@ def verify(sym: str, source: Path) -> float | None:
     """
     d = WORK / sym
     best: float | None = None
+    best_flags: list[str] | None = None
     tbl = jtbl_table(sym)
     flags_list = list(FLAG_SETS)
     # Try the flag level recorded for this candidate first (if one exists). Then try the other levels.
@@ -405,8 +406,21 @@ def verify(sym: str, source: Path) -> float | None:
         m = _match_of(sym, c_o, d)
         if m is not None and (best is None or m > best):
             best = m
+            best_flags = list(fs)
         if best == 100.0:
             break
+    if best == 100.0 and best_flags is not None:
+        # The permuter optimises with the level recorded in _flags.txt at setup time, but this
+        # function tries every level. A candidate can reach 100 under a different level and with
+        # a non-zero permuter score: measured 2026-10-13, 2 of 9 accepted candidates were
+        # `output-10-*` / `output-60-*` winners at another level. do_apply() writes this file
+        # into source_flags.tsv, so record the level that actually won or the build compiles
+        # with a level that does not reproduce the match.
+        # permuter 只按 setup 时写进 _flags.txt 的档位优化，而本函数会试**所有**档位：候选可能
+        # 在**另一个**档位下拿到 100、同时 permuter 自身的分数不为 0（2026-10-13 实测：9 个采纳里
+        # 有 2 个是 output-10-*/output-60-* 的"非零分"产物）。do_apply 会把本文件写进
+        # source_flags.tsv ⇒ 必须记下**真正获胜**的档位，否则构建会用复现不了的档位。
+        (d / "_flags.txt").write_text(" ".join(best_flags) + "\t%.2f" % best, encoding="utf-8")
     return best
 
 
