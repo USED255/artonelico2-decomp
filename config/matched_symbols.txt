@@ -3345,3 +3345,5 @@ func_0032a1a8    # m2c_draft
 func_0032a200    # m2c_draft
 func_00192a3c    # permuter
 func_00194ed4    # permuter
+
+# probe: this comment only touches config/ so the classifier must pick the fast lane
