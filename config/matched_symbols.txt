@@ -1,6 +1,6 @@
 # Matched function ledger. This file is the only switch for the mixed build.
 # Format: <symbol> [<source-basename>]   # <tag>
-# See docs/CONFIG.md.
+# See config/README.md.
 # ---- per-function compare samples (10 entries; all objdiff 100 percent) ----
 baseelf_15
 baseelf_19
@@ -2998,7 +2998,7 @@ func_0033b9a8    # m2c_draft
 func_0033c7d8    # m2c_draft
 func_0035f5c0    # m2c_draft
 
-# ---- CRI middleware (reused external source: recvx-decomp, MIT; see docs/CONFIG.md) ----
+# ---- CRI middleware (reused external source: recvx-decomp, MIT; see config/README.md) ----
 func_0031a9c0    # CRI memcpy2 (ADXB)
 func_0031cbc8    # CRI adxf_wait_1ms
 baseelf_108    # m2c_draft

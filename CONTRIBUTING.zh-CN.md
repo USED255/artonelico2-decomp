@@ -61,11 +61,11 @@ make check                       # 仓库自检
 | 路径 | 原因 |
 | --- | --- |
 | `progress/` | 进度报告由经过验证的构建产出 |
-| `PUBLISHED.json` | 发布记录；由 `tools/publish_report.py` 在一次已验证的构建后写入 |
+| `PUBLISHED.json` | 发布记录；由 `tools/maintainer/publish_report.py` 在一次已验证的构建后写入 |
 
 其它路径都可以改。`config/`、`splat.yaml` 与三个构建脚本，**建议先开 issue 说明**再动手 —— 它们会影响整个构建。
 
-**新增函数注意**：你**不需要**改 `config/matched_symbols.txt`；维护者会替你补条目。`config/matched_symbols.txt` 与 `config/symbol_addrs.txt` 是**只读配置**，由维护者代填。详见 [docs/CONFIG.zh-CN.md](docs/CONFIG.zh-CN.md)。
+**新增函数注意**：你**不需要**改 `config/matched_symbols.txt`；维护者会替你补条目。`config/matched_symbols.txt` 与 `config/symbol_addrs.txt` 是**只读配置**，由维护者代填。详见 [config/README.zh-CN.md](config/README.zh-CN.md)。
 
 ## 7. 写作风格
 

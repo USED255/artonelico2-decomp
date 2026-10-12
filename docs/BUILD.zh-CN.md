@@ -33,7 +33,8 @@ make report         # 生成进度报告
 
 这是**混合编译器**构建：游戏代码用 `ee-gcc 3.2-ee-040921`，CRI 中间件用 `ee-gcc 2.96-ee-001003-1`。
 `config/compiler_map.tsv` 逐源写明用哪个（缺省 = 游戏编译器），两个路径来自 `EE_GCC` / `EE_GCC_CRI`（或 `GCC` / `GCC_CRI`）；
-走 CRI 编译器的源还需要在 `config/source_flags.tsv` 里给 `-G0`。配置文件说明见 [docs/CONFIG.zh-CN.md](CONFIG.zh-CN.md)。
+走 CRI 编译器的源还需要在 `config/source_flags.tsv` 里给 `-G0`。
+配置文件说明见 [config/README.zh-CN.md](../config/README.zh-CN.md)。
 
 `make build` 先从零售可执行文件派生载荷，再切分载荷、汇编源码、链接结果，并在每个阶段后校验载荷 sha1。
 期望值是 `7cc42d275750600d1f232b2632447f77205f3fc0`。**差一个字节就停止**。
@@ -41,9 +42,14 @@ make report         # 生成进度报告
 ## 3. 检查改动
 
 ```bash
+make progress                    # 静态上界；不需要工具链
 make delta BASE=origin/main      # src/matched/ 里本次改动的文件必须 100% 匹配
 make check                       # 仓库自检；不需要原版可执行文件
 ```
+
+`make progress` 读 `config/matched_symbols.txt` 与 `config/symbol_addrs.txt`，
+按符号表字节数打印静态上界。已发布数字见
+[progress/SLPS_258.19_report.json](../progress/SLPS_258.19_report.json)。
 
 ## 4. CI
 
@@ -65,7 +71,7 @@ make check                       # 仓库自检；不需要原版可执行文件
 
 ```bash
 gh run download <run-id> -R <owner>/<repo> -n SLPS_258.19_report -D .tmp/report
-python3 tools/publish_report.py --report .tmp/report/SLPS_258.19_report.json
+python3 tools/maintainer/publish_report.py --report .tmp/report/SLPS_258.19_report.json
 ```
 
 该工具会写入 `progress/SLPS_258.19_report.json` 并更新 `PUBLISHED.json`，同时与基线比对数字。
