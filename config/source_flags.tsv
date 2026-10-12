@@ -148,6 +148,7 @@ func_0013c934	-Os
 func_0013c9c8	-O2
 func_0013c9f8	-O2
 func_0013ca28	-O2
+func_0013ca58	-Os
 func_0013f814	-O1
 func_0013fe80	-Os
 func_00140bb8	-Os
