@@ -3368,3 +3368,7 @@ func_0029e938    # llm_draft
 func_002a1954    # llm_draft
 func_00192460    # llm_draft
 func_001952e8    # llm_draft
+func_00132ac4    # llm_draft
+func_001a3aa0    # llm_draft
+func_001d659c    # llm_draft
+func_002428f8    # llm_draft
