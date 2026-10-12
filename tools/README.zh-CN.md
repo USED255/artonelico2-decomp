@@ -75,29 +75,3 @@ make check
 | `tools/maintainer/report/disasm_stats.py` | 统计 PS2 EE 主程序的汇编分布 | Maintainer internal |
 | `tools/maintainer/report/match_workqueue.py` | 按难度把主程序函数排成工作队列 | Maintainer internal |
 | `tools/maintainer/report/r5900_stats.py` | 从原始指令字统计 R5900 指令分布 | Maintainer internal |
-
-## 3. 本批次改动
-
-2026-10-11，有 4 个脚本移出公开仓库。其中一个 `tools/report/progress_report.py`
-现已修好并回到公开树，用 `make progress`。其余 3 个仍在公开仓库之外。外部克隆无法
-运行它们。它们现在放在私有伴生仓库的 `tools/legacy/` 目录。
-
-| 脚本 | 移出原因 | 现在的位置 |
-| --- | --- | --- |
-| `build_m2.sh` | 第 17 行编译 `src/m2_probe.c`，而该文件在公开仓库从未存在 | `tools/legacy/build_m2.sh` |
-| `tools/build/m2_extract.py` | 只有 `build_m2.sh` 调用它，公开树里没有其他引用 | `tools/legacy/m2_extract.py` |
-| `tools/report/c_route_measure.py` | 路线 C 调研需要美版 `SLUS_217.88` 与它的 ISO | `tools/legacy/c_route_measure.py` |
-
-这 3 个文件在 git 历史 `cd1f47a` 里仍然可以取回。
-
-维护者工具已移入 `tools/maintainer/`，新路径见第 2 节。贡献者链没有变化。
-
-公开仓库没有单函数比对脚本。对每个改动的 `src/matched/*.c` 用
-`make delta BASE=origin/main`，该命令要求逐个 100% 匹配。全量报告用 `make report`。
-
-有两个工具改了名字：
-
-- `build_hybrid.sh` 现在叫 `build_mixed.sh`。
-- `tools/report/m3_workqueue.py` 现在叫 `tools/maintainer/report/match_workqueue.py`。
-
-公开仓库的可复现路径是 `make build`，再用 `build_mixed.sh`，再用 `make report`。

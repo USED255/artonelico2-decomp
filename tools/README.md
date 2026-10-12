@@ -79,35 +79,3 @@ cannot run a Maintainer tool.
 | `tools/maintainer/report/disasm_stats.py` | Reports the disassembly statistics of the PS2 EE main program. | Maintainer internal |
 | `tools/maintainer/report/match_workqueue.py` | Sorts the main-program functions into a work queue by difficulty. | Maintainer internal |
 | `tools/maintainer/report/r5900_stats.py` | Reports the R5900 instruction statistics from the raw instruction words. | Maintainer internal |
-
-## 3. Changes in this batch
-
-On 2026-10-11, four scripts left the public repository. One of them,
-`tools/report/progress_report.py`, is now repaired and back in the public tree.
-Run `make progress`. Three scripts remain outside the public repository. An
-external clone cannot run them. They now live in the private companion
-repository, directory `tools/legacy/`.
-
-| Script | Reason | New location |
-| --- | --- | --- |
-| `build_m2.sh` | The script compiles `src/m2_probe.c` at line 17. That file never existed in the public repository. | `tools/legacy/build_m2.sh` |
-| `tools/build/m2_extract.py` | Only `build_m2.sh` calls this script. The public tree has no other caller. | `tools/legacy/m2_extract.py` |
-| `tools/report/c_route_measure.py` | The route C study needs the US image `SLUS_217.88` and its ISO. | `tools/legacy/c_route_measure.py` |
-
-The git history at commit `cd1f47a` still contains these files.
-
-The maintainer tools moved into `tools/maintainer/`. Section 2 gives the new
-paths. The contributor chain does not change.
-
-The public repository has no per-function compare script. Use
-`make delta BASE=origin/main` for each changed `src/matched/*.c` file. That
-command requires a 100 percent match for each changed file. Use `make report`
-for the full report.
-
-Two tools have a new name:
-
-- `build_hybrid.sh` is now `build_mixed.sh`.
-- `tools/report/m3_workqueue.py` is now `tools/maintainer/report/match_workqueue.py`.
-
-The reproducible path in the public repository is `make build`, then
-`build_mixed.sh`, then `make report`.

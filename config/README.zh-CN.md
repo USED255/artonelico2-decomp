@@ -20,25 +20,7 @@
 | `linker_script_extra.ld` | 维护者 | 改动检测 | 可以，但很少需要。 |
 | `match_meta.tsv` | `tools/maintainer/build/gen_match_meta.py` | 匹配工具 | 不能。该文件由工具生成。 |
 
-本目录有三个文件是制表符分隔的表。格式见第 2 节。
-
-## 2. 三张表的格式
-
-每张表都遵守以下规则：
-
-- 第 1 行是表头行。
-- 其后每一行都是数据行。
-- 文件内不放注释行。
-
-| 文件 | 表头行 | 取值 |
-| --- | --- | --- |
-| `compiler_map.tsv` | `source-basename<TAB>compiler` | `game`、`cri` 或编译器绝对路径 |
-| `source_flags.tsv` | `source-basename<TAB>extra-cflags` | 单个源的额外编译参数 |
-| `jtbl_tables.tsv` | `symbol<TAB>jtbl-symbol` | C 跳转表符号与 splat 符号 |
-
-工具也接受 `#` 注释行。旧文件里可能有。新文件不许有。
-
-## 3. `config/symbol_addrs.txt` —— splat 符号表
+## 2. `config/symbol_addrs.txt` —— splat 符号表
 
 本文件给 splat 提供每个函数的地址与名字。文件里有 10,923 个函数条目。
 
@@ -69,7 +51,7 @@
 `tools/report/gen_function_report.py` 与 `tools/maintainer/report/match_workqueue.py`
 也读该文件。
 
-## 4. `config/matched_symbols.txt` —— 混合构建的唯一开关
+## 3. `config/matched_symbols.txt` —— 混合构建的唯一开关
 
 本文件是已 C 化函数台账。它是混合构建的**唯一开关**。构建步骤见
 [docs/BUILD.zh-CN.md](../docs/BUILD.zh-CN.md)。
@@ -107,7 +89,7 @@
 `tools/build/decomp_build.py`、`tools/build/gen_objdiff_full.py` 与
 `tools/maintainer/build/gen_match_meta.py` 都用该解析实现。
 
-### 4.1 默认编译参数
+### 3.1 默认编译参数
 
 构建用以下参数编译每个匹配源：
 
@@ -122,19 +104,19 @@
 - `-ffunction-sections` 让每个函数占一个 `.text.<symbol>` 段。链接脚本据此把每个
   函数按原位放置。
 
-### 4.2 走别的优化档的源
+### 3.2 走别的优化档的源
 
 `config/source_flags.tsv` 保存单个源的额外参数。构建把额外参数**追加在默认参数之后**。
 `gcc` 取最后一个 `-O`。
 
-### 4.3 `baseelf_85` 说明
+### 3.3 `baseelf_85` 说明
 
 台账早期把 `baseelf_85` 记为「已知未解（jal vs j，objdiff 62.9%）」并刻意排除。
 后来查明它是 **`-O1` 档**的空壳包装。`-O1` 下 objdiff 100%。见
 `config/source_flags.tsv` 与私有笔记 O-05。改回 `-O2` 编译会让载荷短 176 B、
 sha1 变红。项目已实测该负面对照。
 
-## 5. `config/compiler_map.tsv` —— 每个源的编译器
+## 4. `config/compiler_map.tsv` —— 每个源的编译器
 
 本文件指明哪个编译器编译某个源。本作是**混合编译器工程**：
 
@@ -167,7 +149,7 @@ sha1 变红。项目已实测该负面对照。
 读取方：`build_mixed.sh` 用 `--cc-map` 把该文件传给
 `tools/project/compile_sources.py`。`tools/report/gen_function_report.py` 也读该文件。
 
-## 6. `config/source_flags.tsv` —— 额外编译参数
+## 5. `config/source_flags.tsv` —— 额外编译参数
 
 本文件保存单个源的额外编译参数。
 
@@ -186,7 +168,7 @@ sha1 变红。项目已实测该负面对照。
 `tools/maintainer/project/auto_match_ghidra.py` 与
 `tools/maintainer/project/auto_match_permuter.py`。每个写入方都保留表头行。
 
-## 7. `config/jtbl_tables.tsv` —— 跳转表修补表
+## 6. `config/jtbl_tables.tsv` —— 跳转表修补表
 
 C 源里可以写真 `switch`。编译器随后在 `.rodata` 里自产一份跳转表。该表与 splat 已切出的
 表重复。重复定义会让地址错位（私有笔记 P-23）。
@@ -203,7 +185,7 @@ C 源里可以写真 `switch`。编译器随后在 `.rodata` 里自产一份跳�
 读取方：`build_mixed.sh` 用 `--jtbl-tables` 把该文件传给
 `tools/project/compile_sources.py`。
 
-## 8. `config/reloc_addrs.txt` —— 手工重定位记录
+## 7. `config/reloc_addrs.txt` —— 手工重定位记录
 
 本文件供维护者补一条重定位记录。格式来自 splat 上游：
 
@@ -217,7 +199,7 @@ rom:<address> reloc:<type> symbol:<name> [addend:<number>]
 本文件当前为空。空文件是正确的，因为项目没有手工重定位记录。读取方：splat 通过
 `splat.yaml` 的 `reloc_addrs_path` 选项读该文件。
 
-## 9. `config/linker_script_extra.ld` —— 额外链接脚本指令
+## 8. `config/linker_script_extra.ld` —— 额外链接脚本指令
 
 本文件保存额外的链接脚本指令。它设置入口符号：
 
@@ -229,7 +211,7 @@ ENTRY(_start);
 没有步骤传它。`tools/build/decomp_build.py` 把它列为共享输入，因此改动该文件会把构建
 标记为过期。
 
-## 10. `config/match_meta.tsv` —— 生成的汇总表
+## 9. `config/match_meta.tsv` —— 生成的汇总表
 
 `tools/maintainer/build/gen_match_meta.py` 写该文件。该文件把
 `config/matched_symbols.txt`、`config/source_flags.tsv` 与私有工作队列合并成一张
@@ -237,7 +219,7 @@ ENTRY(_start);
 
 该文件是生成物。不要手改，也不要入库。`.gitignore` 已排除它。
 
-## 11. 私有流水线依赖的名字
+## 10. 私有流水线依赖的名字
 
 私有流水线从本仓库读一些名字。不要改这些名字：
 
