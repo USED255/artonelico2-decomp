@@ -210,13 +210,22 @@ def lock_game(project: Path) -> dict:
 # --------------------------------------------------------------------------- #
 # create
 # --------------------------------------------------------------------------- #
+def project_path(project: Path, value: str) -> Path:
+    """Resolve a command-line path against the project root when it is relative.
+
+    命令行里给的相对路径按项目根解析（默认值与用户输入都适用）。
+    """
+    p = Path(value)
+    return (project / p if not p.is_absolute() else p).resolve()
+
+
 def cmd_create(args) -> int:
     project = Path(args.project).resolve()
-    game = Path(args.game).resolve()
+    game = project_path(project, args.game)
     splat = args.splat
-    out = Path(args.out).resolve()
-    manifest_path = Path(args.manifest).resolve()
-    scratch = Path(args.scratch).resolve()
+    out = project_path(project, args.out)
+    manifest_path = project_path(project, args.manifest)
+    scratch = project_path(project, args.scratch)
     target = lock_game(project).get("id") or "SLPS_258.19"
 
     for rel in INPUT_FILES:
@@ -396,8 +405,11 @@ def extract(project: Path, archive: Path) -> tuple[list[str], int]:
 def cmd_use(args) -> int:
     project = Path(args.project).resolve()
     orig = Path(args.orig).resolve()
-    manifest_path = Path(args.manifest).resolve()
-    game = Path(args.game).resolve() if args.game else orig / "orig" / "SLPS_258.19"
+    # The manifest default is project-relative: `--project <dir>` must find
+    # `<dir>/toolchain/splat-snapshot.json`, not a file next to the current directory.
+    # 清单默认相对**项目根**：`--project <dir>` 要找到 `<dir>/toolchain/splat-snapshot.json`。
+    manifest_path = project_path(project, args.manifest)
+    game = project_path(project, args.game) if args.game else orig / "orig" / "SLPS_258.19"
 
     def verdict(value: str, reason: str) -> int:
         level = "notice" if value == "snapshot" else "warning"
@@ -455,11 +467,11 @@ def main() -> int:
     c.add_argument("--project", default=".", help="Project root (default: .)")
     c.add_argument("--game", required=True, help="Retail executable (SLPS_258.19)")
     c.add_argument("--splat", required=True, help="The pinned splat binary (for example .tmp/splatvenv/bin/splat)")
-    c.add_argument("--out", default=ARCHIVE_DEFAULT, help=f"Archive to write (default: {ARCHIVE_DEFAULT})")
-    c.add_argument("--manifest", default=MANIFEST_DEFAULT, help=f"Manifest to write (default: {MANIFEST_DEFAULT})")
+    c.add_argument("--out", default=ARCHIVE_DEFAULT, help=f"Archive to write, relative to --project (default: {ARCHIVE_DEFAULT})")
+    c.add_argument("--manifest", default=MANIFEST_DEFAULT, help=f"Manifest to write, relative to --project (default: {MANIFEST_DEFAULT})")
     c.add_argument("--remote-path", default=ARCHIVE_DEFAULT,
                    help="Path of the archive inside the private companion repository")
-    c.add_argument("--scratch", default=".tmp/splat-snapshot", help="Scratch directory (default: .tmp/splat-snapshot)")
+    c.add_argument("--scratch", default=".tmp/splat-snapshot", help="Scratch directory, relative to --project (default: .tmp/splat-snapshot)")
     c.add_argument("--keep-scratch", action="store_true", help="Keep the scratch directory")
     c.add_argument("--allow-low-memory", action="store_true",
                    help="Run even when this machine has little free memory (it may swap or freeze)")
@@ -468,7 +480,7 @@ def main() -> int:
     u = sub.add_parser("use", help="Check the manifest and, when it matches, extract the archive")
     u.add_argument("--project", default=".", help="Project root (default: .)")
     u.add_argument("--orig", required=True, help="The private companion checkout (CI uses .orig)")
-    u.add_argument("--manifest", default=MANIFEST_DEFAULT, help=f"Manifest to read (default: {MANIFEST_DEFAULT})")
+    u.add_argument("--manifest", default=MANIFEST_DEFAULT, help=f"Manifest to read, relative to --project (default: {MANIFEST_DEFAULT})")
     u.add_argument("--game", default=None, help="Retail executable (default: <orig>/orig/SLPS_258.19)")
     u.add_argument("--extract", action="store_true", help="Extract the archive when it matches")
     u.add_argument("--github-output", default=None, help="Append verdict=<snapshot|splat> to this file")
