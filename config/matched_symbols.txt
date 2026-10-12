@@ -3349,3 +3349,10 @@ func_0018d11c    # ghidra_draft+jtbl+permuter
 func_001cba28    # ghidra_draft+jtbl+permuter
 func_00224cdc    # ghidra_draft+jtbl+permuter
 func_00247780    # llm_draft+permuter
+func_00104444    # m2c_draft+permuter
+func_00147cb0    # m2c_draft+permuter
+func_00140d6c    # m2c_draft+permuter
+func_0027b004    # m2c_draft+permuter
+func_002352b4    # m2c_draft+permuter
+func_0013f5e8    # m2c_draft+permuter
+func_00120730    # m2c_draft+permuter
