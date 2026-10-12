@@ -3365,3 +3365,6 @@ func_00265f20    # llm_draft
 func_0029964c    # llm_draft
 func_0018d630    # llm_draft
 func_0029e938    # llm_draft
+func_002a1954    # llm_draft
+func_00192460    # llm_draft
+func_001952e8    # llm_draft
