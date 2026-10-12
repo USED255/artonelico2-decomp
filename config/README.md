@@ -20,27 +20,7 @@ Read [docs/BUILD.md](../docs/BUILD.md) first. That page explains the build steps
 | `linker_script_extra.ld` | maintainers | the change tracker | Yes, but rarely. |
 | `match_meta.tsv` | `tools/maintainer/build/gen_match_meta.py` | the match tools | No. The tools generate the file. |
 
-Three files in this directory are tab-separated tables. Section 2 gives their
-format.
-
-## 2. The format of the three tables
-
-Each table obeys these rules:
-
-- Line 1 is the header row.
-- Every later line is a data line.
-- The file contains no comment line.
-
-| File | Header row | Values |
-| --- | --- | --- |
-| `compiler_map.tsv` | `source-basename<TAB>compiler` | `game`, `cri`, or an absolute compiler path |
-| `source_flags.tsv` | `source-basename<TAB>extra-cflags` | the extra compiler flags for one source |
-| `jtbl_tables.tsv` | `symbol<TAB>jtbl-symbol` | the C jump-table symbol and the splat symbol |
-
-The tools also accept a `#` comment line. An old file may contain one. A new file
-must not contain one.
-
-## 3. `config/symbol_addrs.txt` — the splat symbol table
+## 2. `config/symbol_addrs.txt` — the splat symbol table
 
 This file gives splat the address and the name of each function.
 The file holds 10,923 function entries.
@@ -77,7 +57,7 @@ Readers: splat reads the file through the `symbol_addrs_path` option in
 `tools/report/gen_function_report.py`, and
 `tools/maintainer/report/match_workqueue.py` also read the file.
 
-## 4. `config/matched_symbols.txt` — the only switch for the mixed build
+## 3. `config/matched_symbols.txt` — the only switch for the mixed build
 
 This file is the matched function ledger. It is the **only switch** for the mixed
 build. Read [docs/BUILD.md](../docs/BUILD.md) for the build steps.
@@ -124,7 +104,7 @@ Readers: `build_mixed.sh` reads the ledger directly.
 `tools/build/decomp_build.py`, `tools/build/gen_objdiff_full.py`, and
 `tools/maintainer/build/gen_match_meta.py` use that parser.
 
-### 4.1 The default compiler flags
+### 3.1 The default compiler flags
 
 The build compiles every matched source with these flags:
 
@@ -140,12 +120,12 @@ The build compiles every matched source with these flags:
 - `-ffunction-sections` puts each function in its own `.text.<symbol>` section.
   The linker script can then place each function at its original address.
 
-### 4.2 Sources with a different optimization level
+### 3.2 Sources with a different optimization level
 
 `config/source_flags.tsv` holds the extra flags for one source. The build appends
 those flags after the default flags. `gcc` uses the last `-O` option.
 
-### 4.3 The `baseelf_85` note
+### 3.3 The `baseelf_85` note
 
 The ledger first recorded `baseelf_85` as "unsolved (jal against j, objdiff 62.9
 percent)" and left it out. Later work found that it is an empty wrapper at the
@@ -153,7 +133,7 @@ percent)" and left it out. Later work found that it is an empty wrapper at the
 private note O-05. A rebuild at `-O2` makes the payload 176 bytes shorter and
 turns the sha1 value red. The project measured this negative control.
 
-## 5. `config/compiler_map.tsv` — the compiler for each source
+## 4. `config/compiler_map.tsv` — the compiler for each source
 
 This file states which compiler builds one source. This project is a
 **mixed-compiler project**:
@@ -190,7 +170,7 @@ exports `GCC_CRI`.
 Readers: `build_mixed.sh` passes the file to `tools/project/compile_sources.py`
 with the `--cc-map` option. `tools/report/gen_function_report.py` also reads it.
 
-## 6. `config/source_flags.tsv` — extra compiler flags
+## 5. `config/source_flags.tsv` — extra compiler flags
 
 This file holds the extra compiler flags for one source.
 
@@ -212,7 +192,7 @@ Readers: `tools/project/compile_sources.py` (`--flags-file`) and
 `tools/maintainer/project/auto_match_permuter.py`. Each writer keeps the header
 row.
 
-## 7. `config/jtbl_tables.tsv` — the jump table patch table
+## 6. `config/jtbl_tables.tsv` — the jump table patch table
 
 A C source can contain a real `switch` statement. The compiler then writes its own
 jump table in `.rodata`. That table duplicates a table that splat already cut out.
@@ -232,7 +212,7 @@ row states one pair:
 Readers: `build_mixed.sh` passes the file to `tools/project/compile_sources.py`
 with the `--jtbl-tables` option.
 
-## 8. `config/reloc_addrs.txt` — manual relocation records
+## 7. `config/reloc_addrs.txt` — manual relocation records
 
 This file lets a maintainer add one relocation record. The format is the upstream
 format of splat:
@@ -248,7 +228,7 @@ The file is empty today. An empty file is correct, because the project has no
 manual relocation record. Readers: splat reads the file through the
 `reloc_addrs_path` option in `splat.yaml`.
 
-## 9. `config/linker_script_extra.ld` — extra linker directives
+## 8. `config/linker_script_extra.ld` — extra linker directives
 
 This file holds extra linker script directives. It sets the entry symbol:
 
@@ -261,7 +241,7 @@ The comment in the file tells you to pass the file to the linker with the
 `tools/build/decomp_build.py` lists the file as a shared input, so a change to the
 file marks the build as out of date.
 
-## 10. `config/match_meta.tsv` — the generated summary
+## 9. `config/match_meta.tsv` — the generated summary
 
 `tools/maintainer/build/gen_match_meta.py` writes this file. The file combines
 `config/matched_symbols.txt`, `config/source_flags.tsv`, and the private work
@@ -270,7 +250,7 @@ queue into one machine-readable table for the match tools.
 The file is generated. Do not edit the file and do not commit the file.
 `.gitignore` excludes it.
 
-## 11. Names that the private pipeline needs
+## 10. Names that the private pipeline needs
 
 The private pipeline reads some names from this repository. Do not rename these
 names:
