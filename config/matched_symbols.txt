@@ -2680,6 +2680,7 @@ func_00344708    # ghidra_draft:-O2
 func_00344738    # ghidra_draft:-O2
 func_00344758    # ghidra_draft:-O2
 func_00344d60    # wrapper_o2_tail
+func_00346278    # llm_draft
 func_00346738    # ghidra_draft:-O1
 func_003467f8    # ghidra_draft:-O2
 func_00346820    # ghidra_draft:-O2
