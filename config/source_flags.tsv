@@ -261,6 +261,7 @@ func_0016d5e0	-Os
 func_0016dfa8	-Os
 func_0016e100	-Os
 func_0016eea0	-Os
+func_0016f2d8	-Os
 func_00171a98	-Os
 func_00171da0	-O1
 func_00174474	-Os
@@ -714,6 +715,7 @@ func_00204888	-O1
 func_002048d8	-O1
 func_00204fa8	-O1
 func_002051f4	-O1
+func_00205244	-O1
 func_00205294	-O1
 func_002052d4	-O1
 func_002053f8	-O1
@@ -1004,6 +1006,7 @@ func_0024fb58	-O1
 func_002501c0	-O2
 func_002521bc	-Os
 func_00252a7c	-O2
+func_00252b10	-Os
 func_002533a8	-Os
 func_00253548	-Os
 func_00253848	-O2
