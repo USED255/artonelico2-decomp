@@ -226,6 +226,7 @@ echo "== 3/6 Safety gate: a C object must not add a non-empty allocatable sectio
 # 3) 每个符号必须真的在它的 C 对象里定义。
 python3 - "$READELF" "$OUT/obj" "$SRCDIR" "$MODES" "$OUT/residual" "${SYMS[@]}" -- "${SRCS[@]}" <<'PY'
 import os, re, subprocess, sys
+from concurrent.futures import ThreadPoolExecutor
 readelf = sys.argv[1]
 objdir  = sys.argv[2]
 srcdir  = sys.argv[3]
@@ -241,8 +242,26 @@ for line in open(modes_f, encoding='utf-8'):
     if len(p) >= 3:
         modes[p[0]] = p[2]
 
+# Memoised readelf. The gate reads the same object several times (`-SW` from `sections` and
+# from `sym_bindings`, `-sW` from `sym_bindings` and `defined_syms`), which is about 2.3e4
+# process starts for one run (1.1-1.5 ms each). The cache removes the duplicates; the worker
+# pool below removes the serial part. Both keep the output byte for byte identical.
+# 记忆化 readelf：闸门会反复读同一个对象（`sections` 与 `sym_bindings` 各跑一次 `-SW`，
+# `sym_bindings` 与 `defined_syms` 各跑一次 `-sW`），一次运行约 2.3 万次进程启动
+# （每次 1.1~1.5 ms）。缓存去掉重复，下面的线程池去掉串行部分；两者都保证输出逐字不变。
+_readelf_cache = {}
+
+def readelf_out(args, c_locale=False):
+    key = (tuple(args), c_locale)
+    hit = _readelf_cache.get(key)
+    if hit is None:
+        env = dict(os.environ, LC_ALL='C') if c_locale else None
+        hit = subprocess.run([readelf, *args], capture_output=True, text=True, env=env).stdout
+        _readelf_cache[key] = hit
+    return hit
+
 def sections(obj):
-    out = subprocess.run([readelf, '-SW', obj], capture_output=True, text=True).stdout
+    out = readelf_out(('-SW', obj))
     res = []
     for line in out.splitlines():
         parts = line.replace('[', ' ').replace(']', ' ').split()
@@ -261,7 +280,7 @@ def sections(obj):
     return res
 
 def defined_syms(obj):
-    out = subprocess.run([readelf, '-sW', obj], capture_output=True, text=True).stdout
+    out = readelf_out(('-sW', obj))
     names = set()
     for line in out.splitlines():
         p = line.split()
@@ -275,13 +294,13 @@ def sym_bindings(obj):
     只含已定义的 FUNC/OBJECT。
     """
     sec_of = {}
-    out = subprocess.run([readelf, '-SW', obj], capture_output=True, text=True).stdout
+    out = readelf_out(('-SW', obj))
     for line in out.splitlines():
         m = re.match(r'\s*\[\s*(\d+)\]\s+(\S+)', line)
         if m:
             sec_of[m.group(1)] = m.group(2)
     res = []
-    out = subprocess.run([readelf, '-sW', obj], capture_output=True, text=True).stdout
+    out = readelf_out(('-sW', obj))
     for line in out.splitlines():
         p = line.split()
         if len(p) >= 8 and p[0].endswith(':') and p[3] in ('FUNC', 'OBJECT') and p[6] != 'UND':
@@ -306,8 +325,7 @@ def text_referenced(obj):
     重定位指向**了 ⇒ 它必然被 `/DISCARD/` 丢掉，不可能改变代码生成 ⇒ 可以放行。
     只统计 `.rel.text*`（`.rel.rodata` 是反过来引用 `.text`，不算）。
     """
-    out = subprocess.run([readelf, '-rW', obj], capture_output=True, text=True,
-                         env=dict(os.environ, LC_ALL='C')).stdout
+    out = readelf_out(('-rW', obj), c_locale=True)
     refs, cur = set(), None
     for line in out.splitlines():
         if 'R_MIPS_' not in line:
@@ -381,40 +399,59 @@ def strict_bad_sections(obj):
     return [(n, s) for (n, s, f) in sections(obj)
             if 'A' in f and s > 0 and not n.startswith('.text')]
 
-fail = False
-for sym, src in zip(syms, srcs):
+def check_one(pair):
+    """The failure messages of one symbol. The work is independent per symbol, so a pool can run it.
+
+    单个符号的失败消息。逐符号独立，可放进线程池。
+    """
+    sym, src = pair
+    msgs = []
     cobj = os.path.join(objdir, src + '.o')
     if not os.path.exists(cobj):
-        print("  [FAIL] the C object does not exist: %s" % cobj); fail = True; continue
+        msgs.append("  [FAIL] the C object does not exist: %s" % cobj)
+        return msgs
     bad = bad_sections(cobj)
     if bad:
-        print("  [FAIL] %s holds a non-empty allocatable section outside .text: %s (the current mechanism does not place them)" % (cobj, bad)); fail = True
+        msgs.append("  [FAIL] %s holds a non-empty allocatable section outside .text: %s (the current mechanism does not place them)" % (cobj, bad))
     if sym not in defined_syms(cobj):
-        print("  [FAIL] %s is not defined in %s" % (sym, cobj)); fail = True
+        msgs.append("  [FAIL] %s is not defined in %s" % (sym, cobj))
 
     aobj = 'build/asm/cod/%s.o' % sym
     if not os.path.exists(aobj):
-        print("  [FAIL] the asm object to replace does not exist: %s" % aobj); fail = True; continue
+        msgs.append("  [FAIL] the asm object to replace does not exist: %s" % aobj)
+        return msgs
     # The gate treats an asm object and a residual object strictly: no non-empty allocatable section outside .text.
     abad = strict_bad_sections(aobj)
     if abad:
-        print("  [FAIL] %s holds a non-empty allocatable section outside .text: %s. A full removal loses content." % (aobj, abad)); fail = True
+        msgs.append("  [FAIL] %s holds a non-empty allocatable section outside .text: %s. A full removal loses content." % (aobj, abad))
 
     if modes.get(sym) == 'residual':
         robj = os.path.join(residdir, sym + '.o')
         if not os.path.exists(robj):
-            print("  [FAIL] the residual object does not exist: %s" % robj); fail = True; continue
+            msgs.append("  [FAIL] the residual object does not exist: %s" % robj)
+            return msgs
         rbad = strict_bad_sections(robj)
         if rbad:
-            print("  [FAIL] %s holds a non-empty allocatable section outside .text: %s" % (robj, rbad)); fail = True
+            msgs.append("  [FAIL] %s holds a non-empty allocatable section outside .text: %s" % (robj, rbad))
         a_defs = defined_syms(aobj)
         r_defs = defined_syms(robj)
         if sym in r_defs:
-            print("  [FAIL] the residual object still defines the target symbol %s (the C object would redefine it)" % sym); fail = True
+            msgs.append("  [FAIL] the residual object still defines the target symbol %s (the C object would redefine it)" % sym)
         expected = {n for n in a_defs if n not in (sym, sym + '.NON_MATCHING')}
         missing = sorted(expected - r_defs)
         if missing:
-            print("  [FAIL] the residual object lost the symbol definitions of the original object: %s (removal breaks the link)" % missing); fail = True
+            msgs.append("  [FAIL] the residual object lost the symbol definitions of the original object: %s (removal breaks the link)" % missing)
+    return msgs
+
+fail = False
+gate_jobs = max(1, int(os.environ.get('GATE_JOBS') or (os.cpu_count() or 4)))
+with ThreadPoolExecutor(max_workers=gate_jobs) as pool:
+    # `map` keeps the input order, so the messages print in the same order as the serial loop did.
+    # `map` 保序，打印顺序与改造前的串行循环一致。
+    for msgs in pool.map(check_one, zip(syms, srcs)):
+        for m in msgs:
+            print(m)
+            fail = True
 if fail:
     sys.exit(1)
 print("  passed: %d C objects supply .text* only, %d replaced asm objects hold .text only, the residual objects keep all symbols"

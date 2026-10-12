@@ -79,13 +79,17 @@ echo "== 0b/4 Alignment repair =="
 # moves by 4 bytes. A code segment needs 4-byte alignment only.
 # splat 给每个代码子段加 `.align 3`（8 字节）。汇编器会把**段大小**补齐到该对齐，
 # 于是 .init（36 B）被补成 40 B，其后所有地址偏移 4 字节。代码段按 4 字节对齐即可。
-fixed=0
-for f in $(find asm/cod -name '*.s'); do
-    if grep -q '^\.align 3' "$f"; then
-        sed -i 's/^\.align 3$/.align 2/' "$f"; fixed=$((fixed+1))
-    fi
-done
-echo "  fixed the .align of $fixed code segments"
+# One tree walk instead of one process pair per file: `grep -rl` finds the 7,802 files that
+# need the repair in one pass, then `xargs -P` rewrites them in parallel. On a 4 vCPU runner
+# this turns ~28 s into ~3 s (measured: the per-file loop costs 19.7 s for the grep alone).
+# 一次遍历代替「每文件两次进程启动」：`grep -rl` 一趟找出需要修的 7,802 个文件，
+# 再用 `xargs -P` 并行改写。4 vCPU runner 上约 28 s → 约 3 s（实测：逐文件循环光 grep 就 19.7 s）。
+mapfile -t -d '' align_files < <(grep -rlZ '^\.align 3' asm/cod --include='*.s')
+if [ "${#align_files[@]}" -gt 0 ]; then
+    printf '%s\0' "${align_files[@]}" \
+        | xargs -0 -r -P "${JOBS:-4}" sed -i 's/^\.align 3$/.align 2/'
+fi
+echo "  fixed the .align of ${#align_files[@]} code segments"
 
 echo "== 1/4 Assemble =="
 mkdir -p build/asm/cod build/asm/data/cod build/asm/data/dat
@@ -127,6 +131,19 @@ if old in s:
 open(p, 'w', encoding='utf-8').write(s)
 print("  applied: %s" % (", ".join(changed) if changed else "none (the script probably repaired it already)"))
 PATCH
+
+# `matching-gate` fast lane. The mixed build only needs the assembled objects (build/asm) and
+# the repaired linker script, so a pure-source pull request can stop here. The mixed payload is
+# still compared against the retail payload, so the image stays verified byte for byte; only the
+# separate "the pure-asm baseline also rebuilds the retail image" assertion is skipped (that one
+# keeps running on every push to main). Guarded by the caller (decomp_build.py --stage fast).
+# `matching-gate` 的快路：混合构建只需要 build/asm 的装配产物与修好的链接脚本，纯源码 PR 可以
+# 到此为止。混合载荷仍与零售载荷比对，镜像依旧逐字节验证；只跳过「纯汇编基线也能重建零售镜像」
+# 这条独立断言（它在每次 main push 上照跑）。由调用方（decomp_build.py --stage fast）控制。
+if [ "${BASELINE_ASSEMBLE_ONLY:-0}" = "1" ]; then
+    echo "== 2/4-4/4 skipped (BASELINE_ASSEMBLE_ONLY=1): the asm baseline is assembled, the link and the payload check are skipped =="
+    exit 0
+fi
 
 echo "== 2/4 Link =="
 rm -rf build/stage; mkdir -p build/stage

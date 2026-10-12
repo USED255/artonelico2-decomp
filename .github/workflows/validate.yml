@@ -1,23 +1,34 @@
 # Fast checks. No secret is necessary.
 #
 # Two modes:
-#   push / manual   -> repository checks + publication record.
-#   pull_request    -> contribution mode. A same-repository pull request may add,
-#                      change, rename, or delete files. A pull request from a fork
-#                      may add or change files only. See CONTRIBUTING.md.
+#   push to main / manual -> repository checks + publication record.
+#   pull_request          -> contribution mode. A same-repository pull request may add,
+#                            change, rename, or delete files. A pull request from a fork
+#                            may add or change files only. See CONTRIBUTING.md.
+#
+# A push to a feature branch does not run this workflow: the pull request run already
+# covers that commit, so running both would double every contribution push (measured:
+# two runs of 10-12 s each).
+# 推送到功能分支不再重复跑：同一次提交的 PR run 已经覆盖它（实测每个 push 会跑两份 10–12 s）。
 name: validate
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:

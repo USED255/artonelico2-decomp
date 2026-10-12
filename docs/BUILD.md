@@ -63,12 +63,29 @@ in [progress/SLPS_258.19_report.json](../progress/SLPS_258.19_report.json).
 
 | Workflow | When it runs | What it does |
 | --- | --- | --- |
-| `validate` | Each push, each pull request, and a manual start | On a push it checks the publication record (`PUBLISHED.json`), the forbidden material, the report schema, and the baseline. On a pull request it allows any change **except** the publication content (`progress/**` and `PUBLISHED.json`). A branch of this repository may also rename or delete a file. A pull request from an external fork must still only add or change files. Read [CONTRIBUTING.md](../CONTRIBUTING.md). |
+| `validate` | Each push to `main`, each pull request, and a manual start | On a push it checks the publication record (`PUBLISHED.json`), the forbidden material, the report schema, and the baseline. On a pull request it allows any change **except** the publication content (`progress/**` and `PUBLISHED.json`). A branch of this repository may also rename or delete a file. A pull request from an external fork must still only add or change files. Read [CONTRIBUTING.md](../CONTRIBUTING.md). |
 | `matching-gate` | A push to the default branch, an internal pull request, or a manual start | Gets the retail executable and the toolchain from a private companion repository. Then it runs `make build`, `make delta`, and `make report`. It publishes the artifact **only** when all checks pass. |
+
+`matching-gate` runs in one of three modes. [tools/ci/classify_change.py](../tools/ci/classify_change.py)
+picks the mode from the change set, and it denies by default: an error, a push, and a manual
+run are always `full`.
+
+| Mode | When | What runs |
+| --- | --- | --- |
+| `skip` | A pull request whose changes are all documentation | No build at all; the private material is not even downloaded. `validate` still checks the repository. |
+| `fast` | A pull request whose changes are all in `src/matched/**`, `progress/**`, or documentation | `make build-fast`: the baseline is assembled but not linked, then the mixed build, the delta check, and the report run. The mixed payload is compared against the retail payload, so the image is still verified byte for byte. |
+| `full` | Every push, every manual run, and any change that touches a build input (`splat.yaml`, `config/**`, `build*.sh`, `Makefile`, `configure.py`, `tools/**`, `toolchain.lock.json`, the workflows) | The command above, including the baseline link and its payload check. This is the mode that publishes the artifact. |
 
 The `matching-gate` workflow needs the secret `ORIG_DEPLOY_KEY` and the variable
 `PRIVATE_ORIG_REPO`. A pull request from a fork cannot get them. In that case the
-workflow skips the job and does not fail. A maintainer then verifies the commit.
+workflow runs its notice step only and does not fail. A maintainer then verifies the commit.
+
+The gate also restores the packaged `splat split` output when the maintainer has packed it
+with [tools/ci/splat_snapshot.py](../tools/ci/splat_snapshot.py). The archive lives in the
+private companion repository; this repository only carries `toolchain/splat-snapshot.json`,
+which holds hashes and counts, never content. Any mismatch (a stale input, a different retail
+executable, a corrupt archive) prints a warning and falls back to running splat, so the gate
+never depends on the archive: the mixed payload is still compared against the retail payload.
 
 A failed check produces no new progress report. Therefore the public numbers are
 always verified numbers.

@@ -7,7 +7,31 @@
 #   vars.PRIVATE_ORIG_REPO    the private companion repository, for example owner/at2-orig
 #
 # A pull request from a fork cannot get the secret or the variable. Then this job
-# skips with a notice. It does not fail.
+# runs its notice step only. It does not fail.
+#
+# Three modes. The job itself always runs, so a mode never leaves a required check pending.
+# tools/ci/classify_change.py decides the mode from the change set (default deny: any error,
+# any push, and any manual run are `full`):
+#   skip  a pull request whose changes are all documentation. No build, no private checkout.
+#   fast  a pull request whose changes are all in src/matched/**, progress/**, or docs.
+#         The baseline is assembled but not linked; the mixed build, the delta check, and the
+#         report still run, and the mixed payload is compared against the retail payload, so
+#         the image is verified byte for byte. The separate "the pure-asm baseline also
+#         rebuilds the retail image" assertion runs on every push to main instead.
+#   full  everything else: every push, every manual run, and any change that touches a build
+#         input. This runs the whole pipeline, including the baseline link and its payload.
+#
+# The build has one optional accelerator. When the maintainer has packed the `splat split`
+# output into the private companion repository (tools/ci/splat_snapshot.py create), the step
+# below restores that archive instead of running splat again, which saves about 150 s. The
+# public repository only carries toolchain/splat-snapshot.json (hashes and counts). Any
+# mismatch prints a warning and falls back to running splat, so the gate never depends on
+# the archive for correctness: the mixed payload is still compared against the retail payload.
+#
+# 构建有一个可选加速器：维护者若已用 tools/ci/splat_snapshot.py create 把 `splat split` 的输出
+# 打包进私有伴生仓库，下面的步骤就还原归档而不再跑 splat（省约 150 s）。公开仓库只带
+# toolchain/splat-snapshot.json（哈希与计数）。任何不匹配都打警告并回落真 splat，门禁的正确性
+# 从不依赖归档：混合载荷仍与零售载荷比对。
 #
 # A manual run can verify a pull request. Give the pull request number as input.
 # WARNING: a manual run uses the secret, and it runs the scripts of that commit.
@@ -50,11 +74,38 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.pr && format('refs/pull/{0}/head', github.event.inputs.pr) || github.sha }}
-          fetch-depth: 0            # the delta check needs the base commit
+          fetch-depth: 0            # the mode and the delta check need the base commit
           persist-credentials: false
 
-      - name: Checkout the private companion (retail executable and Sony toolchain)
+      # The mode decides which of the steps below run. It runs before the private checkout so
+      # that a documentation pull request never downloads the retail material.
+      # 模式决定下面哪些步骤运行；它排在私有取件之前，让纯文档 PR 完全不下载受限材料。
+      - name: Classify the change (skip / fast / full)
+        id: mode
         if: env.HAS_ORIG == 'true'
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -u
+          base="${PR_BASE:-}"
+          if [ -z "$base" ]; then base="${BEFORE:-}"; fi
+          if [ -n "$base" ] && [ "$base" != "0000000000000000000000000000000000000000" ]; then
+            git fetch --quiet --no-tags origin "$base" 2>/dev/null || true
+          fi
+          mode="$(python3 tools/ci/classify_change.py --root . --event "$EVENT" --base "$base" --head HEAD --verbose)" || mode=full
+          case "$mode" in skip|fast|full) ;; *) mode=full ;; esac
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "::notice::build mode = $mode"
+
+      - name: Notice (documentation only, the build gate is skipped)
+        if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode == 'skip'
+        run: |
+          echo "::notice::Every changed file is documentation. No build runs. The validate workflow still checks the repository."
+
+      - name: Checkout the private companion (retail executable and Sony toolchain)
+        if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
         uses: actions/checkout@v4
         with:
           repository: ${{ env.PRIVATE_ORIG_REPO }}
@@ -62,13 +113,27 @@ jobs:
           path: .orig
           persist-credentials: false
 
+      # `splat split` is about 150 s of the build, it is single-threaded, and its output is a
+      # pure function of the retail executable plus a few inputs that rarely change. The
+      # maintainer packs that output once (tools/ci/splat_snapshot.py create) and pushes the
+      # archive to the private companion repository; this repository only carries
+      # toolchain/splat-snapshot.json, which holds hashes and counts, never content. Every
+      # reason to distrust the archive prints a warning and falls back to running splat.
+      # `splat split` 占构建约 150 s、单线程，且输出只是原版可执行文件与少数输入的纯函数。维护者
+      # 用 tools/ci/splat_snapshot.py create 打包一次并把归档推到私有伴生仓库；本仓库只带
+      # toolchain/splat-snapshot.json（哈希与计数，无内容）。任何存疑都打警告并回落真 splat。
+      - name: Use the packaged splat output when it matches this checkout
+        id: snapshot
+        if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
+        run: python3 tools/ci/splat_snapshot.py use --project . --orig .orig --extract --github-output "$GITHUB_OUTPUT"
+
       - uses: actions/setup-python@v5
-        if: env.HAS_ORIG == 'true'
+        if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
         with:
           python-version: '3.13'
 
       - name: Install the toolchain and check each sha256
-        if: env.HAS_ORIG == 'true'
+        if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
         run: |
           set -euo pipefail
           mkdir -p "$HOME/tc"
@@ -98,7 +163,7 @@ jobs:
       # The build scripts read these variables. Without them they fall back to
       # the maintainer's home directory, which does not exist on the runner.
       - name: Wire the toolchain into the build
-        if: env.HAS_ORIG == 'true'
+        if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
         run: |
           set -euo pipefail
           BIN="$HOME/tc/bin"
@@ -126,17 +191,16 @@ jobs:
           echo "ld  = $("$LD" --version | head -1)"
 
       - name: Get the retail executable and check it
-        if: env.HAS_ORIG == 'true'
+        if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
         run: |
           set -euo pipefail
           mkdir -p orig
           cp .orig/orig/SLPS_258.19 orig/SLPS_258.19
-          rm -rf .orig
           sha1sum orig/SLPS_258.19
           python3 configure.py --game orig/SLPS_258.19
 
       - name: Get objdiff-cli and check its sha256
-        if: env.HAS_ORIG == 'true'
+        if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
         run: |
           set -euo pipefail
           curl -fsSL -o objdiff-cli "$(python3 -c 'import json;print(json.load(open("toolchain.lock.json"))["tools"]["objdiff-cli"]["url"])')"
@@ -146,38 +210,57 @@ jobs:
           echo "$BINUTILS" >> "$GITHUB_PATH"      # the step must also find as, objcopy, and readelf
 
       - name: Install splat (pinned, the version in toolchain.lock.json)
-        if: env.HAS_ORIG == 'true'
+        if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip' && steps.snapshot.outputs.verdict != 'snapshot'
         run: python3 -m pip install --quiet -r tools/ci/splat-requirements.txt
 
       - name: Repository check
-        if: env.HAS_ORIG == 'true'
+        if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
         run: make check
 
       - name: Build and check the payload (the payload check)
-        if: env.HAS_ORIG == 'true'
-        run: make build
+        if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
+        run: |
+          if [ "${{ steps.mode.outputs.mode }}" = "fast" ]; then
+            echo "::notice::fast mode: the baseline is assembled without its link; the mixed payload is still asserted."
+            make build-fast
+          else
+            make build
+          fi
 
       - name: Delta check. Each changed file in src/matched/ must match 100%.
-        if: env.HAS_ORIG == 'true'
+        if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
         run: |
-          BASE="${{ github.event.before }}"
-          case "$BASE" in ""|*0000000000000000000000000000000000000000) echo "First push. Skip the delta check. The full build checked the payload.";; *)
-            git fetch --quiet origin "$BASE" || true
-            make delta BASE="$BASE"
-          ;; esac
+          # A pull request has no github.event.before. Without this the step printed
+          # "First push. Skip the delta check." on every pull request and never ran the check.
+          # PR 事件里没有 github.event.before；不改这里，这一步会在每个 PR 上打印
+          # “First push. Skip the delta check.”，即从来没有真正跑过。
+          set -u
+          BASE="${PR_BASE:-}"
+          if [ -z "$BASE" ]; then BASE="${BEFORE:-}"; fi
+          case "$BASE" in
+            ""|*0000000000000000000000000000000000000000)
+              echo "No base commit (a manual run or the first push). Skip the delta check. The full build checked the payload." ;;
+            *)
+              git fetch --quiet origin "$BASE" || true
+              make delta BASE="$BASE"
+            ;;
+          esac
 
       - name: Write the progress report
-        if: env.HAS_ORIG == 'true'
+        if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
         run: make report
 
       - name: The report must not be worse than the baseline
-        if: env.HAS_ORIG == 'true'
+        if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
         run: python3 tools/check/check_public_repo.py --compare-only --baseline progress/baseline.json --report progress/SLPS_258.19_report.json
 
       # The steps above must all pass to reach this step. A failed run writes no
       # report artifact. Therefore decomp.dev never receives an unverified number.
       - name: Publish the progress report (decomp.dev needs this exact name)
-        if: env.HAS_ORIG == 'true'
+        if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
         uses: actions/upload-artifact@v4
         with:
           name: SLPS_258.19_report

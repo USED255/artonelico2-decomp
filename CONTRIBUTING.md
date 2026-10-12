@@ -45,7 +45,7 @@ make check                       # repository checks
 | Workflow | Your pull request |
 | --- | --- |
 | `validate` | Runs in **contribution mode**. It allows an addition or a change in the contribution paths. It rejects a change outside them, a non-text file, and a file above 1 MiB. A branch of this repository may also rename or delete a file. A pull request from an external fork must still only add or change files. |
-| `matching-gate` | Needs the retail executable and the Sony toolchain. A pull request from a fork cannot get them, so the job skips. A maintainer then verifies your commit, or runs the workflow manually with your pull request number. |
+| `matching-gate` | Needs the retail executable and the Sony toolchain. A pull request from a fork cannot get them, so the job runs its notice step only. A maintainer then verifies your commit, or runs the workflow manually with your pull request number. An internal pull request picks a mode from your change set: documentation only runs no build at all, and a change that only touches `src/matched/**` (plus documentation) assembles the baseline and runs the mixed build, the per-function check, and the report, without the separate baseline link. Any change to a build input runs the whole pipeline. See [docs/BUILD.md](docs/BUILD.md) section 4. |
 
 ## 5. What happens after CI
 

@@ -55,11 +55,25 @@ make check                       # 仓库自检；不需要原版可执行文件
 
 | workflow | 何时跑 | 做什么 |
 | --- | --- | --- |
-| `validate` | 每次 push、每个 PR、手动触发 | push 校验**发布记录**（`PUBLISHED.json`）、禁止材料、报告 schema 与基线；PR 允许任何改动，**只读** `progress/**` 与 `PUBLISHED.json`。本仓库自己的分支还可以重命名或删除文件；外部 fork 的 PR 仍只能新增或修改。见 [CONTRIBUTING.zh-CN.md](../CONTRIBUTING.zh-CN.md) |
+| `validate` | 默认分支 push、每个 PR、手动触发 | push 校验**发布记录**（`PUBLISHED.json`）、禁止材料、报告 schema 与基线；PR 允许任何改动，**只读** `progress/**` 与 `PUBLISHED.json`。本仓库自己的分支还可以重命名或删除文件；外部 fork 的 PR 仍只能新增或修改。见 [CONTRIBUTING.zh-CN.md](../CONTRIBUTING.zh-CN.md) |
 | `matching-gate` | 默认分支 push、同仓库 PR、手动触发 | 从私有伴生仓库取原版可执行文件与工具链，跑 `make build` / `make delta` / `make report`；**全部通过才发布 artifact** |
 
+`matching-gate` 有三种模式，由 [tools/ci/classify_change.py](../tools/ci/classify_change.py)
+按改动集合判定，且**默认拒绝**：出错、任何 push、任何手动运行都落到 `full`。
+
+| 模式 | 何时 | 跑什么 |
+| --- | --- | --- |
+| `skip` | PR 的改动全是文档 | 完全不构建，连私有材料都不下载；仓库检查仍由 `validate` 负责 |
+| `fast` | PR 的改动只落在 `src/matched/**`、`progress/**` 或文档 | `make build-fast`：基线只装配不链接，随后混合构建、`delta`、报告照跑；混合载荷比的是零售载荷，镜像仍被逐字节验证 |
+| `full` | 任何 push、任何手动运行，以及任何触碰构建输入的改动（`splat.yaml`、`config/**`、`build*.sh`、`Makefile`、`configure.py`、`tools/**`、`toolchain.lock.json`、workflows） | 上面那条完整流水线，含基线链接与基线载荷校验；**只有这种模式会发布 artifact** |
+
 `matching-gate` 需要 secret `ORIG_DEPLOY_KEY` 与变量 `PRIVATE_ORIG_REPO`。
-**fork 的 PR 拿不到**，此时该 job 明确跳过，不算失败；之后由维护者复验该 commit。
+**fork 的 PR 拿不到**，此时该 job 只跑 notice 步骤，不算失败；之后由维护者复验该 commit。
+
+维护者若已用 [tools/ci/splat_snapshot.py](../tools/ci/splat_snapshot.py) 把 `splat split`
+的输出打包，门禁会直接还原归档而不再跑 splat。归档放在私有伴生仓库；本仓库只带
+`toolchain/splat-snapshot.json`（哈希与计数，不含内容）。任何不匹配（输入过期、原版可执行文件
+不同、归档损坏）都打警告并回落真 splat —— 门禁从不依赖归档：混合载荷仍与零售载荷比对。
 
 检查不过就**不产生**新的进度报告。因此公开的数字永远是**验证过的数字**。
 
