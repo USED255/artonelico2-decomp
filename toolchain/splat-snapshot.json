@@ -1,0 +1,18 @@
+{
+  "schema": "at2-splat-snapshot/1",
+  "target": "SLPS_258.19",
+  "path": "toolchain/splat-SLPS_258.19.tar.zst",
+  "sha256": "3670e9b6cbfd8a13c7df69ce51798e4cf1645242a3e6524f0abb0b589b0060f6",
+  "game_sha1": "766836783c16b8616d3d84cfbd6af70a50b6c052",
+  "splat_version": "0.50.0",
+  "inputs": {
+    "splat.yaml": "2388cd306df423292c27952c1ce4a4f1e189f101ab793b3dc4a223aa584401d7",
+    "config/symbol_addrs.txt": "de672e0b6641026f8486705ec8c3e71c1fbcffa6dfde15070d9de6d0c60653dc",
+    "config/reloc_addrs.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tools/ci/splat-requirements.txt": "67b798c03234cac2a6806f115551dba206aea098be7d09409d5ea34d11f2026b"
+  },
+  "entry_count": 10946,
+  "tree_sha256": "630c918234d746fb6ef11dadf18546fbec6831c5c3ebc6e823121550ab0f536a",
+  "created_at": "2026-10-12T13:35:29Z",
+  "generator": "tools/ci/splat_snapshot.py"
+}
