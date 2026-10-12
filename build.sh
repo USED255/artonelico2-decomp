@@ -97,13 +97,25 @@ export AS
 # Do not add -mabi=eabi. It sets the eabi64 bit (e_flags=0x20924001), but the retail value is 0x20920001.
 find asm -name '*.s' | sort > build/asm_list.txt
 n=$(wc -l < build/asm_list.txt)
-find asm -name '*.s' | sort | xargs -P "${JOBS:-4}" -I{} bash -c '
-    o="build/asm/${1#asm/}"; o="${o%.s}.o"
-    mkdir -p "$(dirname "$o")"
-    "$AS" -EL -march=r5900 -I include -o "$o" "$1" 2>"$o.err" || { echo "assembly failed: $1" >&2; exit 1; }
-    if [ -s "$o.err" ] && grep -q Error "$o.err"; then echo "errors found: $1" >&2; head -3 "$o.err" >&2; exit 1; fi
-' _ {}
-echo "  assembled $n .s files"
+# `matching-gate` may restore the objects from the packaged snapshot (tools/ci/splat_snapshot.py,
+# `asm` group). The tool verified every file against the manifest before writing it, so this
+# only needs the count check; the flag comes from the workflow and is never set on a local run.
+# The `.align` repair above still runs: the residual split and the per-function targets read the
+# repaired sources under asm/.
+# `matching-gate` 可能已从打包快照（tools/ci/splat_snapshot.py 的 `asm` 组）还原了对象：工具在写盘
+# 前已逐文件核对过清单，所以这里只需核对数量；开关来自 workflow，本机构建永远不会带上它。
+# 上面的 `.align` 修复照常执行：残差拆分与逐函数 target 都读 asm/ 里修好的源。
+if [ "${BASELINE_ASM_PREBAKED:-0}" = "1" ] && [ "$(find build/asm -name '*.o' | wc -l)" = "$n" ]; then
+    echo "  the snapshot restored $n .o files; the assembler is skipped"
+else
+    find asm -name '*.s' | sort | xargs -P "${JOBS:-4}" -I{} bash -c '
+        o="build/asm/${1#asm/}"; o="${o%.s}.o"
+        mkdir -p "$(dirname "$o")"
+        "$AS" -EL -march=r5900 -I include -o "$o" "$1" 2>"$o.err" || { echo "assembly failed: $1" >&2; exit 1; }
+        if [ -s "$o.err" ] && grep -q Error "$o.err"; then echo "errors found: $1" >&2; head -3 "$o.err" >&2; exit 1; fi
+    ' _ {}
+    echo "  assembled $n .s files"
+fi
 
 echo "== 1b/4 Linker script alignment repair (Japanese version, second group prefix dat_) =="
 # The retail .sdata ends at 0x9DFBE8, and .sbss starts at 0x9DFC00 (32 bytes aligned).

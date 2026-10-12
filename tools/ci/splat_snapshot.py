@@ -15,25 +15,36 @@ counts, no content -- is committed to the public repository.
 Contract
 --------
   create  Run `splat split` in a clean scratch directory, pack its output, and write the
-          manifest. The maintainer runs this, pushes the archive to the companion
-          repository, and commits the manifest.
-  use     Check the manifest and the archive against the current checkout: the input hashes,
-          the archive sha256, the retail executable, and only then extract. Any doubt means
-          the tree is left alone and splat runs as before.
+          manifest. With `--with-asm` it also assembles the baseline (in a copy of the
+          scratch, using the repository's own `build.sh`) and packs the objects as a second
+          group. The maintainer runs this, pushes the archive to the companion repository,
+          and commits the manifest.
+  use     Check the manifest and the archive against the current checkout: the input
+          hashes, the archive sha256, the retail executable, and only then extract. Any
+          doubt means the tree is left alone and splat runs as before.
 
-`use` never fails the job: every reason to distrust the archive prints a `::warning::` and
-falls back to running splat. The archive is an accelerator, not an input to correctness --
+The archive holds two groups, split by path prefix: `build/asm/**` are the assembled
+objects, and everything else is the raw `splat split` output. The object group is only used
+when the splat group is usable too, and any change to `build.sh` (the assembly recipe)
+drops the object group while keeping the splat group, so CI re-runs the new recipe.
+
+`use` never fails the job: every reason to distrust a group prints a `::warning::` and
+falls back for that group. The archive is an accelerator, not an input to correctness --
 CI still compares the mixed payload against the retail payload, so a wrong archive can only
 fail the build, never pass it.
 
 用法与契约
 ----------
-  create  在干净 scratch 里跑 `splat split`、打包、写清单（维护者执行，然后把归档推到私有
-          伴生仓库、把清单提交到公开仓库）。
+  create  在干净 scratch 里跑 `splat split`、打包、写清单；加 `--with-asm` 时还会在 scratch 的
+          副本里用仓库自带的 `build.sh` 汇编一遍，把对象作为第二组打进同一个归档。维护者执行，
+          然后把归档推到私有伴生仓库、把清单提交到公开仓库。
   use     拿清单与归档对照当前检出（输入哈希、归档 sha256、原版可执行文件），全部通过才解包；
           任何存疑都原样不动，回落真 splat。
 
-`use` 永不失败：任何不可信的理由都打 `::warning::` 并回落真 splat。归档只是加速器，不是正确性的
+归档按路径前缀分两组：`build/asm/**` 是汇编产物，其余是 `splat split` 的原始输出。只有 splat 组
+可用时对象组才会被使用；`build.sh`（汇编配方）一变，对象组作废、splat 组保留 ⇒ CI 会用新配方重跑。
+
+`use` 永不失败：任何不可信的理由都打 `::warning::` 并对该组回落。归档只是加速器，不是正确性的
 输入 —— CI 仍把混合载荷与零售载荷比对，坏归档只能让构建失败，不可能让它通过。
 """
 
@@ -49,9 +60,20 @@ import sys
 import tarfile
 from pathlib import Path
 
-SCHEMA = "at2-splat-snapshot/1"
+SCHEMA = "at2-splat-snapshot/2"
+SCHEMA_V1 = "at2-splat-snapshot/1"
 MANIFEST_DEFAULT = "toolchain/splat-snapshot.json"
 ARCHIVE_DEFAULT = "toolchain/splat-SLPS_258.19.tar.zst"
+
+# The archive holds two groups, split by path prefix: `build/asm/**` (the assembled objects,
+# which the build may reuse) and everything else (the raw `splat split` output). Members under
+# this prefix belong to the object group.
+# 归档分两组，按路径前缀切分：`build/asm/**`（汇编产物，构建可复用）与其余（`splat split` 的原始
+# 输出）。这个前缀下的成员属于对象组。
+GROUP_SPLAT = "splat"
+GROUP_ASM = "asm"
+ASM_PREFIX = "build/asm/"
+ASM_INPUT = "build.sh"
 
 # `splat split` on this target peaks at about 1.3 GB of resident memory and takes about 150 s
 # on a 4 vCPU runner. On a small workstation it swaps instead and can take the machine down
@@ -88,6 +110,13 @@ INPUT_FILES = (
     "config/reloc_addrs.txt",
     "tools/ci/splat-requirements.txt",
 )
+
+# The inputs of the object group: the assembly recipe (flags and the alignment repair). The
+# assembler itself is pinned by toolchain.lock.json, which CI verifies on every run. A change
+# to build.sh drops the object group but keeps the splat group, so CI re-runs the new recipe.
+# 对象组的输入：汇编配方（标志与对齐修复）。汇编器本身由 toolchain.lock.json 钉住，CI 每次核验。
+# build.sh 一变就作废对象组、保留 splat 组 ⇒ CI 会用新配方重跑一遍。
+ASM_INPUT_FILES = (ASM_INPUT,)
 
 # What the scratch directory holds on purpose. Everything else under it is splat output.
 # scratch 目录里「有意放进去」的东西；其余文件都是 splat 的产物。
@@ -142,15 +171,33 @@ def list_outputs(root: Path) -> list[str]:
     return rels
 
 
-def pack(root: Path, rels: list[str], out: Path) -> None:
-    """Write a deterministic tar.zst of the top-level entries of `rels`.
+def group_of(rel: str) -> str:
+    """The group a project-relative path belongs to. 项目相对路径属于哪一组。"""
+    return GROUP_ASM if rel.startswith(ASM_PREFIX) else GROUP_SPLAT
 
-    把 `rels` 的顶层条目打成确定性 tar.zst（名字排序、mtime/owner 归零）。
+
+def list_asm_objects(root: Path) -> list[str]:
+    """The assembled objects under `root/build/asm`, as project-relative paths.
+
+    `root/build/asm` 下的汇编产物（项目相对路径）。只取 `*.o`：旁边的 `.err` 是空诊断文件。
     """
-    tops = sorted({rel.split("/", 1)[0] for rel in rels})
+    base = root / "build" / "asm"
+    return [p.relative_to(root).as_posix() for p in sorted(base.rglob("*.o")) if p.is_file()]
+
+
+def pack_multi(roots: list[tuple[Path, list[str]]], out: Path) -> None:
+    """Write one deterministic tar.zst from several (directory, top-level entries) roots.
+
+    The assembler writes a `.err` next to every object; they are diagnostics (empty on
+    success) and never belong in the archive, so the selector excludes them.
+    从多个（目录, 顶层条目）根打出一个确定性 tar.zst；成员名保持项目相对布局。汇编器会在每个对象
+    旁边写一个 `.err`（成功时为空）——那只是诊断，从不进归档，因此打包时排除。
+    """
     out.parent.mkdir(parents=True, exist_ok=True)
-    tar_cmd = ["tar", "--directory", str(root), "--sort=name", "--mtime=@0", "--owner=0",
-               "--group=0", "--numeric-owner", "--create", "--file", "-", *tops]
+    tar_cmd = ["tar", "--sort=name", "--mtime=@0", "--owner=0", "--group=0", "--numeric-owner",
+               "--exclude=*.err", "--create", "--file", "-"]
+    for root, tops in roots:
+        tar_cmd += ["--directory", str(root), *tops]
     zstd_cmd = ["zstd", "-3", "--check", "-T0", "-q", "-f", "-o", str(out)]
     with subprocess.Popen(tar_cmd, stdout=subprocess.PIPE) as tar_proc:
         with subprocess.Popen(zstd_cmd, stdin=tar_proc.stdout) as zstd_proc:
@@ -159,6 +206,11 @@ def pack(root: Path, rels: list[str], out: Path) -> None:
             rc_tar = tar_proc.wait()
     if rc_tar != 0 or rc_zstd != 0:
         raise SystemExit("FAIL: packaging failed (tar/zstd)")
+
+
+def pack(root: Path, rels: list[str], out: Path) -> None:
+    """One root: the top-level entries of `rels`. 单根打包（`rels` 的顶层条目）。"""
+    pack_multi([(root, sorted({rel.split("/", 1)[0] for rel in rels}))], out)
 
 
 def archive_members(archive: Path):
@@ -202,6 +254,16 @@ def splat_version(splat: str) -> str:
     return m.group(1) if m else text[0]
 
 
+def as_version(assembler: Path) -> str:
+    """The assembler's version banner, for the record. 汇编器版本横幅，只作追溯记录。"""
+    try:
+        cp = subprocess.run([str(assembler), "--version"], capture_output=True, text=True)
+    except OSError:
+        return ""
+    lines = (cp.stdout or cp.stderr).strip().splitlines()
+    return lines[0] if lines else ""
+
+
 def lock_game(project: Path) -> dict:
     lock = json.loads((project / "toolchain.lock.json").read_text(encoding="utf-8"))
     return lock.get("game") or {}
@@ -234,6 +296,15 @@ def cmd_create(args) -> int:
             return 2
     if not game.is_file():
         print(f"FAIL: no retail executable at {game}", file=sys.stderr)
+        return 2
+
+    # Validate the object-group arguments before any heavy work: a missing assembler must fail
+    # immediately, not after 150 s of splat.
+    # 在干重活之前先校验对象组参数：汇编器缺失要立刻失败，而不是等 splat 跑完 150 s。
+    as_path = Path(args.as_path).resolve() if args.as_path else None
+    if args.with_asm and (as_path is None or not as_path.is_file() or not os.access(as_path, os.X_OK)):
+        print("FAIL: --with-asm needs --as pointing at an executable assembler "
+              "(the toolchain's mips-ps2-decompals-as)", file=sys.stderr)
         return 2
 
     # Refuse to start splat without headroom: on a small machine it swaps for many minutes and
@@ -286,13 +357,63 @@ def cmd_create(args) -> int:
     if not rels:
         print("FAIL: splat produced no output", file=sys.stderr)
         return 2
-    pack(scratch, rels, out)
+    # The group split is by path prefix, so `splat split` must not write into build/asm/.
+    # 分组按路径前缀切分，因此 splat 不得往 build/asm/ 里写东西。
+    stray = [rel for rel in rels if group_of(rel) == GROUP_ASM]
+    if stray:
+        print(f"FAIL: splat wrote into {ASM_PREFIX}: {stray[:3]} (the group split would be wrong)",
+              file=sys.stderr)
+        return 2
+
+    single_inputs = {rel: sha256_file(project / rel) for rel in INPUT_FILES}
+    groups = {
+        GROUP_SPLAT: {
+            "inputs": single_inputs,
+            "entry_count": len(rels),
+            "tree_sha256": tree_digest(scratch, rels),
+        }
+    }
+    roots: list[tuple[Path, list[str]]] = [(scratch, sorted({rel.split("/", 1)[0] for rel in rels}))]
+    asm_count = 0
+
+    if args.with_asm:
+        # `as_path` was validated above.
+        staging = scratch.with_name(scratch.name + "-asm")
+        shutil.rmtree(staging, ignore_errors=True)
+        # Assemble in a copy of the splat output: `build.sh` repairs `include/macro.inc` and
+        # `asm/**` in place, and the archive must keep the raw splat output in its splat group.
+        # 在 splat 输出的副本里汇编：`build.sh` 会就地修 include/macro.inc 与 asm/**，而归档的
+        # splat 组必须保留原始输出。
+        shutil.copytree(scratch, staging, ignore=shutil.ignore_patterns(ROM_NAME))
+        shutil.copy2(project / ASM_INPUT, staging / ASM_INPUT)
+        print(f"assembling in {staging} with {as_path} ...")
+        env = dict(os.environ, BASELINE_ASSEMBLE_ONLY="1", BINUTILS=str(as_path.parent))
+        if subprocess.run(["bash", ASM_INPUT], cwd=str(staging), env=env).returncode != 0:
+            print("FAIL: the assembly failed (see build.sh in the scratch copy)", file=sys.stderr)
+            return 2
+        asm_rels = list_asm_objects(staging)
+        expected = sum(1 for rel in rels if rel.endswith(".s"))
+        if len(asm_rels) != expected:
+            print(f"FAIL: assembled {len(asm_rels)} objects but the scratch holds {expected} sources",
+                  file=sys.stderr)
+            return 2
+        groups[GROUP_ASM] = {
+            "inputs": {rel: sha256_file(project / rel) for rel in ASM_INPUT_FILES},
+            "as_version": as_version(as_path),
+            "entry_count": len(asm_rels),
+            "tree_sha256": tree_digest(staging, asm_rels),
+        }
+        roots.append((staging, ["build/asm"]))
+        asm_count = len(asm_rels)
+
+    pack_multi(roots, out)
 
     packed = sum(1 for _ in archive_members(out))
-    if packed != len(rels):
-        print(f"FAIL: the archive holds {packed} files but the scratch has {len(rels)}", file=sys.stderr)
+    if packed != len(rels) + asm_count:
+        print(f"FAIL: the archive holds {packed} files but the groups have {len(rels) + asm_count}",
+              file=sys.stderr)
         return 2
-    print(f"packed {len(rels)} files -> {out} ({out.stat().st_size} B)")
+    print(f"packed {len(rels)} splat files + {asm_count} objects -> {out} ({out.stat().st_size} B)")
 
     elf_sha1 = sha1_file(game)
     want_elf = lock_game(project).get("elf_sha1")
@@ -307,9 +428,7 @@ def cmd_create(args) -> int:
         "sha256": sha256_file(out),
         "game_sha1": elf_sha1,
         "splat_version": have,
-        "inputs": {rel: sha256_file(project / rel) for rel in INPUT_FILES},
-        "entry_count": len(rels),
-        "tree_sha256": tree_digest(scratch, rels),
+        "groups": groups,
         "created_at": subprocess.run(["date", "-u", "+%Y-%m-%dT%H:%M:%SZ"],
                                      capture_output=True, text=True).stdout.strip(),
         "generator": "tools/ci/splat_snapshot.py",
@@ -318,10 +437,12 @@ def cmd_create(args) -> int:
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"wrote {manifest_path}")
     print(f"archive sha256 {manifest['sha256']}")
+    staging = scratch.with_name(scratch.name + "-asm")
     if args.keep_scratch:
-        print(f"kept the scratch directory {scratch}")
+        print(f"kept the scratch directories {scratch} and {staging}")
     else:
         shutil.rmtree(scratch, ignore_errors=True)
+        shutil.rmtree(staging, ignore_errors=True)
     return 0
 
 
@@ -335,7 +456,37 @@ def load_manifest(path: Path) -> dict | None:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
-    return data if data.get("schema") == SCHEMA else None
+    return data if data.get("schema") in (SCHEMA, SCHEMA_V1) else None
+
+
+def groups_of(manifest: dict) -> dict:
+    """The groups of a manifest, adapting a v1 manifest to the single-group shape.
+
+    清单的分组；v1 清单会被适配成「只有 splat 组」的形态（向后兼容）。
+    """
+    if manifest.get("schema") == SCHEMA_V1:
+        return {
+            GROUP_SPLAT: {
+                "inputs": manifest.get("inputs") or {},
+                "entry_count": manifest.get("entry_count"),
+                "tree_sha256": manifest.get("tree_sha256"),
+            }
+        }
+    return manifest.get("groups") or {}
+
+
+def group_input_reason(project: Path, group: dict) -> str | None:
+    """The first input of a group that does not match this checkout, or None.
+
+    该组第一条对不上当前检出的输入；全部命中时返回 None。
+    """
+    for rel, want in (group.get("inputs") or {}).items():
+        p = project / rel
+        if not p.is_file():
+            return f"the checkout has no {rel}"
+        if sha256_file(p) != want:
+            return f"{rel} changed since the archive was made"
+    return None
 
 
 def resolve_archive(orig: Path, remote_path: str) -> Path | None:
@@ -354,10 +505,10 @@ def resolve_archive(orig: Path, remote_path: str) -> Path | None:
     return candidate
 
 
-def reason_to_skip(project: Path, manifest: dict, archive: Path | None, game: Path) -> str | None:
-    """The first reason not to use the archive, or None when it matches this checkout.
+def archive_reason(manifest: dict, archive: Path | None, game: Path) -> str | None:
+    """The first reason not to use the archive at all, or None.
 
-    第一条「不能用这个归档」的理由；完全匹配时返回 None。
+    第一条「整档不能用」的理由（与分组无关：路径、存在性、整档 sha256、原版可执行文件）。
     """
     if archive is None:
         return "the manifest path escapes the companion repository"
@@ -365,12 +516,6 @@ def reason_to_skip(project: Path, manifest: dict, archive: Path | None, game: Pa
         return f"the companion repository has no {manifest.get('path')}"
     if sha256_file(archive) != manifest.get("sha256"):
         return "the archive sha256 does not match the manifest"
-    for rel, want in (manifest.get("inputs") or {}).items():
-        p = project / rel
-        if not p.is_file():
-            return f"the checkout has no {rel}"
-        if sha256_file(p) != want:
-            return f"{rel} changed since the archive was made"
     if not game.is_file():
         return f"no retail executable at {game}"
     if sha1_file(game) != manifest.get("game_sha1"):
@@ -378,10 +523,10 @@ def reason_to_skip(project: Path, manifest: dict, archive: Path | None, game: Pa
     return None
 
 
-def extract(project: Path, archive: Path) -> tuple[list[str], int]:
-    """Extract into the project root. Returns (member paths, how many already existed).
+def extract(project: Path, archive: Path, allow: set[str]) -> tuple[list[str], int]:
+    """Extract the members of `allow` into the project root. Returns (member paths, existing count).
 
-    解包到项目根，返回（成员路径，其中原本已存在的个数）。
+    只解包 `allow` 里那些组的成员；返回（成员路径，其中原本已存在的个数）。
     """
     members: list[str] = []
     existed = 0
@@ -395,6 +540,8 @@ def extract(project: Path, archive: Path) -> tuple[list[str], int]:
                     raise SystemExit(f"the archive holds a non-regular member: {name}")
                 if member.isfile():
                     rel = Path(name).as_posix()
+                    if group_of(rel) not in allow:
+                        continue          # leave this group alone  这一组不动
                     members.append(rel)
                     if (project / rel).exists():
                         existed += 1
@@ -410,51 +557,89 @@ def cmd_use(args) -> int:
     # 清单默认相对**项目根**：`--project <dir>` 要找到 `<dir>/toolchain/splat-snapshot.json`。
     manifest_path = project_path(project, args.manifest)
     game = project_path(project, args.game) if args.game else orig / "orig" / "SLPS_258.19"
+    active: list[str] = []
 
-    def verdict(value: str, reason: str) -> int:
+    def verdict(value: str, reason: str, groups: list[str] | None = None) -> int:
         level = "notice" if value == "snapshot" else "warning"
+        used = groups if groups is not None else active
         print(f"::{level}::splat snapshot: {value} — {reason}")
         if args.github_output:
             with Path(args.github_output).open("a", encoding="utf-8") as fh:
                 fh.write(f"verdict={value}\n")
+                fh.write("groups=" + ",".join(used) + "\n")
         print(value)
         return 0
 
     manifest = load_manifest(manifest_path)
     if manifest is None:
-        return verdict("splat", f"no usable manifest at {manifest_path}")
+        return verdict("splat", f"no usable manifest at {manifest_path}", [])
+    groups = groups_of(manifest)
     archive = resolve_archive(orig, str(manifest.get("path") or ""))
-    skip = reason_to_skip(project, manifest, archive, game)
-    if skip:
-        return verdict("splat", skip)
+    reason = archive_reason(manifest, archive, game)
+    if reason:
+        return verdict("splat", reason, [])
+
+    # Per group, in dependency order: the objects are only useful when the splat group (the
+    # assembly tree they were built from) is usable too.
+    # 按依赖顺序逐组判定：只有 splat 组（对象所基于的汇编树）可用时，对象组才有意义。
+    wanted: list[str] = []
+    first_reason = ""
+    for name in (GROUP_SPLAT, GROUP_ASM):
+        group = groups.get(name)
+        if not group:
+            continue
+        if name == GROUP_ASM and GROUP_SPLAT not in wanted:
+            first_reason = first_reason or "the splat group is not usable"
+            continue
+        bad = group_input_reason(project, group)
+        if bad:
+            first_reason = first_reason or f"{name}: {bad}"
+            print(f"::notice::splat snapshot: the {name} group does not match this checkout ({bad})")
+            continue
+        wanted.append(name)
+
+    if not wanted:
+        return verdict("splat", first_reason or "no usable group in the manifest", [])
     if not args.extract:
-        return verdict("snapshot", "the archive matches this checkout (check only)")
+        return verdict("snapshot", "the archive matches this checkout (check only)", wanted)
 
     try:
-        members, existed = extract(project, archive)
+        members, existed = extract(project, archive, set(wanted))
     except SystemExit as exc:
-        return verdict("splat", str(exc))
+        return verdict("splat", str(exc), [])
     except FileNotFoundError as exc:
-        return verdict("splat", f"cannot run the extractor: {exc}")
+        return verdict("splat", f"cannot run the extractor: {exc}", [])
 
     if existed:
         print(f"::warning::the extraction overwrote {existed} existing files")
 
-    def undo() -> None:
-        for rel in members:
-            try:
-                (project / rel).unlink()
-            except OSError:
-                pass
+    # Verify each group against its count and digest; a group that fails is dropped and the
+    # files it just wrote are removed, so the build falls back for that group only.
+    # 逐组核对计数与摘要；失败的组被丢弃，并删掉它刚写出的文件 ⇒ 只有这一组回落。
+    dropped: list[str] = []
+    for name in wanted:
+        rels = [rel for rel in members if group_of(rel) == name]
+        group = groups[name]
+        want_count = int(group.get("entry_count") or -1)
+        if len(rels) != want_count:
+            dropped.append(name)
+            print(f"::warning::splat snapshot: the {name} group holds {len(rels)} files, "
+                  f"the manifest says {want_count}")
+        elif tree_digest(project, rels) != group.get("tree_sha256"):
+            dropped.append(name)
+            print(f"::warning::splat snapshot: the extracted {name} group does not match the manifest")
+        if name in dropped:
+            for rel in rels:
+                try:
+                    (project / rel).unlink()
+                except OSError:
+                    pass
 
-    want_count = int(manifest.get("entry_count") or -1)
-    if len(members) != want_count:
-        undo()
-        return verdict("splat", f"the archive holds {len(members)} files, the manifest says {want_count}")
-    if tree_digest(project, members) != manifest.get("tree_sha256"):
-        undo()
-        return verdict("splat", "the extracted tree does not match the manifest")
-    return verdict("snapshot", f"{len(members)} files extracted")
+    kept = [name for name in wanted if name not in dropped]
+    if GROUP_SPLAT in dropped or not kept:
+        return verdict("splat", "the extraction did not match the manifest", [])
+    detail = f"{len([m for m in members if group_of(m) in kept])} files extracted ({','.join(kept)})"
+    return verdict("snapshot", detail, kept)
 
 
 def main() -> int:
@@ -473,6 +658,11 @@ def main() -> int:
                    help="Path of the archive inside the private companion repository")
     c.add_argument("--scratch", default=".tmp/splat-snapshot", help="Scratch directory, relative to --project (default: .tmp/splat-snapshot)")
     c.add_argument("--keep-scratch", action="store_true", help="Keep the scratch directory")
+    c.add_argument("--with-asm", action="store_true",
+                   help="Also assemble the baseline in a copy of the scratch and pack the objects "
+                        "as the `asm` group (needs --as)")
+    c.add_argument("--as", dest="as_path", default=None,
+                   help="The toolchain assembler (mips-ps2-decompals-as); required with --with-asm")
     c.add_argument("--allow-low-memory", action="store_true",
                    help="Run even when this machine has little free memory (it may swap or freeze)")
     c.set_defaults(func=cmd_create)
