@@ -1580,6 +1580,7 @@ func_0025b460    # ghidra_draft:-O2
 func_0025bde0    # ghidra_draft:-O2
 func_0025c184    # permuter
 func_0025c278    # ghidra_draft:-O2
+func_0025ce88    # llm_draft
 func_0025cfd4    # permuter
 func_0025d098    # ghidra_draft:-O2
 func_0025d378    # llm_draft

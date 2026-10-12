@@ -1028,6 +1028,7 @@ func_00259e4c	-O2
 func_0025ac50	-O2
 func_0025acf8	-O2
 func_0025cbe4	-Os
+func_0025ce88	-Os
 func_0025cfd4	-Os
 func_0025d378	-Os
 func_0025d7ac	-Os
