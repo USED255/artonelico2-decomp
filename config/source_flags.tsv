@@ -51,6 +51,7 @@ func_00102344	-O2
 func_0010239c	-O2
 func_0010264c	-O1
 func_00102668	-O2
+func_001026e0	-Os
 func_00102800	-Os
 func_00102908	-Os
 func_00102b20	-Os
