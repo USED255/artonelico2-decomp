@@ -14,6 +14,12 @@ PY ?= python3
 NAME ?= SLPS_258.19
 DRIVER := $(PY) tools/build/decomp_build.py --root . --layout flat --name $(NAME)
 GAME ?= orig/SLPS_258.19
+# Parallelism for the assembler and the compiler. The build scripts read JOBS (default 4).
+# Follow the machine instead of a hard-coded 4: the CI runner has 4 vCPU, a bigger machine
+# gets a bigger value.
+# 汇编器与编译器的并行度。构建脚本读 JOBS（默认 4）；跟随机器核数而不是写死 4。
+JOBS ?= $(shell nproc)
+export JOBS
 
 .DEFAULT_GOAL := help
 
@@ -49,7 +55,7 @@ build: split
 
 report:
 	@AS="$${BINUTILS:-$$HOME/eecc/ps2binutils}/mips-ps2-decompals-as"; \
-	 $(PY) tools/report/gen_function_report.py --project . --jobs 4 --as "$$AS" \
+	 $(PY) tools/report/gen_function_report.py --project . --jobs $(JOBS) --as "$$AS" \
 	   --objdiff "$${OBJDIFF:-$$HOME/eecc/objdiff-cli}" \
 	   --report-out progress/SLPS_258.19_report.json
 
