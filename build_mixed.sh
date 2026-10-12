@@ -135,7 +135,7 @@ echo "  ledger symbols = $nsym"
 echo "== 2/6 Compile or assemble the replacement sources (incremental: skip when the source and the flags do not change) =="
 mkdir -p "$OUT/obj"
 # Extra compiler flags for one source (-O1 and others; -O2 is the default). See
-# config/source_flags.tsv and tools/project/auto_match_wrapper.py.
+# config/source_flags.tsv and tools/maintainer/project/auto_match_wrapper.py.
 FLAGSFILE="$HERE/config/source_flags.tsv"
 SRCTSV="$OUT/sources.tsv"
 : > "$SRCTSV"
@@ -159,7 +159,9 @@ python3 "$HERE/tools/project/compile_sources.py" \
     --cflags "$MATCHED_CFLAGS" --flags-file "$FLAGSFILE" \
     ${JTBLTABLES:+--jtbl-tables "$JTBLTABLES"} \
     --jobs "${JOBS:-4}" ${HYBRID_NO_CACHE:+--no-cache} --label "source" || exit 1
-n_cri=$(grep -cv '^[[:space:]]*\(#\|$\)' "$CCMAP" 2>/dev/null || echo 0)
+# The compiler map has a header row on line 1. Skip it before the count.
+# 编译器表第 1 行是表头；先跳过再计数。
+n_cri=$(tail -n +2 "$CCMAP" 2>/dev/null | grep -cv '^[[:space:]]*\(#\|$\)' || echo 0)
 echo "  source files = ${#compiled[@]} (per-source compiler table entries: ${n_cri})"
 
 echo "== 2b/6 Residual split (sibling glabel or tail filler; HYBRID_RESIDUAL=$RESIDUAL) =="

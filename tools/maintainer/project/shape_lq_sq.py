@@ -28,10 +28,10 @@ What this tool does
 
 CLI
 ---
-    python3 tools/project/shape_lq_sq.py list
-    python3 tools/project/shape_lq_sq.py analyze <sym>
-    python3 tools/project/shape_lq_sq.py emit <sym> <outdir>
-    python3 tools/project/shape_lq_sq.py batch --samples 22 --max-compiles 67
+    python3 tools/maintainer/project/shape_lq_sq.py list
+    python3 tools/maintainer/project/shape_lq_sq.py analyze <sym>
+    python3 tools/maintainer/project/shape_lq_sq.py emit <sym> <outdir>
+    python3 tools/maintainer/project/shape_lq_sq.py batch --samples 22 --max-compiles 67
 
 Evidence class: every number that this tool prints is `[measured]`. The compile and the
 compare run in series and have a hard limit (default 60).
@@ -58,10 +58,10 @@ D 档（MMI 池中只用 ``lq/sq``，可含 ``por/pand/pxor/pnor`` 的 128 位�
 
 CLI
 ---
-    python3 tools/project/shape_lq_sq.py list
-    python3 tools/project/shape_lq_sq.py analyze <sym>
-    python3 tools/project/shape_lq_sq.py emit <sym> <outdir>
-    python3 tools/project/shape_lq_sq.py batch --samples 22 --max-compiles 67
+    python3 tools/maintainer/project/shape_lq_sq.py list
+    python3 tools/maintainer/project/shape_lq_sq.py analyze <sym>
+    python3 tools/maintainer/project/shape_lq_sq.py emit <sym> <outdir>
+    python3 tools/maintainer/project/shape_lq_sq.py batch --samples 22 --max-compiles 67
 
 证据等级：本工具输出的数字均为 `[实测]`。编译/比对串行执行并有硬上限（默认 60）。
 """
@@ -80,6 +80,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Make the shared tools in tools/project importable.  让 tools/project 的共享工具可被导入。
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "project"))
 from at2_paths import (  # noqa: E402  layout-independent path resolution
     PROJECT_ROOT as REPO,
     PROJECT_ROOT as PROJ,

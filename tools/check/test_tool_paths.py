@@ -7,6 +7,8 @@ Background (2026-10-06, P-41): the batch matching tools moved from `routebjp/too
 root. That path resolved to `tools/`, so every `auto_match_*` tool failed to find
 `config/matched_symbols.txt`. No check caught the failure, because a tool reports
 FileNotFoundError only when a batch run starts.
+On 2026-10-12 the maintainer tools moved again, to `tools/maintainer/project/`. This check
+covers that move too: every batch tool must still resolve the project root.
 
 This script does two things:
   1. Hard failure: every project path that `at2_paths` resolves must exist. The `ROOT` of
@@ -22,6 +24,8 @@ Usage: `python3 tools/check/test_tool_paths.py` (`make check` calls this script)
 仍然写 `Path(__file__).resolve().parent.parent` 当项目根 ⇒ 解析成 `tools/`，
 `auto_match_*` 集体失效（找不到 `config/matched_symbols.txt`），而**没有任何自检会发现**——
 因为工具只在真正跑批时才报 FileNotFoundError。
+2026-10-12 这批维护者工具又搬到 `tools/maintainer/project/`；本自检同样覆盖这次搬迁：
+每个批量工具的 `ROOT` 仍必须等于项目根。
 
 本脚本做两件事：
   1. **硬失败**：`at2_paths` 解析出的项目内路径必须存在；每个批量工具的 `ROOT` 必须等于项目根。
@@ -38,12 +42,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT / "tools" / "project"))
+sys.path.insert(0, str(ROOT / "tools" / "maintainer" / "project"))   # the batch tools live here since 2026-10-12
 
 import at2_paths as AP  # noqa: E402
 
 # These paths must resolve (the public repository contains them).
 # 这些必须能用（公开仓库里就有）。
-HARD_PATHS = ("MATCHED_LIST", "SRCDIR", "FLAGS_TSV")
+HARD_PATHS = ("MATCHED_LIST", "SRCDIR", "FLAGS_TSV", "SYMBOL_ADDRS")
 # Batch tools that must point ROOT at the project root after import.
 # 导入后必须把 ROOT 指向项目根的批量工具。
 TOOLS = (

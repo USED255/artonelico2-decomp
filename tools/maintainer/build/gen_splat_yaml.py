@@ -10,7 +10,7 @@ This script writes those subsegments from the function bounds in
 symbol_addrs.txt. The non-function ranges (.init/.fini/.vutext/data/rodata/...)
 keep the original config.
 
-Usage: python3 tools/build/gen_splat_yaml.py <input yaml> <symbol_addrs> <output yaml>
+Usage: python3 tools/maintainer/build/gen_splat_yaml.py <input yaml> <symbol_addrs> <output yaml>
 
 生成带 per-function 子段的 splat 配置：splat 的 asm 子段按段切分，整个 .text
 会变成一个 78 万行的 .s；逐函数替换为 C 的工作流需要每个函数一个独立 .s。

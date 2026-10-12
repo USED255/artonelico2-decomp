@@ -66,7 +66,7 @@ These paths are **read-only**. A change there fails the `validate` check:
 | Path | Why |
 | --- | --- |
 | `progress/` | The progress report comes from a verified build. |
-| `PUBLISHED.json` | The release record. `tools/publish_report.py` writes it after a verified build. |
+| `PUBLISHED.json` | The release record. `tools/maintainer/publish_report.py` writes it after a verified build. |
 
 You can change all other paths. The maintainers ask you to open an issue first
 for `config/`, `splat.yaml`, and the build scripts, because a change there can
@@ -75,7 +75,7 @@ affect the whole build.
 **A note about a new function.** You do not add a `config/matched_symbols.txt`
 entry. A maintainer adds it for you. `config/matched_symbols.txt` and
 `config/symbol_addrs.txt` are read-only configuration. A maintainer fills them
-for you. Read [docs/CONFIG.md](docs/CONFIG.md).
+for you. Read [config/README.md](config/README.md).
 
 ## 7. Writing style
 

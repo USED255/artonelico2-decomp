@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Generate the splat config of the JP version (SLPS_258.19) for route B, with per-function asmtu subsegments.
 
-Why the code does not use `splat create_config` plus tools/build/gen_splat_yaml.py:
-  1. `TEXT_END` in `tools/build/gen_splat_yaml.py` is hard-coded to the .init start of the
+Why the code does not use `splat create_config` plus tools/maintainer/build/gen_splat_yaml.py:
+  1. `TEXT_END` in `tools/maintainer/build/gen_splat_yaml.py` is hard-coded to the .init start of the
      **US** version (0x36E028). The JP value is 0x36C5E8. A direct use would overwrite
      .init/.fini/.vutext several times.
   2. The JP main program has **two PT_LOAD segments** (the US version has one). splat derives
@@ -21,8 +21,8 @@ Usage:
 
 生成日版（SLPS_258.19）路线 B 的 splat 配置（含 per-function asmtu 子段）。
 
-为什么不用 `splat create_config` + tools/build/gen_splat_yaml.py 串起来：
-  1. `tools/build/gen_splat_yaml.py` 的 `TEXT_END` 硬编码为**美版**的 .init 起点
+为什么不用 `splat create_config` + tools/maintainer/build/gen_splat_yaml.py 串起来：
+  1. `tools/maintainer/build/gen_splat_yaml.py` 的 `TEXT_END` 硬编码为**美版**的 .init 起点
      (0x36E028)；日版是 0x36C5E8。硬套会把 .init/.fini/.vutext 重复覆盖。
   2. 日版主程序有**两个 PT_LOAD 段**（美版只有一个）。splat 的 vram 由
      `most_parent.vram_start + start - most_parent.rom_start` 线性推出，
@@ -159,7 +159,7 @@ def main():
 
     lines = []
     lines.append("# name: Ar tonelico II, Japan (SLPS_258.19) -- rebuildable baseline")
-    lines.append("# generator: tools/project/gen_splat_yaml_jp.py (derives the layout from the ELF section table and program headers)")
+    lines.append("# generator: tools/maintainer/project/gen_splat_yaml_jp.py (derives the layout from the ELF section table and program headers)")
     lines.append("# sha1: the sha1 of all PT_LOAD segments concatenated (the same rule that build.sh uses)")
     lines.append("sha1: %s" % rom_sha1)
     lines.append("options:")

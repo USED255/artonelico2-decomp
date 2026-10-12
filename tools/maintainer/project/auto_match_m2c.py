@@ -8,8 +8,8 @@ function**. Of the 40 smallest class E candidates of the JP version, the m2c dra
 for the permuter. It is an **independent collector**.
 
 Usage:
-  python3 tools/project/auto_match_m2c.py run  [--classes E_branch_only,...] [--limit N] [--jobs 4]
-  python3 tools/project/auto_match_m2c.py apply-only
+  python3 tools/maintainer/project/auto_match_m2c.py run  [--classes E_branch_only,...] [--limit N] [--jobs 4]
+  python3 tools/maintainer/project/auto_match_m2c.py apply-only
 
 m2c 草稿批量匹配：m2c 生成的 C 直接过 objdiff，收 100% 的符号（不经 permuter）。
 
@@ -18,8 +18,8 @@ m2c 草稿批量匹配：m2c 生成的 C 直接过 objdiff，收 100% 的符号�
 因此 m2c 不只是 permuter 的前端，本身就是**独立收割器**。
 
 用法：
-  python3 tools/project/auto_match_m2c.py run  [--classes E_branch_only,...] [--limit N] [--jobs 4]
-  python3 tools/project/auto_match_m2c.py apply-only
+  python3 tools/maintainer/project/auto_match_m2c.py run  [--classes E_branch_only,...] [--limit N] [--jobs 4]
+  python3 tools/maintainer/project/auto_match_m2c.py apply-only
 """
 
 # Private layout names (routebjp/build/m2c, jp_m3_workqueue.tsv), do not rename.  私有布局名（routebjp/build/m2c、jp_m3_workqueue.tsv），勿改名。
@@ -40,6 +40,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import m2c_draft as M2C  # noqa: E402
 
+# Make the shared tools in tools/project importable.  让 tools/project 的共享工具可被导入。
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "project"))
 from at2_paths import (  # noqa: E402  layout-independent path resolution (see the top of at2_paths.py)
     PROJECT_ROOT as ROOT,
     PRIVATE_ROOT,
@@ -141,7 +143,10 @@ def apply(results: list[dict]) -> None:
     SRCDIR.mkdir(parents=True, exist_ok=True)
     fmap: dict[str, str] = {}
     if FLAGS_TSV.is_file():
-        for line in FLAGS_TSV.read_text(encoding="utf-8").splitlines():
+        # Line 1 is the header row (source-basename<TAB>extra-cflags). Skip it, or the key
+        # source-basename becomes a false entry.
+        # 第 1 行是表头（source-basename<TAB>extra-cflags），跳过；否则会写入伪键 source-basename。
+        for line in FLAGS_TSV.read_text(encoding="utf-8").splitlines()[1:]:
             p = line.split("\t")
             if len(p) >= 2:
                 fmap[p[0]] = p[1]
@@ -156,7 +161,10 @@ def apply(results: list[dict]) -> None:
             #    写 `<sym>.c` 会让该条标志永不生效（2026-10-04 实测，P-34）。
             fmap[sym] = r["flags"]
     FLAGS_TSV.parent.mkdir(parents=True, exist_ok=True)
-    lines = ["\t".join(kv) for kv in sorted(fmap.items())]
+    # Write the frozen header row first. This tool rewrites the whole file, so without the
+    # header row one apply would erase it.
+    # 先写冻结的表头行。本工具整份重写该文件；不写表头就会被一次 apply 抹掉。
+    lines = ["source-basename\textra-cflags"] + ["\t".join(kv) for kv in sorted(fmap.items())]
     FLAGS_TSV.write_text("\n".join(lines) + "\n", encoding="utf-8")
     add = {r["sym"] for r in win}
     lines = MATCHED.read_text(encoding="utf-8").splitlines()

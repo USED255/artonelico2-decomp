@@ -13,7 +13,7 @@ that the project adopts pseudo C as a draft source. A rate below 5% means the pr
 pseudo C.
 
 Usage:
-  python3 tools/project/p1a_pseudoc_probe.py [--per-class 10] [--classes B_straight,D_single_call]
+  python3 tools/maintainer/project/p1a_pseudoc_probe.py [--per-class 10] [--classes B_straight,D_single_call]
 
 P1a 实验：Ghidra 伪 C 作为「匹配草稿」到底能不能用（闸门 G1）。
 
@@ -24,7 +24,7 @@ P1a 实验：Ghidra 伪 C 作为「匹配草稿」到底能不能用（闸门 G1
 判定线（长期计划 §4/P1a）：B/D 类命中 ≥15% ⇒ 伪 C 作为草稿来源全面接入；<5% ⇒ 放弃伪 C。
 
 用法：
-  python3 tools/project/p1a_pseudoc_probe.py [--per-class 10] [--classes B_straight,D_single_call]
+  python3 tools/maintainer/project/p1a_pseudoc_probe.py [--per-class 10] [--classes B_straight,D_single_call]
 """
 
 # Private layout names (routebjp/build/m2, jp_m3_workqueue.tsv), do not rename.  私有布局名（routebjp/build/m2、jp_m3_workqueue.tsv），勿改名。
@@ -41,6 +41,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ghidra_draft  # noqa: E402
 
+# Make the shared tools in tools/project importable.  让 tools/project 的共享工具可被导入。
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "project"))
 from at2_paths import (  # noqa: E402  layout-independent path resolution (see the top of at2_paths.py)
     PROJECT_ROOT as ROOT,
     PRIVATE_ROOT,

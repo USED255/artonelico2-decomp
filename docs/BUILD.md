@@ -39,8 +39,8 @@ CRI middleware uses `ee-gcc 2.96-ee-001003-1`. `config/compiler_map.tsv` states
 the compiler for each source file. If a file is absent from the map, the build
 uses the game compiler. The two paths come from `EE_GCC` / `EE_GCC_CRI` or
 `GCC` / `GCC_CRI`. A source that needs the CRI compiler also needs `-G0` in
-`config/source_flags.tsv`. Read [docs/CONFIG.md](CONFIG.md) for the configuration
-files.
+`config/source_flags.tsv`. Read [config/README.md](../config/README.md) for the
+configuration files.
 
 `make build` derives the payload from the retail executable. Then it splits the
 payload, assembles the source, and links the result. It checks the payload sha1
@@ -50,9 +50,14 @@ value after each stage. The expected value is
 ## 3. Check a change
 
 ```bash
+make progress                    # the static upper bound. No toolchain is necessary.
 make delta BASE=origin/main      # each changed file in src/matched/ must match 100%
 make check                       # repository checks. The retail executable is not necessary.
 ```
+
+`make progress` reads `config/matched_symbols.txt` and `config/symbol_addrs.txt`.
+It prints the static upper bound by symbol-table bytes. The published numbers are
+in [progress/SLPS_258.19_report.json](../progress/SLPS_258.19_report.json).
 
 ## 4. CI
 
@@ -77,7 +82,7 @@ artifact. Then write it into this repository:
 
 ```bash
 gh run download <run-id> -R <owner>/<repo> -n SLPS_258.19_report -D .tmp/report
-python3 tools/publish_report.py --report .tmp/report/SLPS_258.19_report.json
+python3 tools/maintainer/publish_report.py --report .tmp/report/SLPS_258.19_report.json
 ```
 
 The tool writes `progress/SLPS_258.19_report.json` and updates `PUBLISHED.json`.

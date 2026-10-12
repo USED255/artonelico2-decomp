@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Generate symbol_addrs.txt for splat (version independent).
 
-This script uses the same logic as tools/build/gen_symbol_addrs.py.
+This script uses the same logic as tools/maintainer/build/gen_symbol_addrs.py.
 Only the two input paths are parameters. One copy of the code serves the US
 version (regression self-test) and the JP version (main target of this task).
 
     Input 1: Ghidra function list <name>.functions.tsv  (addr / name / size_bytes ...)
-    Input 2: .erx.lib export registry text (made by tools/project/erx_tables.py)
+    Input 2: .erx.lib export registry text (made by tools/maintainer/project/erx_tables.py)
 
 Name priority: the library_slot name from `.erx.lib` wins over the Ghidra name
 FUN_xxxxxxxx (which becomes func_xxxxxxxx).
@@ -18,11 +18,11 @@ routeb/config/symbol_addrs.txt.
 
 生成 splat 用的 symbol_addrs.txt（版本无关）。
 
-与 tools/build/gen_symbol_addrs.py 的逻辑完全一致，只把两个输入路径参数化，
+与 tools/maintainer/build/gen_symbol_addrs.py 的逻辑完全一致，只把两个输入路径参数化，
 以便同一份代码服务美版（回归自检）与日版（本次主目标）：
 
     输入 1: Ghidra 函数清单 <name>.functions.tsv  (addr / name / size_bytes ...)
-    输入 2: .erx.lib 导出注册表文本（tools/project/erx_tables.py 生成）
+    输入 2: .erx.lib 导出注册表文本（tools/maintainer/project/erx_tables.py 生成）
 
 命名优先级：`.erx.lib` 的 库_槽号 > Ghidra 的 FUN_xxxxxxxx（转 func_xxxxxxxx）。
 `.erx.lib` 里非函数入口的地址**不写入** `type:label`（见 P-06）。

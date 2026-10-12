@@ -174,6 +174,8 @@ ASMDIR: Path = (
 
 # ---- Common fixed paths  常用固定路径 ----
 MATCHED_LIST: Path = PROJECT_ROOT / "config" / "matched_symbols.txt"
+# Every symbol with its size; progress_report.py reads it for the static upper bound.  全部符号及大小；progress_report.py 用它算静态上界。
+SYMBOL_ADDRS: Path = PROJECT_ROOT / "config" / "symbol_addrs.txt"
 SRCDIR: Path = PROJECT_ROOT / "src" / "matched"
 FLAGS_TSV: Path = PROJECT_ROOT / "config" / "source_flags.tsv"
 WORKQUEUE: Path = EVIDENCE_ROOT / "jp_m3_workqueue.tsv"
@@ -203,6 +205,7 @@ def summary() -> str:
         ("EVIDENCE_ROOT", EVIDENCE_ROOT),
         ("WORK_ROOT", WORK_ROOT),
         ("MATCHED_LIST", MATCHED_LIST),
+        ("SYMBOL_ADDRS", SYMBOL_ADDRS),
         ("SRCDIR", SRCDIR),
         ("FLAGS_TSV", FLAGS_TSV),
         ("ASMDIR", ASMDIR),
