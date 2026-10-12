@@ -113,6 +113,7 @@ func_00129f24	-Os
 func_00129f74	-Os
 func_0012a650	-Os
 func_0012b654	-O1
+func_0012b730	-O2
 func_0012b8ec	-Os
 func_0012b940	-Os
 func_0012c30c	-Os
@@ -872,6 +873,7 @@ func_00232da4	-O1
 func_00232fb0	-O1
 func_0023300c	-O1
 func_0023323c	-O1
+func_00233334	-O1
 func_00233d88	-O1
 func_00234510	-O1
 func_002345c8	-O1
@@ -1012,6 +1014,7 @@ func_002552a4	-Os
 func_0025581c	-Os
 func_00255894	-O1
 func_0025741c	-Os
+func_00257764	-Os
 func_00257c08	-Os
 func_00257c4c	-O2
 func_00257c7c	-Os
