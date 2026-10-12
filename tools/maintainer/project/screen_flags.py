@@ -12,8 +12,8 @@ Motivation (2026-10-05, the `combined` idea from teammate task-4):
   auto_match_m2c/permuter).
 
 Usage:
-  python3 tools/project/screen_flags.py run [--limit N] [--flags "O2,O1,O3,O2 -G8,O1 -G8,Os"] [--frontend m2c|ghidra]
-  python3 tools/project/screen_flags.py report        # print the historical best (build/screen/screen.json)
+  python3 tools/maintainer/project/screen_flags.py run [--limit N] [--flags "O2,O1,O3,O2 -G8,O1 -G8,Os"] [--frontend m2c|ghidra]
+  python3 tools/maintainer/project/screen_flags.py report        # print the historical best (build/screen/screen.json)
 
 大池筛查：把 N 个候选草稿合并成**一个 TU**，每档只编译一次，再用 objdiff 逐符号取分。
 
@@ -24,8 +24,8 @@ Usage:
   但正式入库前仍要**逐候选复核**（沿用 auto_match_m2c/permuter 的 verify）。
 
 用法：
-  python3 tools/project/screen_flags.py run [--limit N] [--flags "O2,O1,O3,O2 -G8,O1 -G8,Os"] [--frontend m2c|ghidra]
-  python3 tools/project/screen_flags.py report        # 打印历史最佳（build/screen/screen.json）
+  python3 tools/maintainer/project/screen_flags.py run [--limit N] [--flags "O2,O1,O3,O2 -G8,O1 -G8,Os"] [--frontend m2c|ghidra]
+  python3 tools/maintainer/project/screen_flags.py report        # 打印历史最佳（build/screen/screen.json）
 """
 
 # Private layout names (routebjp/build/screen, routebjp/build/m2c, jp_m3_workqueue.tsv), do not rename.  私有布局名（routebjp/build/screen、routebjp/build/m2c、jp_m3_workqueue.tsv），勿改名。
@@ -44,6 +44,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ghidra_draft as GD  # noqa: E402
 import m2c_draft as M2C  # noqa: E402
 
+# Make the shared tools in tools/project importable.  让 tools/project 的共享工具可被导入。
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "project"))
 from at2_paths import (  # noqa: E402  layout-independent path resolution (see the top of at2_paths.py)
     PROJECT_ROOT as ROOT,
     PRIVATE_ROOT,

@@ -20,7 +20,7 @@ Method (for each candidate):
   4. `--apply`: write src/matched/<sym>.c and merge the list (the same as the other matchers).
 
 Usage:
-  python3 tools/project/auto_match_permuter.py run --from routebjp/build/m2/ghidra_batch/result.json \
+  python3 tools/maintainer/project/auto_match_permuter.py run --from routebjp/build/m2/ghidra_batch/result.json \
       --min-match 95 --limit 30 --timeout 120 --jobs 3 [--apply]
 
 近失收敛：把 decomp-permuter 接进路线 B 的「objdiff 只收 100%」流水线（P1c）。
@@ -39,7 +39,7 @@ Usage:
   4. `--apply`：写入 src/matched/<sym>.c + 合并清单（与其它匹配器一致）。
 
 用法：
-  python3 tools/project/auto_match_permuter.py run --from routebjp/build/m2/ghidra_batch/result.json \
+  python3 tools/maintainer/project/auto_match_permuter.py run --from routebjp/build/m2/ghidra_batch/result.json \
       --min-match 95 --limit 30 --timeout 120 --jobs 3 [--apply]
 """
 
@@ -62,6 +62,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ghidra_draft as GD  # noqa: E402
 import m2c_draft as M2C  # noqa: E402
+# Make the shared tools in tools/project importable.  让 tools/project 的共享工具可被导入。
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "project"))
 from auto_match_trivial import (  # noqa: E402
     ROOT, PRIVATE_ROOT, WORK_ROOT, EVIDENCE_ROOT, MATCHED_LIST, SRCDIR, FLAGS_TSV,
     WORKQUEUE, GCC, AS, OBJDIFF, CFLAGS, M3_BEGIN, M3_END,
@@ -356,7 +358,9 @@ def do_apply(winners: dict):
     # 否则构建会用默认 -O2 重编 ⇒ 与复核时的档位不一致 ⇒ 载荷校验红。
     fmap: dict[str, str] = {}
     if FLAGS_TSV.is_file():
-        for line in FLAGS_TSV.read_text(encoding="utf-8").splitlines():
+        # Line 1 is the header row (source-basename<TAB>extra-cflags). Skip it.
+        # 第 1 行是表头（source-basename<TAB>extra-cflags），跳过。
+        for line in FLAGS_TSV.read_text(encoding="utf-8").splitlines()[1:]:
             a = line.split("\t")
             if len(a) >= 2 and not line.lstrip().startswith("#"):
                 fmap[a[0]] = a[1]
@@ -370,7 +374,7 @@ def do_apply(winners: dict):
             fmap[sym] = rec
         elif rec == "-O2" and sym in fmap:
             del fmap[sym]
-    FLAGS_TSV.write_text("\n".join(["# <source-basename><TAB><extra-cflags>  See docs/CONFIG.md"]
+    FLAGS_TSV.write_text("\n".join(["source-basename\textra-cflags"]
                                      + [f"{k}\t{fmap[k]}" for k in sorted(fmap)]) + "\n", encoding="utf-8")
     text = MATCHED_LIST.read_text(encoding="utf-8")
     pre = text.split(M3_BEGIN)[0].rstrip("\n") if M3_BEGIN in text else text.rstrip("\n")

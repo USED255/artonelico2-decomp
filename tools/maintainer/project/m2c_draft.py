@@ -21,7 +21,7 @@ Three input fixes are necessary.
      The post-processing step changes it to `int`.
 
 Usage:
-  python3 tools/project/m2c_draft.py emit <sym> <outdir>
+  python3 tools/maintainer/project/m2c_draft.py emit <sym> <outdir>
 
 生成 m2c 草稿：把 splat 的 asm/cod/<sym>.s 变成 m2c 能吃的输入，并产出 C 草稿。
 
@@ -37,7 +37,7 @@ Usage:
   3. **未知返回类型**：m2c 会写 `? func_x(s32);`（非法 C）——后处理成 `int`。
 
 用法：
-  python3 tools/project/m2c_draft.py emit <sym> <outdir>
+  python3 tools/maintainer/project/m2c_draft.py emit <sym> <outdir>
 """
 
 from __future__ import annotations
@@ -48,6 +48,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Make the shared tools in tools/project importable.  让 tools/project 的共享工具可被导入。
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "project"))
 from at2_paths import PROJECT_ROOT as ROOT, WORK_ROOT, ASMDIR, INCLUDE  # noqa: E402  layout independent
 M2C = Path.home() / "eecc" / "m2c" / "m2c.py"
 

@@ -21,10 +21,10 @@ express the function):
                   match (C cannot goto an external label), so this round excludes the symbol.
 
 Usage:
-  python3 tools/project/jtbl_draft.py stats [--tsv out.tsv]
-  python3 tools/project/jtbl_draft.py list [--kind clean|boundary|dispatch] [--limit N]
-  python3 tools/project/jtbl_draft.py prepare <sym> [--outdir DIR]   # target block -> target.o + skeleton
-  python3 tools/project/jtbl_draft.py probe <sym> --dir DIR          # score each DIR/*.c at every flag level (stage 1)
+  python3 tools/maintainer/project/jtbl_draft.py stats [--tsv out.tsv]
+  python3 tools/maintainer/project/jtbl_draft.py list [--kind clean|boundary|dispatch] [--limit N]
+  python3 tools/maintainer/project/jtbl_draft.py prepare <sym> [--outdir DIR]   # target block -> target.o + skeleton
+  python3 tools/maintainer/project/jtbl_draft.py probe <sym> --dir DIR          # score each DIR/*.c at every flag level (stage 1)
 
 jtbl 池专项工具：真实池画像 / 样本选择 / （Stage 2）草稿生成。
 
@@ -40,10 +40,10 @@ jtbl 池专项工具：真实池画像 / 样本选择 / （Stage 2）草稿生�
                   C 不可能匹配（不能 goto 外部标签）⇒ 本轮排除。
 
 用法：
-  python3 tools/project/jtbl_draft.py stats [--tsv out.tsv]
-  python3 tools/project/jtbl_draft.py list [--kind clean|boundary|dispatch] [--limit N]
-  python3 tools/project/jtbl_draft.py prepare <sym> [--outdir DIR]   # 目标块 → target.o + skeleton
-  python3 tools/project/jtbl_draft.py probe <sym> --dir DIR          # DIR/*.c 逐档打分（Stage 1）
+  python3 tools/maintainer/project/jtbl_draft.py stats [--tsv out.tsv]
+  python3 tools/maintainer/project/jtbl_draft.py list [--kind clean|boundary|dispatch] [--limit N]
+  python3 tools/maintainer/project/jtbl_draft.py prepare <sym> [--outdir DIR]   # 目标块 → target.o + skeleton
+  python3 tools/maintainer/project/jtbl_draft.py probe <sym> --dir DIR          # DIR/*.c 逐档打分（Stage 1）
 """
 
 # Private layout names (routebjp/build/jtbl, jp_m3_workqueue.tsv), do not rename.  私有布局名（routebjp/build/jtbl、jp_m3_workqueue.tsv），勿改名。
@@ -58,6 +58,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Make the shared tools in tools/project importable.  让 tools/project 的共享工具可被导入。
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "project"))
 from at2_paths import (  # noqa: E402
     ASMDIR, PRIVATE_ROOT, PROJECT_ROOT as ROOT, WORKQUEUE,
     GCC, AS, OBJDIFF, INCLUDE,

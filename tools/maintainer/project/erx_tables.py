@@ -5,7 +5,7 @@ Background: the main program of this game has no symbols (`.mdebug`=0, no `.symt
 `.erx.lib` section is the **export registry** that the GUST/ERX mechanism leaves. It gives
 "library name + version -> a set of function addresses". It is the only ready source of
 naming anchors. The 749 anchors of the US route B come from it (see the comments in
-tools/build/gen_symbol_addrs.py).
+tools/maintainer/build/gen_symbol_addrs.py).
 
 Format (this script derives it from the US version by measurement. The JP structure is
 byte-identical. See `[verified]` in out/evidence/jp_routeb_m1_result.txt):
@@ -34,7 +34,7 @@ Usage: python3 erx_tables.py <elf> <out.json> [out.txt]
 
 背景：本作主程序无符号（`.mdebug`=0、无 `.symtab`），`.erx.lib` 是 GUST/ERX 机制
 留下的**导出注册表**——它给出「库名 + 版本 → 一组函数地址」，是唯一现成的命名锚点
-来源。美版路线 B 的 749 个锚点就是这么来的（见 tools/build/gen_symbol_addrs.py 的注释）。
+来源。美版路线 B 的 749 个锚点就是这么来的（见 tools/maintainer/build/gen_symbol_addrs.py 的注释）。
 
 格式（本脚本对美版实测反推，日版结构逐字节同构；`[已核实]` 见 out/evidence/
 jp_routeb_m1_result.txt）：

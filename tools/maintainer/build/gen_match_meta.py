@@ -21,7 +21,7 @@ guess.
 Output: `config/match_meta.tsv`
   sym  src  flags  class  batch  evidence
 
-Usage: python3 tools/build/gen_match_meta.py [--check]
+Usage: python3 tools/maintainer/build/gen_match_meta.py [--check]
        --check compares the current ledger with the source of truth. It writes
        nothing. Use it in CI and at the end of a batch.
 
@@ -37,7 +37,7 @@ Usage: python3 tools/build/gen_match_meta.py [--check]
 私有流水线兼容，勿改名：jp_m3_workqueue.tsv 文件名与 out/evidence/** 私有侧路径。
 
 产出 config/match_meta.tsv，列为 sym / src / flags / class / batch / evidence。
-用法：python3 tools/build/gen_match_meta.py [--check]
+用法：python3 tools/maintainer/build/gen_match_meta.py [--check]
 """
 
 from __future__ import annotations
@@ -46,7 +46,7 @@ import argparse
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent.parent
+ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "tools" / "project"))
 from at2_paths import (  # noqa: E402  layout-independent path resolution (MATCHED_LIST/FLAGS_TSV/WORKQUEUE)
     MATCHED_LIST as MATCHED,
@@ -103,7 +103,9 @@ def parse_flags():
     out = {}
     if not FLAGS.is_file():
         return out
-    for line in FLAGS.read_text(encoding="utf-8").splitlines():
+    # Line 1 is the header row (source-basename<TAB>extra-cflags). Skip it.
+    # 第 1 行是表头（source-basename<TAB>extra-cflags），跳过。
+    for line in FLAGS.read_text(encoding="utf-8").splitlines()[1:]:
         line = line.split("#", 1)[0].strip()
         if not line:
             continue
@@ -129,7 +131,7 @@ def parse_class():
 
 def build() -> str:
     flags, cls = parse_flags(), parse_class()
-    lines = ["# Ledger of symbols with C code. tools/build/gen_match_meta.py collects it. The source of truth is matched_symbols.txt and source_flags.tsv.",
+    lines = ["# Ledger of symbols with C code. tools/maintainer/build/gen_match_meta.py collects it. The source of truth is matched_symbols.txt and source_flags.tsv.",
              "# sym\tsrc\tflags\tclass\tbatch\tevidence"]
     for sym, src, tag, batch in parse_matched():
         evidence = "objdiff100+payload_check" + (f":{tag}" if tag else "")
@@ -147,7 +149,7 @@ def main() -> int:
             print(f"FAIL: missing {OUT}")
             return 1
         if OUT.read_text(encoding="utf-8") != text:
-            print(f"FAIL: {OUT} does not agree with the source of truth (run python3 tools/build/gen_match_meta.py to regenerate)")
+            print(f"FAIL: {OUT} does not agree with the source of truth (run python3 tools/maintainer/build/gen_match_meta.py to regenerate)")
             return 1
         print(f"ok: {OUT.relative_to(ROOT)} agrees with the source of truth ({len(text.splitlines()) - 2} entries)")
         return 0

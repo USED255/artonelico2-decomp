@@ -7,7 +7,7 @@ pseudo C from Ghidra 12.1.4 and the R5900 language. The long-term plan section 4
 for a measurement: can pseudo C serve as a matching draft? This tool extracts the pseudo C
 of one function, adds a minimal shim, and maps `FUN_xxxxxxxx` back to our symbol names. It
 writes `<sym>.draft.c` for compile and objdiff scoring by
-`tools/project/p1a_pseudoc_probe.py`.
+`tools/maintainer/project/p1a_pseudoc_probe.py`.
 
 Rule (honest class):
   * A successful compile proves only that the syntax and the types are usable.
@@ -15,21 +15,21 @@ Rule (honest class):
     meaning claim from it.
 
 Usage:
-  python3 tools/project/ghidra_draft.py list | emit <sym> <outdir>
+  python3 tools/maintainer/project/ghidra_draft.py list | emit <sym> <outdir>
 
 Ghidra 伪 C → 可编译草稿（P1a / 闸门 G1 的实验工具）。
 
 背景：`routebjp/build/ghidra/SLPS_258.19.decomp.c`（9.9 MB，10,919 个函数）是 Ghidra 12.1.4
 + R5900 语言的伪 C。长期计划 §4/P1a 要求实测：「伪 C 能否作为匹配草稿」。
 本工具把单个函数的伪 C 抽出来、补最小 shim、把 `FUN_xxxxxxxx` 改回我们的符号名，
-输出 `<sym>.draft.c`，供 `tools/project/p1a_pseudoc_probe.py` 编译 + objdiff 打分。
+输出 `<sym>.draft.c`，供 `tools/maintainer/project/p1a_pseudoc_probe.py` 编译 + objdiff 打分。
 
 判据（诚实口径）：
   * 编译通过 = 语法/类型层可用；
   * objdiff == 100 才算「匹配」；伪 C 是**草稿**，不据此断言语义。
 
 用法：
-  python3 tools/project/ghidra_draft.py list | emit <sym> <outdir>
+  python3 tools/maintainer/project/ghidra_draft.py list | emit <sym> <outdir>
 """
 
 # Private layout names (routebjp/build/ghidra, routebjp/build/hybrid, routebjp/build/mixed), do not rename.  私有布局名（routebjp/build/ghidra、routebjp/build/hybrid、routebjp/build/mixed），勿改名。
@@ -41,6 +41,8 @@ import re
 import sys
 from pathlib import Path
 
+# Make the shared tools in tools/project importable.  让 tools/project 的共享工具可被导入。
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "project"))
 from at2_paths import PROJECT_ROOT as ROOT, PRIVATE_ROOT, WORK_ROOT, ASMDIR  # noqa: E402  layout independent
 
 REPO = PRIVATE_ROOT or ROOT

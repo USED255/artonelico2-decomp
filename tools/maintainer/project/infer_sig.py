@@ -29,10 +29,10 @@ Evidence classes: the call site evidence is `[measured]` (read from asm). The in
 types are `[inferred]`. The tool makes no correctness claim. objdiff decides a hit.
 
 Usage:
-  python3 tools/project/infer_sig.py scan <sym> [--json]
-  python3 tools/project/infer_sig.py scan-file <sym> <draft.c>      # show suggestion vs current
-  python3 tools/project/infer_sig.py apply <sym> <in.c> <out.c>     # write the replaced draft
-  python3 tools/project/infer_sig.py batch --classes F_branch_call,D2_multi_call [--limit N]
+  python3 tools/maintainer/project/infer_sig.py scan <sym> [--json]
+  python3 tools/maintainer/project/infer_sig.py scan-file <sym> <draft.c>      # show suggestion vs current
+  python3 tools/maintainer/project/infer_sig.py apply <sym> <in.c> <out.c>     # write the replaced draft
+  python3 tools/maintainer/project/infer_sig.py batch --classes F_branch_call,D2_multi_call [--limit N]
 
 签名推断原型：从 `jal <sym>` 调用点恢复被调用者的参数/返回类型，并可把签名替换进 m2c 草稿。
 
@@ -55,10 +55,10 @@ Usage:
 工具本身不做正确性断言——是否命中由 objdiff 决定。
 
 用法：
-  python3 tools/project/infer_sig.py scan <sym> [--json]
-  python3 tools/project/infer_sig.py scan-file <sym> <draft.c>      # 显示 建议 vs 现状 的差异
-  python3 tools/project/infer_sig.py apply <sym> <in.c> <out.c>     # 写替换后的草稿
-  python3 tools/project/infer_sig.py batch --classes F_branch_call,D2_multi_call [--limit N]
+  python3 tools/maintainer/project/infer_sig.py scan <sym> [--json]
+  python3 tools/maintainer/project/infer_sig.py scan-file <sym> <draft.c>      # 显示 建议 vs 现状 的差异
+  python3 tools/maintainer/project/infer_sig.py apply <sym> <in.c> <out.c>     # 写替换后的草稿
+  python3 tools/maintainer/project/infer_sig.py batch --classes F_branch_call,D2_multi_call [--limit N]
 """
 
 # Private layout names (routebjp/asm/cod, routebjp/build/m2c, jp_m3_workqueue.tsv), do not rename.  私有布局名（routebjp/asm/cod、routebjp/build/m2c、jp_m3_workqueue.tsv），勿改名。
@@ -71,6 +71,8 @@ import re
 import sys
 from pathlib import Path
 
+# Make the shared tools in tools/project importable.  让 tools/project 的共享工具可被导入。
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "project"))
 from at2_paths import PROJECT_ROOT as ROOT, PRIVATE_ROOT, WORK_ROOT, ASMDIR  # noqa: E402  layout independent
 
 REPO = PRIVATE_ROOT or ROOT                            # Private work area

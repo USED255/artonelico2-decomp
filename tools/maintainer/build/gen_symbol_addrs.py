@@ -16,7 +16,7 @@ FUN_xxxxxxxx name (written as func_xxxxxxxx).
 
 The Ghidra and .erx.lib inputs are private-side evidence. Keep their paths.
 
-Usage: python3 tools/build/gen_symbol_addrs.py [-o OUT]
+Usage: python3 tools/maintainer/build/gen_symbol_addrs.py [-o OUT]
 Default output: out/symbol_addrs.txt
 
 生成 splat 用的 symbol_addrs.txt：把 Ghidra 的函数边界与 .erx.lib 的命名锚点

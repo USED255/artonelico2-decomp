@@ -19,7 +19,7 @@ G1 measurement (docs/R11 section 4, 2026-10-03): 60 random cases (15 each of B/D
 The project therefore accepts the pseudo C draft route.
 
 Usage:
-  python3 tools/project/auto_match_ghidra.py run [--classes B_straight,D_single_call,...] \
+  python3 tools/maintainer/project/auto_match_ghidra.py run [--classes B_straight,D_single_call,...] \
       [--limit N] [--flags "-O2,-O1"] [--jobs 4] [--apply]
 
 matching batch 批量匹配：Ghidra 伪 C 草稿 → 编译 → objdiff 裁决 → 落地（P1a/P1d 的生产版）。
@@ -36,7 +36,7 @@ G1 实测（docs/R11 §4，2026-10-03）：随机 60 例（B/D/E/F 各 15）编�
 B/D 两类 27%/20%，高于 15% 判定线 ⇒ 采信伪 C 草稿路线。
 
 用法：
-  python3 tools/project/auto_match_ghidra.py run [--classes B_straight,D_single_call,...] \
+  python3 tools/maintainer/project/auto_match_ghidra.py run [--classes B_straight,D_single_call,...] \
       [--limit N] [--flags "-O2,-O1"] [--jobs 4] [--apply]
 """
 
@@ -56,6 +56,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ghidra_draft as GD  # noqa: E402
+# Make the shared tools in tools/project importable.  让 tools/project 的共享工具可被导入。
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "project"))
 from auto_match_trivial import (  # noqa: E402
     ROOT, WORK_ROOT, EVIDENCE_ROOT, WORKQUEUE, MATCHED_LIST, SRCDIR, GCC, AS, OBJDIFF,
     CFLAGS, split_mode, matched_in_list, M3_BEGIN, M3_END,
@@ -201,7 +203,9 @@ def do_apply(winners: dict):
 
     flags = {}
     if FLAGS_FILE.is_file():
-        for line in FLAGS_FILE.read_text(encoding="utf-8").splitlines():
+        # Line 1 is the header row (source-basename<TAB>extra-cflags). Skip it.
+        # 第 1 行是表头（source-basename<TAB>extra-cflags），跳过。
+        for line in FLAGS_FILE.read_text(encoding="utf-8").splitlines()[1:]:
             line = line.split("#", 1)[0].strip()
             if line:
                 a = line.split()
@@ -212,7 +216,7 @@ def do_apply(winners: dict):
             flags[sym] = fl
         else:
             flags.pop(sym, None)
-    out = ["# <source-basename><TAB><extra-cflags>  See docs/CONFIG.md"]
+    out = ["source-basename\textra-cflags"]
     out += [f"{s}\t{flags[s]}" for s in sorted(flags)]
     FLAGS_FILE.write_text("\n".join(out) + "\n", encoding="utf-8")
     print(f"apply: wrote {len(winners)} C sources; matching batch section {n0} -> {len(existing)}; flag table {len(flags)} entries")

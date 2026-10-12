@@ -28,9 +28,9 @@ Private pipeline compatibility, do not rename: the file name jp_m3_workqueue.tsv
 the column name hybrid_ok, and the private layout path routebjp/**.
 
 Usage:
-  python3 tools/report/match_workqueue.py                     # Japanese target (default), print a summary
-  python3 tools/report/match_workqueue.py --target us         # US reference
-  python3 tools/report/match_workqueue.py --tsv out/evidence/jp_m3_workqueue.tsv
+  python3 tools/maintainer/report/match_workqueue.py                     # Japanese target (default), print a summary
+  python3 tools/maintainer/report/match_workqueue.py --target us         # US reference
+  python3 tools/maintainer/report/match_workqueue.py --tsv out/evidence/jp_m3_workqueue.tsv
 
 matching batch 工作量分级队列：把主程序函数按「能不能用现有流水线做」分类，
 产出可并行的工作队列。
@@ -49,7 +49,7 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent.parent
+ROOT = Path(__file__).resolve().parents[3]
 
 # Fix 2026-10-04 (P-31): the first version treated `mult/multu/div/divu/madd/msub/
 # mfhi/mflo/mthi/mtlo` as MMI. Those are plain MIPS I instructions and occur
@@ -193,7 +193,7 @@ def main() -> int:
     # gate 判据复用 routebjp/tools/split_asm.py（日版才有；美版参照不给 gate）。
     split_asm = None
     if args.target == "jp":
-        sys.path.insert(0, str(proj / "tools"))
+        sys.path.insert(0, str(proj / "tools" / "project"))
         try:
             import split_asm as _sa
             split_asm = _sa
