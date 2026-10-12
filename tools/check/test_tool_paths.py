@@ -147,3 +147,5 @@ if problems:
     print(f"FAIL: the path self-check failed ({len(problems)} problems)")
     sys.exit(1)
 print(f"OK: the path self-check passed ({len(TOOLS)} tools have the correct ROOT, {len(warnings)} warnings)")
+
+# probe: a pure test file only, so the classifier must pick the skip lane
