@@ -70,6 +70,11 @@ make check                       # 仓库自检；不需要原版可执行文件
 `matching-gate` 需要 secret `ORIG_DEPLOY_KEY` 与变量 `PRIVATE_ORIG_REPO`。
 **fork 的 PR 拿不到**，此时该 job 只跑 notice 步骤，不算失败；之后由维护者复验该 commit。
 
+维护者若已用 [tools/ci/splat_snapshot.py](../tools/ci/splat_snapshot.py) 把 `splat split`
+的输出打包，门禁会直接还原归档而不再跑 splat。归档放在私有伴生仓库；本仓库只带
+`toolchain/splat-snapshot.json`（哈希与计数，不含内容）。任何不匹配（输入过期、原版可执行文件
+不同、归档损坏）都打警告并回落真 splat —— 门禁从不依赖归档：混合载荷仍与零售载荷比对。
+
 检查不过就**不产生**新的进度报告。因此公开的数字永远是**验证过的数字**。
 
 想贡献一个已匹配的函数？读 [CONTRIBUTING.zh-CN.md](../CONTRIBUTING.zh-CN.md)。

@@ -80,6 +80,13 @@ The `matching-gate` workflow needs the secret `ORIG_DEPLOY_KEY` and the variable
 `PRIVATE_ORIG_REPO`. A pull request from a fork cannot get them. In that case the
 workflow runs its notice step only and does not fail. A maintainer then verifies the commit.
 
+The gate also restores the packaged `splat split` output when the maintainer has packed it
+with [tools/ci/splat_snapshot.py](../tools/ci/splat_snapshot.py). The archive lives in the
+private companion repository; this repository only carries `toolchain/splat-snapshot.json`,
+which holds hashes and counts, never content. Any mismatch (a stale input, a different retail
+executable, a corrupt archive) prints a warning and falls back to running splat, so the gate
+never depends on the archive: the mixed payload is still compared against the retail payload.
+
 A failed check produces no new progress report. Therefore the public numbers are
 always verified numbers.
 

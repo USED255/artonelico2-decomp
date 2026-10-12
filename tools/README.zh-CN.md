@@ -43,7 +43,9 @@ make check
 | `tools/check/test_matched_ledger.py` | 测试台账解析与增量检查 | Contributor 需要 |
 | `tools/check/test_tool_paths.py` | 测试每个工具都能正确解析项目路径 | Contributor 需要 |
 | `tools/check/test_classify_change.py` | 测试 CI 模式分类器 | Contributor 需要 |
+| `tools/check/test_splat_snapshot.py` | 测试 splat 产物打包/还原工具 | Contributor 需要 |
 | `tools/ci/classify_change.py` | 按改动集合判定 `matching-gate` 的模式（skip / fast / full） | Contributor 需要 |
+| `tools/ci/splat_snapshot.py` | 把 `splat split` 的输出打包进私有伴生仓库，并在 CI 里还原 | Maintainer internal |
 | `tools/ci/splat-requirements.txt` | 列出 CI 使用的公开 `splat` 版本 | Contributor 需要 |
 | `tools/project/at2_paths.py` | 按仓库布局解析项目路径 | Contributor 需要 |
 | `tools/project/compile_sources.py` | 只重编「源或标志变了」的对象 | Contributor 需要 |

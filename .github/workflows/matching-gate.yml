@@ -21,6 +21,18 @@
 #   full  everything else: every push, every manual run, and any change that touches a build
 #         input. This runs the whole pipeline, including the baseline link and its payload.
 #
+# The build has one optional accelerator. When the maintainer has packed the `splat split`
+# output into the private companion repository (tools/ci/splat_snapshot.py create), the step
+# below restores that archive instead of running splat again, which saves about 150 s. The
+# public repository only carries toolchain/splat-snapshot.json (hashes and counts). Any
+# mismatch prints a warning and falls back to running splat, so the gate never depends on
+# the archive for correctness: the mixed payload is still compared against the retail payload.
+#
+# 构建有一个可选加速器：维护者若已用 tools/ci/splat_snapshot.py create 把 `splat split` 的输出
+# 打包进私有伴生仓库，下面的步骤就还原归档而不再跑 splat（省约 150 s）。公开仓库只带
+# toolchain/splat-snapshot.json（哈希与计数）。任何不匹配都打警告并回落真 splat，门禁的正确性
+# 从不依赖归档：混合载荷仍与零售载荷比对。
+#
 # A manual run can verify a pull request. Give the pull request number as input.
 # WARNING: a manual run uses the secret, and it runs the scripts of that commit.
 # Start a manual run only after you reviewed the commit.
@@ -100,6 +112,20 @@ jobs:
           ssh-key: ${{ secrets.ORIG_DEPLOY_KEY }}
           path: .orig
           persist-credentials: false
+
+      # `splat split` is about 150 s of the build, it is single-threaded, and its output is a
+      # pure function of the retail executable plus a few inputs that rarely change. The
+      # maintainer packs that output once (tools/ci/splat_snapshot.py create) and pushes the
+      # archive to the private companion repository; this repository only carries
+      # toolchain/splat-snapshot.json, which holds hashes and counts, never content. Every
+      # reason to distrust the archive prints a warning and falls back to running splat.
+      # `splat split` 占构建约 150 s、单线程，且输出只是原版可执行文件与少数输入的纯函数。维护者
+      # 用 tools/ci/splat_snapshot.py create 打包一次并把归档推到私有伴生仓库；本仓库只带
+      # toolchain/splat-snapshot.json（哈希与计数，无内容）。任何存疑都打警告并回落真 splat。
+      - name: Use the packaged splat output when it matches this checkout
+        id: snapshot
+        if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
+        run: python3 tools/ci/splat_snapshot.py use --project . --orig .orig --extract --github-output "$GITHUB_OUTPUT"
 
       - uses: actions/setup-python@v5
         if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
@@ -184,7 +210,7 @@ jobs:
           echo "$BINUTILS" >> "$GITHUB_PATH"      # the step must also find as, objcopy, and readelf
 
       - name: Install splat (pinned, the version in toolchain.lock.json)
-        if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
+        if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip' && steps.snapshot.outputs.verdict != 'snapshot'
         run: python3 -m pip install --quiet -r tools/ci/splat-requirements.txt
 
       - name: Repository check

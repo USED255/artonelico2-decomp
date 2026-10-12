@@ -87,6 +87,7 @@ check-tools:
 # 范围，所以它的测试放进 `make check`。
 check-tests:
 	@$(PY) tools/check/test_classify_change.py
+	@$(PY) tools/check/test_splat_snapshot.py
 
 check-pr:
 	@test -n "$(BASE)" || { echo "usage: make check-pr BASE=<git-ref> (compare that ref with HEAD)"; exit 2; }
