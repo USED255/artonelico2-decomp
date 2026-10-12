@@ -430,6 +430,7 @@ func_001ab9a8	-O2
 func_001abc5c	-Os
 func_001acc80	-Os
 func_001b04b0	-Os
+func_001b0738	-Os
 func_001b0cac	-Os
 func_001b0d10	-Os
 func_001b30c8	-O2 -mno-split-addresses
@@ -501,6 +502,7 @@ func_001db940	-O1
 func_001de65c	-Os
 func_001de6e0	-Os
 func_001de94c	-Os
+func_001de9b0	-Os
 func_001deb30	-Os
 func_001deec4	-Os
 func_001dfb10	-Os
