@@ -53,6 +53,30 @@ SCHEMA = "at2-splat-snapshot/1"
 MANIFEST_DEFAULT = "toolchain/splat-snapshot.json"
 ARCHIVE_DEFAULT = "toolchain/splat-SLPS_258.19.tar.zst"
 
+# `splat split` on this target peaks at about 1.3 GB of resident memory and takes about 150 s
+# on a 4 vCPU runner. On a small workstation it swaps instead and can take the machine down
+# (2026-10-12: 20 minutes and then a hard freeze on a 4 core / 3.8 GiB box). `create` therefore
+# refuses to run without headroom: pack on a GitHub runner with
+# .github/workflows/splat-snapshot.yml.
+# 本目标的 `splat split` 峰值常驻内存约 1.3 GB，4 vCPU runner 上约 150 s；小机器上会改成换页，
+# 甚至把机器拖死（2026-10-12 在 4 核 / 3.8 GiB 上发生：20 分钟未结束，随后死机）。因此 `create`
+# 在没有余量时拒绝运行：请用 .github/workflows/splat-snapshot.yml 在 runner 上打包。
+MIN_AVAILABLE_KB = 4 * 1024 * 1024
+
+
+def available_memory_kb() -> int | None:
+    """MemAvailable from /proc/meminfo, or None when it is not readable.
+
+    /proc/meminfo 的 MemAvailable；读不到时返回 None。
+    """
+    try:
+        for line in Path("/proc/meminfo").read_text(encoding="utf-8").splitlines():
+            if line.startswith("MemAvailable:"):
+                return int(line.split()[1])
+    except (OSError, ValueError, IndexError):
+        return None
+    return None
+
 # The files `splat split` reads. A change to any of them makes the archive stale, and the
 # tool falls back to running splat. `create` writes this set into the manifest and `use`
 # re-reads the set from the manifest, so the two commands cannot drift apart.
@@ -201,6 +225,17 @@ def cmd_create(args) -> int:
             return 2
     if not game.is_file():
         print(f"FAIL: no retail executable at {game}", file=sys.stderr)
+        return 2
+
+    # Refuse to start splat without headroom: on a small machine it swaps for many minutes and
+    # can take the whole box down. See MIN_AVAILABLE_KB.
+    # 没有余量就不启动 splat：小机器上它会换页几十分钟，甚至把整台机器拖死（见 MIN_AVAILABLE_KB）。
+    avail = available_memory_kb()
+    if not args.allow_low_memory and avail is not None and avail < MIN_AVAILABLE_KB:
+        print(f"FAIL: only {avail / 1024 / 1024:.1f} GiB of memory is available and splat needs about "
+              f"1.3 GiB of resident memory plus room to work. Run the pack on a GitHub runner with "
+              f".github/workflows/splat-snapshot.yml, or pass --allow-low-memory if you accept that "
+              f"this machine may swap or freeze.", file=sys.stderr)
         return 2
 
     pin = pinned_splat_version(project)
@@ -426,6 +461,8 @@ def main() -> int:
                    help="Path of the archive inside the private companion repository")
     c.add_argument("--scratch", default=".tmp/splat-snapshot", help="Scratch directory (default: .tmp/splat-snapshot)")
     c.add_argument("--keep-scratch", action="store_true", help="Keep the scratch directory")
+    c.add_argument("--allow-low-memory", action="store_true",
+                   help="Run even when this machine has little free memory (it may swap or freeze)")
     c.set_defaults(func=cmd_create)
 
     u = sub.add_parser("use", help="Check the manifest and, when it matches, extract the archive")

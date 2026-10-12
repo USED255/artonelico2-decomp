@@ -1,0 +1,114 @@
+# Pack the `splat split` output on a GitHub runner and upload it as an artifact.
+#
+# Why this runs here and not on a workstation: `splat split` needs about 150 s on a 4 vCPU
+# runner and peaks at about 1.3 GB of resident memory. On a small workstation it swaps
+# instead and can take the machine down (that happened on 2026-10-12). tools/ci/splat_snapshot.py
+# refuses to run without memory headroom, and this workflow is the sanctioned way to pack.
+#
+# This job never pushes anything. A maintainer starts it, downloads the `splat-snapshot`
+# artifact, pushes the archive to the private companion repository, and commits the manifest
+# (toolchain/splat-snapshot.json). See docs/BUILD.md section 4.
+#
+# 为什么在 runner 上打包：`splat split` 在 4 vCPU runner 上约 150 s、峰值常驻内存约 1.3 GB；
+# 小机器上会换成换页，甚至把机器拖死（2026-10-12 发生过）。tools/ci/splat_snapshot.py 在没有
+# 内存余量时拒绝运行，本 workflow 是唯一被认可的打包路径。
+#
+# 本 job 不推送任何东西：维护者手动触发 → 下载 `splat-snapshot` artifact → 把归档推给私有伴生
+# 仓库 → 提交清单 toolchain/splat-snapshot.json。见 docs/BUILD.md 第 4 节。
+name: splat-snapshot
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HAS_ORIG: ${{ secrets.ORIG_DEPLOY_KEY != '' && vars.PRIVATE_ORIG_REPO != '' }}
+      PRIVATE_ORIG_REPO: ${{ vars.PRIVATE_ORIG_REPO }}
+    steps:
+      - name: Notice (no secret, so there is nothing to pack)
+        if: env.HAS_ORIG != 'true'
+        run: |
+          echo "::notice::The secret ORIG_DEPLOY_KEY or the variable PRIVATE_ORIG_REPO is absent. Nothing to pack."
+
+      - name: Checkout this repository
+        if: env.HAS_ORIG == 'true'
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Checkout the private companion (retail executable)
+        if: env.HAS_ORIG == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.PRIVATE_ORIG_REPO }}
+          ssh-key: ${{ secrets.ORIG_DEPLOY_KEY }}
+          path: .orig
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        if: env.HAS_ORIG == 'true'
+        with:
+          python-version: '3.13'
+
+      - name: Install splat (the pinned version)
+        if: env.HAS_ORIG == 'true'
+        run: python3 -m pip install --quiet -r tools/ci/splat-requirements.txt
+
+      - name: Pack the splat output
+        if: env.HAS_ORIG == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p orig
+          cp .orig/orig/SLPS_258.19 orig/SLPS_258.19
+          python3 tools/ci/splat_snapshot.py create \
+            --project . \
+            --game orig/SLPS_258.19 \
+            --splat "$(command -v splat)" \
+            --out .tmp/splat-SLPS_258.19.tar.zst \
+            --manifest toolchain/splat-snapshot.json \
+            --remote-path toolchain/splat-SLPS_258.19.tar.zst \
+            --scratch .tmp/splat-snapshot
+
+      - name: Show what to do with the artifacts
+        if: env.HAS_ORIG == 'true'
+        run: |
+          set -euo pipefail
+          {
+            echo "## splat snapshot packed"
+            echo
+            echo "1. Download the \`splat-snapshot\` artifact."
+            echo "2. Copy the archive into the private companion repository:"
+            echo "   \`toolchain/splat-SLPS_258.19.tar.zst\`"
+            echo "3. Commit \`toolchain/splat-snapshot.json\` in this repository."
+            echo
+            echo "sha256 of the archive:"
+            echo
+            echo '```'
+            sha256sum .tmp/splat-SLPS_258.19.tar.zst
+            echo '```'
+            echo
+            echo "manifest:"
+            echo
+            echo '```json'
+            cat toolchain/splat-snapshot.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The archive is material this project cannot publish, so the artifact is only a handoff
+      # to the maintainer. Keep the default retention; it is deleted from GitHub after it expires.
+      # 归档属不可公开材料，artifact 只是交给维护者的中转，按默认保留期自动过期。
+      - name: Upload the archive and the manifest
+        if: env.HAS_ORIG == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: splat-snapshot
+          path: |
+            .tmp/splat-SLPS_258.19.tar.zst
+            toolchain/splat-snapshot.json
+          if-no-files-found: error
