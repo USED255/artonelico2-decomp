@@ -198,6 +198,11 @@ write_manifest(schema="at2-splat-snapshot/999")
 verdict, _, _ = use()
 check("an unknown schema falls back", verdict == "splat")
 
+print("[3b] a relative manifest path resolves against --project")
+write_manifest()
+verdict, rc, text = use(manifest="toolchain/splat-snapshot.json")
+check("the default relative manifest is found under --project", verdict == "snapshot", text.strip()[-120:])
+
 print("[4] resolve_archive refuses escapes")
 check("a relative path inside the checkout is accepted",
       ss.resolve_archive(ORIG, "toolchain/x.tar.zst") is not None)
