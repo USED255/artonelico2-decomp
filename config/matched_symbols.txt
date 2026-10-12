@@ -70,6 +70,7 @@ func_001022e0    # ghidra_draft:-O2
 func_0010230c    # ghidra_draft:-O2
 func_00102338    # ret_data_load
 func_0010264c    # wrapper_o1_jal
+func_001026e0    # llm_draft
 func_00102800    # llm_draft
 func_00102908    # ghidra_draft:-Os
 func_00102adc    # ghidra_draft:-O2
