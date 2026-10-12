@@ -53,6 +53,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -183,6 +184,34 @@ def list_asm_objects(root: Path) -> list[str]:
     """
     base = root / "build" / "asm"
     return [p.relative_to(root).as_posix() for p in sorted(base.rglob("*.o")) if p.is_file()]
+
+
+def assemble_objects(project: Path, scratch: Path, as_path: Path, expected: int) -> tuple[Path, list[str]]:
+    """Assemble in a copy of the splat scratch, using the repository's own `build.sh`.
+
+    Returns the staging directory and the objects. Raises SystemExit when the assembly fails or
+    when the object count does not match `expected` (the number of `.s` files).
+
+    在 splat scratch 的副本里用**仓库自带的** `build.sh` 汇编，返回（staging 目录, 对象列表）。
+    汇编失败、或对象数与 `expected`（`.s` 个数）不符时抛 SystemExit。
+    """
+    staging = scratch.with_name(scratch.name + "-asm")
+    shutil.rmtree(staging, ignore_errors=True)
+    # `build.sh` repairs `include/macro.inc` and `asm/**` in place, and the archive must keep the
+    # raw splat output in its splat group, so the assembly runs in a copy. `build.sh` cds into its
+    # own directory, hence the copy of the script into the staging directory.
+    # `build.sh` 会就地把 include/macro.inc 与 asm/** 修好，而归档的 splat 组必须保留原始输出，
+    # 所以在副本里汇编。`build.sh` 会 cd 到脚本自身所在目录，因此要把脚本复制进 staging。
+    shutil.copytree(scratch, staging, ignore=shutil.ignore_patterns(ROM_NAME))
+    shutil.copy2(project / ASM_INPUT, staging / ASM_INPUT)
+    print(f"assembling in {staging} with {as_path} ...")
+    env = dict(os.environ, BASELINE_ASSEMBLE_ONLY="1", BINUTILS=str(as_path.parent))
+    if subprocess.run(["bash", ASM_INPUT], cwd=str(staging), env=env).returncode != 0:
+        raise SystemExit("the assembly failed (see the build.sh log above)")
+    rels = list_asm_objects(staging)
+    if len(rels) != expected:
+        raise SystemExit(f"assembled {len(rels)} objects but the scratch holds {expected} sources")
+    return staging, rels
 
 
 def pack_multi(roots: list[tuple[Path, list[str]]], out: Path) -> None:
@@ -378,24 +407,11 @@ def cmd_create(args) -> int:
 
     if args.with_asm:
         # `as_path` was validated above.
-        staging = scratch.with_name(scratch.name + "-asm")
-        shutil.rmtree(staging, ignore_errors=True)
-        # Assemble in a copy of the splat output: `build.sh` repairs `include/macro.inc` and
-        # `asm/**` in place, and the archive must keep the raw splat output in its splat group.
-        # 在 splat 输出的副本里汇编：`build.sh` 会就地修 include/macro.inc 与 asm/**，而归档的
-        # splat 组必须保留原始输出。
-        shutil.copytree(scratch, staging, ignore=shutil.ignore_patterns(ROM_NAME))
-        shutil.copy2(project / ASM_INPUT, staging / ASM_INPUT)
-        print(f"assembling in {staging} with {as_path} ...")
-        env = dict(os.environ, BASELINE_ASSEMBLE_ONLY="1", BINUTILS=str(as_path.parent))
-        if subprocess.run(["bash", ASM_INPUT], cwd=str(staging), env=env).returncode != 0:
-            print("FAIL: the assembly failed (see build.sh in the scratch copy)", file=sys.stderr)
-            return 2
-        asm_rels = list_asm_objects(staging)
         expected = sum(1 for rel in rels if rel.endswith(".s"))
-        if len(asm_rels) != expected:
-            print(f"FAIL: assembled {len(asm_rels)} objects but the scratch holds {expected} sources",
-                  file=sys.stderr)
+        try:
+            staging, asm_rels = assemble_objects(project, scratch, as_path, expected)
+        except SystemExit as exc:
+            print(f"FAIL: {exc}", file=sys.stderr)
             return 2
         groups[GROUP_ASM] = {
             "inputs": {rel: sha256_file(project / rel) for rel in ASM_INPUT_FILES},

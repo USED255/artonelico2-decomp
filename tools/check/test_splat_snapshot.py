@@ -274,13 +274,49 @@ verdict, groups, _ = use(extract=False)
 check("a v2 manifest without an object group reports splat only",
       verdict == "snapshot" and groups == "splat", f"{verdict} {groups}")
 
-print("[8] resolve_archive refuses escapes")
+print("[8] assemble_objects runs the repository's build.sh in a copy of the scratch")
+# A fake build.sh stands in for the real one: it only has to create build/asm/**/*.o. This
+# exercises the staging copy, the environment, the count check, and the failure path without a
+# toolchain. It is also the regression test for a missing `import os` in the tool.
+FAKE_RECIPE = (
+    "#!/usr/bin/env bash\n"
+    "set -euo pipefail\n"
+    "find asm -name '*.s' | while read -r s; do\n"
+    "  o=\"build/asm/${s#asm/}\"; o=\"${o%.s}.o\"\n"
+    "  mkdir -p \"$(dirname \"$o\")\"\n"
+    "  printf 'obj\\n' > \"$o\"\n"
+    "done\n"
+)
+FAKE_BAD = "#!/usr/bin/env bash\nexit 3\n"
+(PROJECT / "build.sh").write_text(FAKE_RECIPE, encoding="utf-8")
+staging, objs = ss.assemble_objects(PROJECT, SCRATCH, Path("/bin/true"), expected=2)
+check("the staging copy holds the objects", len(objs) == 2 and "build/asm/cod/func_00100000.o" in objs, str(objs))
+check("the staging copy is separate from the splat scratch",
+      staging != SCRATCH and (SCRATCH / "build/asm").exists() is False)
+expected_objs = {f"build/asm/{rel[len('asm/'):-2]}.o" for rel in rels if rel.endswith(".s")}
+check("the objects mirror the sources", set(objs) == expected_objs, str(sorted(objs)))
+
+try:
+    ss.assemble_objects(PROJECT, SCRATCH, Path("/bin/true"), expected=99)
+    check("a wrong object count raises", False, "no error")
+except SystemExit:
+    check("a wrong object count raises", True)
+
+(PROJECT / "build.sh").write_text(FAKE_BAD, encoding="utf-8")
+try:
+    ss.assemble_objects(PROJECT, SCRATCH, Path("/bin/true"), expected=2)
+    check("a failing build.sh raises", False, "no error")
+except SystemExit:
+    check("a failing build.sh raises", True)
+(PROJECT / "build.sh").write_text(RECIPE, encoding="utf-8")
+
+print("[9] resolve_archive refuses escapes")
 check("a relative path inside the checkout is accepted",
       ss.resolve_archive(ORIG, "toolchain/x.tar.zst") is not None)
 check("an absolute path is refused", ss.resolve_archive(ORIG, "/etc/passwd") is None)
 check("a parent path is refused", ss.resolve_archive(ORIG, "../x.tar.zst") is None)
 
-print("[9] an archive with an unsafe member is refused")
+print("[10] an archive with an unsafe member is refused")
 evil_dir = WORK / "evil"
 evil_dir.mkdir(parents=True, exist_ok=True)
 (evil_dir / "payload").write_text("x", encoding="utf-8")
