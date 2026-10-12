@@ -3343,3 +3343,5 @@ func_00324700    # m2c_draft
 func_00328588    # m2c_draft
 func_0032a1a8    # m2c_draft
 func_0032a200    # m2c_draft
+func_00192a3c    # permuter
+func_00194ed4    # permuter
