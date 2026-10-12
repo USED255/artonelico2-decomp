@@ -1580,3 +1580,5 @@ func_0014d130	-Os
 func_0028fcc0	-Os
 func_0010838c	-Os
 func_00104700	-Os
+func_00340458	-O3
+func_001083e8	-Os
