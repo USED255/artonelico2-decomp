@@ -70,6 +70,34 @@ from auto_match_trivial import (  # noqa: E402
 )
 from at2_paths import OBJDUMP  # noqa: E402  section-size guard (P-97)
 import split_asm as SPLIT  # noqa: E402  block boundary rule shared with the mixed build
+import jtbl_patch as JTP  # noqa: E402  jump-table reference redirect (P-52)
+
+# A jtbl function compiles into its own .rodata jump table, so the reference in .text points at
+# the wrong symbol and the score saturates below 100 (measured 99.33 for the best candidate,
+# 2026-10-12). jtbl_patch.py redirects that reference to the splat data symbol -- the same step
+# the mixed build takes (config/jtbl_tables.tsv + compile_sources.py --jtbl-tables). Without it
+# the permuter can never reach this project's convergence signal (score 0), so jtbl candidates
+# were never convergeable before.
+# jtbl 函数会自产 .rodata 跳转表 ⇒ .text 里的引用指向错符号、分数封顶（2026-10-12 实测最好 99.33）。
+# jtbl_patch.py 把该引用改指 splat 数据符号，与混合构建同一步（config/jtbl_tables.tsv）。
+# 不做这一步，permuter 永远到不了本工程的收敛信号（score 0）—— 此前 jtbl 候选无法收敛。
+JTBL_RE = re.compile(r"\bjtbl_[0-9A-Fa-f]+\b")
+
+
+def jtbl_table(sym: str) -> str | None:
+    """Return the single jump-table symbol the block of `sym` refers to, else None.
+
+    Only a single-table block is accepted: jtbl_patch refuses several tables or a non-zero
+    .rodata immediate, and a wrong patch would be worse than no patch.
+
+    返回该符号代码块引用的**唯一**跳转表符号名；多表则返回 None（jtbl_patch 本身也拒绝多表）。
+    """
+    f = ROOT / "asm" / "cod" / f"{sym}.s"
+    if not f.is_file():
+        return None
+    names = sorted(set(JTBL_RE.findall(f.read_text(encoding="utf-8", errors="replace"))))
+    return names[0] if len(names) == 1 else None
+
 
 REPO = PRIVATE_ROOT or ROOT            # Private work area (the .tmp/permvenv directory lives here)
 PERMUTER = Path(os.environ.get("PERMUTER", Path.home() / "eecc" / "decomp-permuter" / "permuter.py"))
@@ -226,9 +254,28 @@ def setup_dir(sym: str, frontend: str = "ghidra") -> Path | None:
     if r.returncode:
         return None
     fl = best_flags(sym, d / "base.c", d)          # Select the flag level first (see best_flags).
-    (d / "compile.sh").write_text(
-        "#!/bin/bash\nexec %s %s -falign-functions=4 -ffunction-sections -c -I %s/include -I %s \"$@\"\n"
-        % (GCC, " ".join(fl), ROOT, Path.home() / "eecc" / "m2c"), encoding="utf-8")
+    tbl = jtbl_table(sym)
+    if tbl:
+        # Compile, then redirect the C-made jump table to the splat data symbol, so the object
+        # the permuter scores is the same object the mixed build will link (P-52 / jtbl_patch.py).
+        # 先编译，再把 C 自产跳转表改指 splat 数据符号 ⇒ permuter 评分的对象 = 混合构建将链接的对象。
+        (d / "compile.sh").write_text(
+            "#!/bin/bash\n"
+            "set -u\n"
+            'out=""; prev=""\n'
+            'for a in "$@"; do [ "$prev" = "-o" ] && out="$a"; prev="$a"; done\n'
+            '%s %s -falign-functions=4 -ffunction-sections -c -I %s/include -I %s "$@" || exit $?\n'
+            'if [ -n "$out" ] && [ -f "$out" ]; then\n'
+            '  python3 %s --obj "$out" --table %s --out "$out.jtbl" >/dev/null 2>&1 && mv "$out.jtbl" "$out"\n'
+            "fi\n"
+            "exit 0\n"
+            % (GCC, " ".join(fl), ROOT, Path.home() / "eecc" / "m2c",
+               Path(__file__).resolve().parents[2] / "project" / "jtbl_patch.py", tbl),
+            encoding="utf-8")
+    else:
+        (d / "compile.sh").write_text(
+            "#!/bin/bash\nexec %s %s -falign-functions=4 -ffunction-sections -c -I %s/include -I %s \"$@\"\n"
+            % (GCC, " ".join(fl), ROOT, Path.home() / "eecc" / "m2c"), encoding="utf-8")
     os.chmod(d / "compile.sh", 0o755)
     (d / "settings.toml").write_text(
         'func_name = "%s"\ncompiler_type = "gcc"\nobjdump_command = "%s -d"\n' % (sym, OBJDUMP),
@@ -315,6 +362,7 @@ def verify(sym: str, source: Path) -> float | None:
     """
     d = WORK / sym
     best: float | None = None
+    tbl = jtbl_table(sym)
     flags_list = list(FLAG_SETS)
     # Try the flag level recorded for this candidate first (if one exists). Then try the other levels.
     # 先用本候选记录的档位（若有），再依次试其余档位
@@ -332,13 +380,28 @@ def verify(sym: str, source: Path) -> float | None:
         if r.returncode:
             continue
         # P-97 (measured 2026-10-12): objdiff 100.0 does **not** prove that the C object has the
-        # same length as the asm object. The mixed build removes the whole asm .o, so a shorter
-        # C object shifts every later byte and changes the payload. Require equal length here.
-        # P-97（2026-10-12 实测）：objdiff 100.0 **不保证** C 对象与 asm 对象等长；混合构建是整份
-        # 替换 .o，短一个字节就会让后续全体前移、载荷变化。这里要求等长。
-        a_o = ROOT / "build" / "asm" / "cod" / f"{sym}.o"
-        if a_o.is_file() and _text_size(c_o) != _text_size(a_o):
+        # same length as the compared target. The mixed build removes the whole asm .o for a
+        # `direct` symbol and links [C object][residual object] for a `residual` symbol, so a
+        # length difference shifts every later byte and changes the payload.
+        # The target of the comparison is `d/target.o` (glabel..endlabel), NOT the whole asm
+        # object: for a residual symbol the residual object supplies the rest (P-15/P-16).
+        # Compare against the target object, and fall back to the asm object when it is missing.
+        # P-97（2026-10-12 实测）：objdiff 100.0 **不保证** C 对象与目标等长；direct 整份替换、
+        # residual 是 [C 对象][残差对象]，长度不符都会让后续全体前移、载荷变化。
+        # 比对的**目标**是 d/target.o（glabel..endlabel），**不是**整份 asm 对象
+        # （residual 符号的其余字节由残差对象提供，见 P-15/P-16）；target.o 缺失时才退回 asm 对象。
+        ref = d / "target.o"
+        if not ref.is_file():
+            ref = ROOT / "build" / "asm" / "cod" / f"{sym}.o"
+        if ref.is_file() and _text_size(c_o) != _text_size(ref):
             continue
+        if tbl:
+            # Same redirect as the build does, so the verification sees the object that will be
+            # linked. The patch keeps the .rodata bytes but removes every .text reference to them.
+            # 与构建同一步改指；补丁保留 .rodata 字节，只去掉 .text 对它的引用。
+            ok, _why = JTP.patch(c_o, tbl, c_o)
+            if not ok:
+                continue
         m = _match_of(sym, c_o, d)
         if m is not None and (best is None or m > best):
             best = m
