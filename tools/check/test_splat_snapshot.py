@@ -1,23 +1,26 @@
 #!/usr/bin/env python3
 """Tests for tools/ci/splat_snapshot.py. No toolchain, no splat, and no build are necessary.
 
-The snapshot is an accelerator: every path that distrusts the archive must fall back to
-running splat, and a matching archive must restore exactly the packaged tree. The tests
-build a synthetic tree, pack it, and drive the `use` code path through each decision.
+The snapshot is an accelerator: every path that distrusts a group must fall back for that
+group, and a matching group must restore exactly what was packaged. The tests build a
+synthetic tree, pack both groups into one archive, and drive the `use` code path through each
+decision, including the v1 manifest that the live repository still carries.
 
 Usage: python3 tools/check/test_splat_snapshot.py
 
-splat_snapshot.py 的测试（不需要工具链、splat 或构建）。归档只是加速器：任何不信任它的分支都必须
-回落真 splat，匹配时必须逐字还原打包的树。测试用合成树打包，再把 `use` 的每条判定跑一遍。
+splat_snapshot.py 的测试（不需要工具链、splat 或构建）。归档只是加速器：任何不信任某一组的分支
+都必须对该组回落，命中时必须逐字还原打包的树。测试用合成树把两组打成一个归档，把 `use` 的每条判定
+跑一遍，并覆盖线上仍在使用的 v1 清单。
 """
 from __future__ import annotations
 
 import argparse
-import hashlib
+import io
 import json
 import shutil
 import subprocess
 import sys
+from contextlib import redirect_stdout
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -35,7 +38,8 @@ def check(name: str, cond: bool, detail: str = "") -> None:
 
 WORK = ROOT / ".tmp" / "splat_snapshot_test"
 shutil.rmtree(WORK, ignore_errors=True)
-SCRATCH = WORK / "scratch"
+SCRATCH = WORK / "scratch"          # the raw splat output
+STAGE_ASM = WORK / "scratch-asm"    # the assembled objects
 PROJECT = WORK / "project"
 ORIG = WORK / "orig"
 
@@ -54,23 +58,38 @@ for rel, text in (
     p = SCRATCH / rel
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(text, encoding="utf-8")
+# The object group lives under build/asm/ (the group split is a path prefix). The .err file is
+# a diagnostic and must not be packed.
+for rel in ("build/asm/cod/func_00100000.o", "build/asm/cod/func_00100001.o", "build/asm/cod/func_00100000.err"):
+    p = STAGE_ASM / rel
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("obj\n" if rel.endswith(".o") else "", encoding="utf-8")
 
 rels = ss.list_outputs(SCRATCH)
-check("the inputs stay out of the file list",
-      all(not r.startswith(("splat.yaml", "config/", "SLPS_258.19.rom")) for r in rels), str(rels))
-check("the file list holds every splat output", len(rels) == 6, str(rels))
-
+asm_rels = ss.list_asm_objects(STAGE_ASM)
 digest = ss.tree_digest(SCRATCH, rels)
+asm_digest = ss.tree_digest(STAGE_ASM, asm_rels)
 
-# --- packing is deterministic and excludes the inputs ------------------------------------
+print("[1] the file lists and the packing")
+check("the splat inputs stay out of the file list",
+      all(not r.startswith(("splat.yaml", "config/", "SLPS_258.19.rom")) for r in rels), str(rels))
+check("the splat list holds every output", len(rels) == 6, str(rels))
+check("the object list holds only *.o", len(asm_rels) == 2 and all(r.endswith(".o") for r in asm_rels),
+      str(asm_rels))
+check("group_of splits by prefix",
+      ss.group_of("build/asm/cod/a.o") == ss.GROUP_ASM and ss.group_of("build/SLPS_258.19.ld") == ss.GROUP_SPLAT)
+
 archive = WORK / "toolchain" / "splat-SLPS_258.19.tar.zst"
-ss.pack(SCRATCH, rels, archive)
+roots = [(SCRATCH, sorted({r.split("/", 1)[0] for r in rels})), (STAGE_ASM, ["build/asm"])]
+ss.pack_multi(roots, archive)
 first = ss.sha256_file(archive)
-ss.pack(SCRATCH, rels, archive)
+ss.pack_multi(roots, archive)
 check("packing twice gives the same archive", ss.sha256_file(archive) == first)
 
 members = [m.name for m in ss.archive_members(archive)]
-check("the archive holds every output", len(members) == len(rels), str(members))
+check("the archive holds both groups", len(members) == len(rels) + len(asm_rels), str(members))
+check("the members keep the project-relative layout",
+      "asm/cod/func_00100000.s" in members and "build/asm/cod/func_00100000.o" in members, str(members))
 check("the archive has no input file",
       not any(m.startswith(("splat.yaml", "config/", "SLPS_258.19.rom")) for m in members), str(members))
 check("the archive has no absolute or parent path",
@@ -84,6 +103,7 @@ for rel in ss.INPUT_FILES:
         shutil.copy2(SCRATCH / rel, dst)
     else:
         dst.write_text(f"# {rel}\n", encoding="utf-8")
+(PROJECT / "build.sh").write_text("# the assembly recipe\n", encoding="utf-8")
 (PROJECT / "toolchain.lock.json").write_text(json.dumps({"game": {"id": "SLPS_258.19"}}), encoding="utf-8")
 
 GAME = ORIG / "orig" / "SLPS_258.19"
@@ -94,97 +114,148 @@ shutil.copy2(archive, ORIG / "toolchain" / archive.name)
 
 MANIFEST = PROJECT / ss.MANIFEST_DEFAULT
 MANIFEST.parent.mkdir(parents=True, exist_ok=True)
+GITHUB_OUTPUT = WORK / "github_output.txt"
+RECIPE = "# the assembly recipe\n"
 
 
-def write_manifest(**over):
-    manifest = {
-        "schema": ss.SCHEMA,
-        "target": "SLPS_258.19",
-        "path": f"toolchain/{archive.name}",
-        "sha256": ss.sha256_file(archive),
-        "game_sha1": ss.sha1_file(GAME),
-        "splat_version": "0.50.0",
-        "inputs": {rel: ss.sha256_file(PROJECT / rel) for rel in ss.INPUT_FILES},
-        "entry_count": len(rels),
-        "tree_sha256": digest,
-        "created_at": "2026-10-13T00:00:00Z",
-        "generator": "tools/ci/splat_snapshot.py",
-    }
+def write_manifest(*, v1: bool = False, with_asm: bool = True, **over):
+    """Write a manifest. `splat`/`asm` patch a group, the remaining keywords patch the top level.
+
+    写清单；`splat`/`asm` 改某一组，其余关键字改顶层。
+    """
+    splat = {"inputs": {rel: ss.sha256_file(PROJECT / rel) for rel in ss.INPUT_FILES},
+             "entry_count": len(rels), "tree_sha256": digest}
+    asm = {"inputs": {rel: ss.sha256_file(PROJECT / rel) for rel in ss.ASM_INPUT_FILES},
+           "as_version": "GNU assembler (test)", "entry_count": len(asm_rels), "tree_sha256": asm_digest}
+    splat.update(over.pop("splat", {}))
+    asm.update(over.pop("asm", {}))
+    if v1:
+        manifest = {"schema": ss.SCHEMA_V1, "target": "SLPS_258.19",
+                    "path": f"toolchain/{archive.name}", "sha256": ss.sha256_file(archive),
+                    "game_sha1": ss.sha1_file(GAME), "splat_version": "0.50.0",
+                    "inputs": splat["inputs"], "entry_count": splat["entry_count"],
+                    "tree_sha256": splat["tree_sha256"],
+                    "created_at": "2026-10-13T00:00:00Z", "generator": "tools/ci/splat_snapshot.py"}
+    else:
+        groups = {"splat": splat}
+        if with_asm:
+            groups["asm"] = asm
+        manifest = {"schema": ss.SCHEMA, "target": "SLPS_258.19",
+                    "path": f"toolchain/{archive.name}", "sha256": ss.sha256_file(archive),
+                    "game_sha1": ss.sha1_file(GAME), "splat_version": "0.50.0",
+                    "groups": groups, "created_at": "2026-10-13T00:00:00Z",
+                    "generator": "tools/ci/splat_snapshot.py"}
     manifest.update(over)
     MANIFEST.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def use(**over) -> str:
-    """Run cmd_use and return the verdict it printed. 跑 cmd_use，返回它打印的 verdict。
+def use(**over) -> tuple[str, str, str]:
+    """Run cmd_use on a clean project tree. Returns (verdict, groups, output text).
 
-    Every scenario starts from a clean project tree.
-    每个场景都从干净的项目树开始。
+    在干净项目树上跑 cmd_use，返回（verdict, groups, 输出文本）。
     """
-    for rel in rels:
+    for rel in set(rels) | set(asm_rels):
         (PROJECT / rel).unlink(missing_ok=True)
+    GITHUB_OUTPUT.unlink(missing_ok=True)
     options = dict(project=str(PROJECT), orig=str(ORIG), manifest=str(MANIFEST),
-                   game=None, extract=True, github_output=None)
+                   game=None, extract=True, github_output=str(GITHUB_OUTPUT))
     options.update(over)
-    args = argparse.Namespace(**options)
-    import io
-    from contextlib import redirect_stdout
     buf = io.StringIO()
     with redirect_stdout(buf):
-        rc = ss.cmd_use(args)
+        rc = ss.cmd_use(argparse.Namespace(**options))
     text = buf.getvalue()
-    verify = [line for line in text.splitlines() if line in ("snapshot", "splat")]
-    return (verify[-1] if verify else "?"), rc, text
+    lines = [line for line in text.splitlines() if line in ("snapshot", "splat")]
+    verdict = lines[-1] if lines else "?"
+    groups = ""
+    if GITHUB_OUTPUT.is_file():
+        for line in GITHUB_OUTPUT.read_text(encoding="utf-8").splitlines():
+            if line.startswith("groups="):
+                groups = line.split("=", 1)[1]
+    if rc != 0:
+        raise AssertionError(f"cmd_use returned {rc}")
+    return verdict, groups, text
 
 
-print("[1] the archive is used when everything matches")
+print("[2] the v2 archive is used when both groups match")
 write_manifest()
-verdict, rc, text = use()
-check("a matching archive extracts", verdict == "snapshot", text.strip().splitlines()[-1] if text else "")
-check("cmd_use returns 0", rc == 0)
-check("the extracted tree matches the packaged one",
-      ss.tree_digest(PROJECT, rels) == digest,
-      str(sorted(ss.list_outputs(PROJECT))))
-check("the archive says it is used", "verdict=snapshot" in text or verdict == "snapshot")
+verdict, groups, text = use()
+check("a matching archive extracts", verdict == "snapshot", text.strip()[-160:])
+check("both groups are reported", groups == "splat,asm", groups)
+check("the splat group is restored", ss.tree_digest(PROJECT, rels) == digest)
+check("the object group is restored", (PROJECT / "build/asm/cod/func_00100000.o").is_file())
+check("no .err file is packed", not (PROJECT / "build/asm/cod/func_00100000.err").exists())
 
-print("[2] check-only mode does not touch the tree")
-verdict, rc, text = use(extract=False)
-check("check only still reports snapshot", verdict == "snapshot")
-check("check only writes nothing", not any((PROJECT / rel).exists() for rel in rels))
+print("[3] a v1 manifest still works (the live repository carries one)")
+write_manifest(v1=True)
+verdict, groups, text = use()
+check("a v1 manifest is used", verdict == "snapshot", text.strip()[-160:])
+check("a v1 manifest reports the splat group only", groups == "splat", groups)
+check("a v1 manifest restores the splat files", ss.tree_digest(PROJECT, rels) == digest)
+check("a v1 manifest restores no objects", not (PROJECT / "build/asm/cod/func_00100000.o").exists())
 
-print("[3] every reason to distrust the archive falls back to splat")
+print("[4] check-only mode does not touch the tree")
 write_manifest()
-verdict, _, _ = use()
-check("the happy path still works before the negative cases", verdict == "snapshot")
+verdict, groups, _ = use(extract=False)
+check("check only reports snapshot", verdict == "snapshot")
+check("check only reports both groups", groups == "splat,asm", groups)
+check("check only writes nothing", not any((PROJECT / r).exists() for r in set(rels) | set(asm_rels)))
+
+print("[5] a changed build.sh drops the object group only")
+write_manifest()
+(PROJECT / "build.sh").write_text("# a different recipe\n", encoding="utf-8")
+verdict, groups, text = use()
+check("the splat group is still used", verdict == "snapshot" and groups == "splat", f"{verdict} {groups}")
+check("the splat files are restored", ss.tree_digest(PROJECT, rels) == digest)
+check("no object is restored", not (PROJECT / "build/asm/cod/func_00100000.o").exists())
+(PROJECT / "build.sh").write_text(RECIPE, encoding="utf-8")
+
+print("[6] a mismatched object group is dropped and its files are removed")
+write_manifest(asm={"tree_sha256": "0" * 64})
+verdict, groups, _ = use()
+check("a bad object digest keeps the splat group", verdict == "snapshot" and groups == "splat", f"{verdict} {groups}")
+check("no object is left behind", not (PROJECT / "build/asm/cod/func_00100000.o").exists())
+check("the splat group is intact", ss.tree_digest(PROJECT, rels) == digest)
+
+write_manifest(asm={"entry_count": len(asm_rels) + 1})
+verdict, groups, _ = use()
+check("a wrong object count keeps the splat group", verdict == "snapshot" and groups == "splat", f"{verdict} {groups}")
+check("no object is left behind after a count mismatch", not (PROJECT / "build/asm/cod/func_00100000.o").exists())
+
+print("[7] every reason to distrust the whole archive falls back to splat")
+write_manifest()
+verdict, groups, _ = use()
+check("the happy path still works before the negative cases", verdict == "snapshot" and groups == "splat,asm",
+      f"{verdict} {groups}")
 
 corrupt = ORIG / "toolchain" / archive.name
 good = corrupt.read_bytes()
 corrupt.write_bytes(good + b"x")
-verdict, rc, _ = use()
-check("a corrupt archive falls back", verdict == "splat" and rc == 0)
-check("the fallback leaves no half tree", not any((PROJECT / rel).exists() for rel in rels))
+verdict, groups, _ = use()
+check("a corrupt archive falls back", verdict == "splat" and groups == "", f"{verdict} {groups}")
+check("the fallback leaves no half tree", not any((PROJECT / r).exists() for r in set(rels) | set(asm_rels)))
 corrupt.write_bytes(good)
 
 write_manifest(sha256="0" * 64)
 verdict, _, _ = use()
 check("a sha256 mismatch falls back", verdict == "splat")
 
-write_manifest(inputs={**{rel: ss.sha256_file(PROJECT / rel) for rel in ss.INPUT_FILES},
-                       "splat.yaml": "1" * 64})
+write_manifest(splat={"inputs": {**{rel: ss.sha256_file(PROJECT / rel) for rel in ss.INPUT_FILES},
+                                 "splat.yaml": "1" * 64}})
 verdict, _, _ = use()
-check("a changed input falls back", verdict == "splat")
+check("a changed splat input falls back", verdict == "splat")
 
 write_manifest(game_sha1="2" * 40)
 verdict, _, _ = use()
 check("a different retail executable falls back", verdict == "splat")
 
-write_manifest(entry_count=len(rels) + 1)
+write_manifest(splat={"entry_count": len(rels) + 1})
 verdict, _, _ = use()
-check("a wrong entry count falls back", verdict == "splat")
-check("the wrong count leaves no half tree", not any((PROJECT / rel).exists() for rel in rels))
+check("a wrong splat entry count falls back", verdict == "splat")
+check("a wrong count leaves no half tree", not any((PROJECT / r).exists() for r in rels))
 
-write_manifest(tree_sha256="3" * 64)
+write_manifest(splat={"tree_sha256": "3" * 64})
 verdict, _, _ = use()
-check("a wrong tree digest falls back", verdict == "splat")
+check("a wrong splat tree digest falls back", verdict == "splat")
 
 write_manifest(path="../evil.tar.zst")
 verdict, _, _ = use()
@@ -198,18 +269,18 @@ write_manifest(schema="at2-splat-snapshot/999")
 verdict, _, _ = use()
 check("an unknown schema falls back", verdict == "splat")
 
-print("[3b] a relative manifest path resolves against --project")
-write_manifest()
-verdict, rc, text = use(manifest="toolchain/splat-snapshot.json")
-check("the default relative manifest is found under --project", verdict == "snapshot", text.strip()[-120:])
+write_manifest(with_asm=False)
+verdict, groups, _ = use(extract=False)
+check("a v2 manifest without an object group reports splat only",
+      verdict == "snapshot" and groups == "splat", f"{verdict} {groups}")
 
-print("[4] resolve_archive refuses escapes")
+print("[8] resolve_archive refuses escapes")
 check("a relative path inside the checkout is accepted",
       ss.resolve_archive(ORIG, "toolchain/x.tar.zst") is not None)
 check("an absolute path is refused", ss.resolve_archive(ORIG, "/etc/passwd") is None)
 check("a parent path is refused", ss.resolve_archive(ORIG, "../x.tar.zst") is None)
 
-print("[5] an archive with an unsafe member is refused")
+print("[9] an archive with an unsafe member is refused")
 evil_dir = WORK / "evil"
 evil_dir.mkdir(parents=True, exist_ok=True)
 (evil_dir / "payload").write_text("x", encoding="utf-8")

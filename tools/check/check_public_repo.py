@@ -46,7 +46,7 @@ EN_USAGE = "Check the public repository: publication record, denied material, an
 ROOT = Path(__file__).resolve().parents[2]      # public repository root (tools/check/ -> two levels up)
 # 公开仓库根（tools/check/ → 上溯两级）
 
-DENY = ["*.s", "*.rom", "*.iso", "*.tar.xz", "*.tar.gz", "*.tar.zst", "*.zst",
+DENY = ["*.s", "*.o", "*.rom", "*.iso", "*.tar.xz", "*.tar.gz", "*.tar.zst", "*.zst",
         "routeb/*", "docs/private/*", "out/*", ".tmp/*"]
 
 REQUIRED_MEASURES = [

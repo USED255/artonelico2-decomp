@@ -1,4 +1,6 @@
-# Pack the `splat split` output on a GitHub runner and upload it as an artifact.
+# Pack the `splat split` output and the assembled objects on a GitHub runner, and
+# upload the archive as an artifact. Both go into one archive: the raw splat output and
+# `build/asm/**/*.o` (see tools/ci/splat_snapshot.py).
 #
 # Why this runs here and not on a workstation: `splat split` needs about 150 s on a 4 vCPU
 # runner and peaks at about 1.3 GB of resident memory. On a small workstation it swaps
@@ -60,7 +62,40 @@ jobs:
         if: env.HAS_ORIG == 'true'
         run: python3 -m pip install --quiet -r tools/ci/splat-requirements.txt
 
-      - name: Pack the splat output
+      # The archive carries the assembled objects too, so this job needs the same Sony
+      # toolchain that `matching-gate` uses (same sha256 checks). Keep these two steps in sync
+      # with matching-gate.yml.
+      # 归档也带汇编产物，因此这个 job 需要 `matching-gate` 用的同一套 Sony 工具链（同样的 sha256
+      # 校验）。这两步要与 matching-gate.yml 保持同步。
+      - name: Install the toolchain and check each sha256
+        if: env.HAS_ORIG == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/tc"
+          for a in e32.tar.xz ee-gcc2.96.tar.xz b10.tar.gz ld244.tar.xz; do
+            cp ".orig/toolchain/$a" "$HOME/tc/$a"
+          done
+          python3 - <<'PY'
+          import hashlib, json, pathlib, sys
+          lock = json.loads(pathlib.Path("toolchain.lock.json").read_text())
+          want = {c["archive"]: c["sha256"] for c in lock["compilers"].values()}
+          for name, digest in want.items():
+              p = pathlib.Path.home() / "tc" / name
+              got = hashlib.sha256(p.read_bytes()).hexdigest()
+              if got != digest:
+                  sys.exit(f"sha256 mismatch for {name}: {got} != {digest}")
+              print(f"ok {name} {got}")
+          PY
+          mkdir -p "$HOME/tc/e32" "$HOME/tc/cri" "$HOME/tc/bin" "$HOME/tc/ld"
+          tar -xf "$HOME/tc/e32.tar.xz"        -C "$HOME/tc/e32"   # ee-gcc 3.2-ee-040921
+          tar -xf "$HOME/tc/ee-gcc2.96.tar.xz" -C "$HOME/tc/cri"   # ee-gcc 2.96 (spare)
+          tar -xf "$HOME/tc/b10.tar.gz"        -C "$HOME/tc/bin"   # PS2 binutils (the archive is flat)
+          tar -xf "$HOME/tc/ld244.tar.xz"      -C "$HOME/tc/ld"    # the Debian 2.44 ld and its libraries
+          {
+            echo "BINUTILS=$HOME/tc/bin"
+          } >> "$GITHUB_ENV"
+
+      - name: Pack the splat output and the assembled objects
         if: env.HAS_ORIG == 'true'
         run: |
           set -euo pipefail
@@ -70,6 +105,8 @@ jobs:
             --project . \
             --game orig/SLPS_258.19 \
             --splat "$(command -v splat)" \
+            --with-asm \
+            --as "$BINUTILS/mips-ps2-decompals-as" \
             --out .tmp/splat-SLPS_258.19.tar.zst \
             --manifest toolchain/splat-snapshot.json \
             --remote-path toolchain/splat-SLPS_258.19.tar.zst \
