@@ -80,9 +80,21 @@ run are always `full`.
 
 | Mode | When | What runs |
 | --- | --- | --- |
-| `skip` | A pull request whose changes are all documentation | No build at all; the private material is not even downloaded. `validate` still checks the repository. |
-| `fast` | A pull request whose changes are all in `src/matched/**`, `progress/**`, or documentation | `make build-fast`: the baseline is assembled but not linked, then the mixed build, the delta check, and the report run. The mixed payload is compared against the retail payload, so the image is still verified byte for byte. |
-| `full` | Every push, every manual run, and any change that touches a build input (`splat.yaml`, `config/**`, `build*.sh`, `Makefile`, `configure.py`, `tools/**`, `toolchain.lock.json`, the workflows) | The command above, including the baseline link and its payload check. This is the mode that publishes the artifact. |
+| `skip` | A pull request whose changes are all documentation or pure tests (`tools/check/test_*.py`) | No build at all; the private material is not even downloaded. `validate` still checks the repository, and it runs the tests, so a changed test still runs. |
+| `fast` | A pull request whose changes are all documentation, pure tests, `src/matched/**`, `progress/**`, or `config/**` **except** `config/symbol_addrs.txt` and `config/reloc_addrs.txt` | `make build-fast`: the baseline is assembled but not linked, then the mixed build, the delta check, and the report run. The mixed payload is compared against the retail payload, so the image is still verified byte for byte. |
+| `full` | Every push, every manual run, and any change that touches a build input (`splat.yaml`, the two `config/` files above, `build*.sh`, `Makefile`, `configure.py`, the build tools, `toolchain.lock.json`, the workflows) | The command above, including the baseline link and its payload check. This is the mode that publishes the artifact. |
+
+Two rules explain the boundaries:
+
+- **`config/**` is `fast` because `build.sh` never reads `config/`.** The baseline link therefore
+  cannot depend on it, and everything the mixed build reads from `config/` (the ledger, the
+  compile flags, the compiler map, the jump-table table) is covered by the mixed payload check,
+  which compares the final image against the retail payload byte for byte. The two exceptions are
+  the files `splat split` reads: they change the assembly tree, and only the baseline link verifies
+  that tree.
+- **A change to the verification code itself stays `full`.** `tools/check/check_public_repo.py`,
+  the build tools, the workflows, and `Makefile` are what decides *how* the gate runs, so they get
+  the whole pipeline. Only the pure tests, which `make check` runs, are `skip`.
 
 The `matching-gate` workflow needs the secret `ORIG_DEPLOY_KEY` and the variable
 `PRIVATE_ORIG_REPO`. A pull request from a fork cannot get them. In that case the

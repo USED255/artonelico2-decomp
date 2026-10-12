@@ -63,9 +63,17 @@ make check                       # 仓库自检；不需要原版可执行文件
 
 | 模式 | 何时 | 跑什么 |
 | --- | --- | --- |
-| `skip` | PR 的改动全是文档 | 完全不构建，连私有材料都不下载；仓库检查仍由 `validate` 负责 |
-| `fast` | PR 的改动只落在 `src/matched/**`、`progress/**` 或文档 | `make build-fast`：基线只装配不链接，随后混合构建、`delta`、报告照跑；混合载荷比的是零售载荷，镜像仍被逐字节验证 |
-| `full` | 任何 push、任何手动运行，以及任何触碰构建输入的改动（`splat.yaml`、`config/**`、`build*.sh`、`Makefile`、`configure.py`、`tools/**`、`toolchain.lock.json`、workflows） | 上面那条完整流水线，含基线链接与基线载荷校验；**只有这种模式会发布 artifact** |
+| `skip` | PR 的改动全是文档或纯测试（`tools/check/test_*.py`） | 完全不构建，连私有材料都不下载；仓库检查由 `validate` 负责，它也会跑改动的测试 |
+| `fast` | PR 的改动只落在文档、纯测试、`src/matched/**`、`progress/**`，或 `config/**`（**不含** `config/symbol_addrs.txt` 与 `config/reloc_addrs.txt`） | `make build-fast`：基线只装配不链接，随后混合构建、`delta`、报告照跑；混合载荷比的是零售载荷，镜像仍被逐字节验证 |
+| `full` | 任何 push、任何手动运行，以及任何触碰构建输入的改动（`splat.yaml`、上面那两个 `config/` 文件、`build*.sh`、`Makefile`、`configure.py`、构建工具、`toolchain.lock.json`、workflows） | 上面那条完整流水线，含基线链接与基线载荷校验；**只有这种模式会发布 artifact** |
+
+两条边界规则：
+
+- **`config/**` 可以是 `fast`，因为 `build.sh` 根本不读 `config/`**：基线链接不可能依赖它；而混合构建从
+  `config/` 读的东西（台账、编译标志、编译器表、跳转表表）其效果都已被「混合载荷 == 零售载荷」的逐字节
+  比对覆盖。两个例外是 `splat split` 读的文件——它们改变汇编树，而只有基线链接能验那棵树。
+- **改动验证代码本身仍是 `full`**：`tools/check/check_public_repo.py`、构建工具、workflows、`Makefile`
+  决定门禁**怎么跑**，所以走完整流水线；只有 `make check` 会跑的纯测试才是 `skip`。
 
 `matching-gate` 需要 secret `ORIG_DEPLOY_KEY` 与变量 `PRIVATE_ORIG_REPO`。
 **fork 的 PR 拿不到**，此时该 job 只跑 notice 步骤，不算失败；之后由维护者复验该 commit。

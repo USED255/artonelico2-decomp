@@ -41,7 +41,7 @@ make check                       # 仓库自检
 | workflow | 你的 PR |
 | --- | --- |
 | `validate` | 跑**贡献模式**：允许白名单路径内的新增与修改；拒绝白名单外的改动、非文本文件、超过 1 MiB 的文件。本仓库自己的分支还可以重命名或删除文件；外部 fork 的 PR 仍只能新增或修改。 |
-| `matching-gate` | 需要原版可执行文件与 Sony 工具链。**fork 的 PR 拿不到**，该 job 只跑 notice 步骤；之后由维护者复验你的 commit，或者用你的 PR 编号手动触发该 workflow。同仓库 PR 会按改动集合选模式：纯文档完全不构建；只改 `src/matched/**`（外加文档）时装配基线并跑混合构建、逐函数检查与报告，但跳过单独的基线链接；任何触碰构建输入的改动跑完整流水线。见 [docs/BUILD.zh-CN.md](docs/BUILD.zh-CN.md) 第 4 节。 |
+| `matching-gate` | 需要原版可执行文件与 Sony 工具链。**fork 的 PR 拿不到**，该 job 只跑 notice 步骤；之后由维护者复验你的 commit，或者用你的 PR 编号手动触发该 workflow。同仓库 PR 会按改动集合选模式：纯文档与纯测试完全不构建；只改 `src/matched/**`、`config/**`（不含 `splat split` 读的那两个文件）与进度报告时，装配基线并跑混合构建、逐函数检查与报告，但跳过单独的基线链接；任何触碰构建输入、或改动「决定门禁怎么跑」的工具/工作流的提交，都跑完整流水线。见 [docs/BUILD.zh-CN.md](docs/BUILD.zh-CN.md) 第 4 节。 |
 
 ## 5. CI 之后
 
