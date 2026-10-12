@@ -1280,6 +1280,7 @@ func_00232fb0    # llm_draft
 func_0023323c    # ghidra_draft:-O1
 func_00233334    # llm_draft
 func_00233d88    # permuter
+func_00233fc8    # llm_draft
 func_00234510    # permuter
 func_002345b4    # const_store
 func_002346b8    # permuter
