@@ -1,4 +1,4 @@
-# <source-basename><TAB><extra-cflags>  See docs/CONFIG.md
+# 格式：<source-basename>	<extra-cflags>
 LibcStdio_31	-O2
 LibcStdio_32	-O2
 LibcStdlib_10	-Os
@@ -191,6 +191,7 @@ func_0014c82c	-Os
 func_0014cd20	-Os
 func_0014cfc8	-Os
 func_0014d0f8	-Os
+func_0014d26c	-Os
 func_0014d3b0	-Os
 func_0014d540	-Os
 func_0014d5ac	-O2
@@ -669,6 +670,8 @@ func_001f8360	-O1
 func_001f83ec	-O1
 func_001f86f0	-O1
 func_001f8718	-O1
+func_001f8738	-O1
+func_001f87b8	-O1
 func_001f8a48	-O1
 func_001f953c	-O1
 func_001f98f8	-O1
@@ -1035,7 +1038,9 @@ func_00264894	-Os
 func_00265178	-Os
 func_00265688	-Os
 func_00265728	-Os
+func_00265930	-Os
 func_00265bb4	-Os
+func_00265ce0	-Os
 func_00265d9c	-Os
 func_00265e58	-Os
 func_00265f04	-O1
