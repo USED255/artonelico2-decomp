@@ -134,6 +134,51 @@ def _defs_and_refs(lines: list[str]) -> tuple[set[str], set[str]]:
 
 PREAMBLE = '.include "macro.inc"\n\n.set noat\n.set noreorder\n\n.section .text, "ax"\n'
 
+# Lazy corpus index: which other .s file mentions a given label name. Built once per process and
+# only when a symbol actually defines an inner label, so the common path never pays for it.
+# 惰性全树索引：某个标签名还被**别的** .s 提到过没有。每个进程只建一次，且只在真的遇到
+# 块内标签时才建 ⇒ 常见路径不付这份成本。
+_CORPUS: tuple[str, dict[str, dict[str, str]]] | None = None
+
+
+def _corpus_mentions(asm_dir: Path) -> dict[str, dict[str, str]]:
+    """Return {label name -> {file name -> ''}} for every label name mentioned by any .s file.
+
+    The scan reads each file once. A name is "mentioned" when the file contains it as a whole
+    token anywhere (instructions, data directives, and comments are all included, so the test
+    errs on the conservative side).
+
+    返回「标签名 -> 提到它的文件名集合」；每份 .s 只读一次。**整词**出现即算提到
+    （指令、数据指令、注释都算 ⇒ 判定偏保守）。
+    """
+    global _CORPUS
+    key = str(asm_dir)
+    if _CORPUS is not None and _CORPUS[0] == key:
+        return _CORPUS[1]
+    table: dict[str, dict[str, str]] = {}
+    for q in sorted(asm_dir.glob("*.s")):
+        text = q.read_text(encoding="utf-8", errors="replace")
+        for tok in set(TOKEN.findall(text)):
+            table.setdefault(tok, {})[q.name] = ""
+    _CORPUS = (key, table)
+    return table
+
+
+def _referenced_elsewhere(names: list[str], asm_dir: Path, own: Path) -> dict[str, str]:
+    """Return {name: other file} for every inner label that another .s file mentions.
+
+    返回 {名称: 别的文件名}：块内标签中有哪些被**别的** .s 提到。空字典 = 摘除是安全的。
+    """
+    table = _corpus_mentions(asm_dir)
+    out: dict[str, str] = {}
+    for n in names:
+        for f in sorted(table.get(n, {})):
+            if f != own.name:
+                out[n] = f
+                break
+    return out
+
+
 
 def read_lines(path: Path) -> list[str]:
     return path.read_text(encoding="utf-8", errors="replace").split("\n")
@@ -197,12 +242,21 @@ def analyze(sym: str, asm_dir: Path = ASMDIR) -> dict:
         end = last
         boundary = "last_instruction"
 
-    # The block must not define another global function symbol (alabel or nested glabel).
-    # A removal would lose its definition.
-    # 块内不得定义别的全局函数符号（alabel/嵌套 glabel）——摘除会丢掉它们的定义
+    # The block must not define another global function symbol (alabel or nested glabel)
+    # **that anything outside the file still needs**. A removal loses that definition, so the
+    # code stays conservative unless the whole asm tree proves that nothing else refers to it.
+    # 块内不得定义别的全局函数符号（alabel/嵌套 glabel）——**除非全 asm 树都没有别处引用它**。
+    # alabel emits `.global` (see include/macro.inc), so the reference can live in another file;
+    # the decision therefore needs the corpus index, not just this file.
+    # alabel 会产 `.global`（见 include/macro.inc），引用可能出现在别的文件里，
+    # 因此判定必须用全树索引，而不是只看本文件。
     inner = [n for i, n in gl + al if start <= i <= end and n != sym]
     if inner:
-        return {"mode": "blocked_inner_label", "reason": "sibling labels in the block: " + ", ".join(inner)}
+        outside = _referenced_elsewhere(inner, asm_dir, p)
+        if outside:
+            return {"mode": "blocked_inner_label",
+                    "reason": "inner labels referenced elsewhere: "
+                              + ", ".join(f"{n}<-{f}" for n, f in sorted(outside.items()))}
 
     outer = [n for i, n in gl + al if not (start <= i <= end)]
 
