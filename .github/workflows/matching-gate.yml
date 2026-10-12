@@ -12,8 +12,10 @@
 # Three modes. The job itself always runs, so a mode never leaves a required check pending.
 # tools/ci/classify_change.py decides the mode from the change set (default deny: any error,
 # any push, and any manual run are `full`):
-#   skip  a pull request whose changes are all documentation. No build, no private checkout.
-#   fast  a pull request whose changes are all in src/matched/**, progress/**, or docs.
+#   skip  a pull request whose changes are all documentation or pure tests
+#         (tools/check/test_*.py). No build, no private checkout.
+#   fast  a pull request whose changes are all in src/matched/**, progress/**,
+#         config/** (except the two files splat reads), or documentation.
 #         The baseline is assembled but not linked; the mixed build, the delta check, and the
 #         report still run, and the mixed payload is compared against the retail payload, so
 #         the image is verified byte for byte. The separate "the pure-asm baseline also
@@ -81,8 +83,8 @@ jobs:
           persist-credentials: false
 
       # The mode decides which of the steps below run. It runs before the private checkout so
-      # that a documentation pull request never downloads the retail material.
-      # 模式决定下面哪些步骤运行；它排在私有取件之前，让纯文档 PR 完全不下载受限材料。
+      # that a documentation or pure-test pull request never downloads the retail material.
+      # 模式决定下面哪些步骤运行；它排在私有取件之前，让纯文档 / 纯测试 PR 完全不下载受限材料。
       - name: Classify the change (skip / fast / full)
         id: mode
         if: env.HAS_ORIG == 'true'
@@ -102,10 +104,10 @@ jobs:
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
           echo "::notice::build mode = $mode"
 
-      - name: Notice (documentation only, the build gate is skipped)
+      - name: Notice (documentation or pure tests only, the build gate is skipped)
         if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode == 'skip'
         run: |
-          echo "::notice::Every changed file is documentation. No build runs. The validate workflow still checks the repository."
+          echo "::notice::Every changed file is documentation or a pure test. No build runs. The validate workflow still checks the repository and runs the tests."
 
       - name: Checkout the private companion (retail executable and Sony toolchain)
         if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
