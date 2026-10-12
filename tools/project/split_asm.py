@@ -24,6 +24,10 @@ measurement of 10,923 symbols had 0 exceptions):
                    residual assembly error (a cross-block .L reference and more)
                    -> exclude the symbol and report it
 
+A file with no endlabel is accepted only when it defines this one symbol and nothing
+carries bytes after the last instruction (54 measured cases, 2026-10-12). Those symbols
+are `direct`; `info["boundary"]` reports `endlabel` or `last_instruction`.
+
 Usage:
   python3 tools/project/split_asm.py split <symbol> <outdir>   # write target/residual.s and print the mode
   python3 tools/project/split_asm.py verify --all [--jobs 4]   # exhaustive: target plus residual must restore the .text of the original .o
@@ -94,6 +98,10 @@ ALABEL = re.compile(r"^\s*alabel\s+(\S+)")
 JLABEL = re.compile(r"^\s*jlabel\s+(\S+)")
 NONMATCH = re.compile(r"^\s*nonmatching\s+(\S+?)\s*,")
 ENDLABEL = re.compile(r"^\s*endlabel\s+(\S+)")
+# Lines that may follow the last instruction of a block for which splat wrote no endlabel.
+# The list holds no instruction, label, or data, so a whole-file replacement loses no byte.
+# 无 endlabel 的块尾允许出现的行：不含任何指令、标签或数据，整份替换不会丢字节。
+TAIL_OK = re.compile(r"^\s*(\.align\b|\.set\b|\.include\b|\.section\b|/\*|#)")
 LABEL_DEF = re.compile(r"^\s*([.\w]+):\s*$")
 INS = re.compile(r"/\* [0-9A-Fa-f]+ [0-9A-Fa-f]+ [0-9A-Fa-f]+ \*/")
 TOKEN = re.compile(r"[.\w]+")
@@ -165,8 +173,29 @@ def analyze(sym: str, asm_dir: Path = ASMDIR) -> dict:
         if ENDLABEL.match(lines[k]):
             end = k
             break
+    boundary = "endlabel"
     if end is None:
-        return {"mode": "blocked_no_endlabel", "reason": "no endlabel in the block"}
+        # Fallback (2026-10-12, measured): splat writes no endlabel for 54 of the 10,926 .s
+        # files. Their function body runs to the end of the file. That rule is already in
+        # tools/report/gen_function_report.py; this is the same rule for the split path.
+        # Accept the file only when this symbol is the whole content, so that a direct
+        # replacement (drop the asm .o, link the C object) cannot lose a byte.
+        #
+        # 兜底（2026-10-12 实测）：10,926 个 .s 中有 54 个 splat 不写 endlabel，函数体一直延伸
+        # 到文件末尾（tools/report/gen_function_report.py 已是同一口径，这里把它接进拆分路径）。
+        # 只在「整个文件只定义这一个符号」时接受，保证「摘掉 asm .o、链入 C 对象」不丢字节。
+        if len(gl) != 1:
+            return {"mode": "blocked_no_endlabel",
+                    "reason": "no endlabel; the file also defines sibling glabels"}
+        last = max((k for k, l in enumerate(lines) if INS.search(l)), default=None)
+        if last is None or last < gi:
+            return {"mode": "blocked_no_endlabel", "reason": "no endlabel and no instruction line"}
+        tail = [l for l in lines[last + 1:] if l.strip() and not TAIL_OK.match(l)]
+        if tail:
+            return {"mode": "blocked_no_endlabel",
+                    "reason": "no endlabel; the block tail holds: " + tail[0].strip()[:60]}
+        end = last
+        boundary = "last_instruction"
 
     # The block must not define another global function symbol (alabel or nested glabel).
     # A removal would lose its definition.
@@ -185,6 +214,7 @@ def analyze(sym: str, asm_dir: Path = ASMDIR) -> dict:
         "mode": mode,
         "start": start,
         "end": end,
+        "boundary": boundary,
         "lines": lines,
         "path": p,
         "siblings": [n for i, n in gl + al if i > end],

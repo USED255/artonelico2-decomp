@@ -68,6 +68,8 @@ from auto_match_trivial import (  # noqa: E402
     ROOT, PRIVATE_ROOT, WORK_ROOT, EVIDENCE_ROOT, MATCHED_LIST, SRCDIR, FLAGS_TSV,
     WORKQUEUE, GCC, AS, OBJDIFF, CFLAGS, M3_BEGIN, M3_END,
 )
+from at2_paths import OBJDUMP  # noqa: E402  section-size guard (P-97)
+import split_asm as SPLIT  # noqa: E402  block boundary rule shared with the mixed build
 
 REPO = PRIVATE_ROOT or ROOT            # Private work area (the .tmp/permvenv directory lives here)
 PERMUTER = Path(os.environ.get("PERMUTER", Path.home() / "eecc" / "decomp-permuter" / "permuter.py"))
@@ -200,9 +202,25 @@ def setup_dir(sym: str, frontend: str = "ghidra") -> Path | None:
     L = f.read_text(encoding="utf-8", errors="replace").split("\n")
     gi = next((i for i, l in enumerate(L) if re.match(r"\s*glabel\s+", l)), None)
     en = next((i for i in range(gi or 0, len(L)) if re.match(r"\s*endlabel\s+", L[i])), None)
-    if gi is None or en is None:
+    if gi is None:
         return None
-    (d / "target.s").write_text(PREAMBLE + "\n".join(L[gi:en + 1]) + "\n", encoding="utf-8")
+    if en is None:
+        # 54 of the 10,926 .s files carry no endlabel: their body runs to the last instruction
+        # (2026-10-12). split_asm decides the boundary and accepts only a whole-file
+        # replacement that cannot lose a byte, so a wrong block stays impossible here.
+        # 10,926 个 .s 里有 54 个没有 endlabel：块尾 = 最后一条指令（2026-10-12）。判定交给
+        # split_asm；它只在「整份替换不丢字节」时接受，因此这里不会取出错误的块。
+        info = SPLIT.analyze(sym, asm_dir=ROOT / "asm" / "cod")
+        if info.get("mode") != "direct" or "end" not in info:
+            return None
+        en = info["end"]
+    block = L[gi:en + 1]
+    if not any(re.match(r"\s*endlabel\s+", x) for x in block):
+        # Without an `endlabel` the target symbol carries no `.size`, so objdiff can guess the
+        # size and stop before the end of the block (false 100.0; see auto_match_m2c.py).
+        # 没有 endlabel 时目标符号没有 .size，objdiff 可能提前停止（假 100.0；见 auto_match_m2c.py）。
+        block = block + [f"endlabel {sym}"]
+    (d / "target.s").write_text(PREAMBLE + "\n".join(block) + "\n", encoding="utf-8")
     r = subprocess.run([AS, "-EL", "-march=r5900", "-I", "include", "-o", str(d / "target.o"), str(d / "target.s")],
                        cwd=str(ROOT), capture_output=True, text=True)
     if r.returncode:
@@ -268,6 +286,20 @@ def _match_of(sym: str, c_o: Path, d: Path) -> float | None:
     return float(m) if m is not None else None
 
 
+def _text_size(obj: Path) -> int:
+    """Sum every `.text*` section of one object. The C objects use -ffunction-sections.
+
+    求和一个对象的全部 `.text*` 节（C 对象带 `-ffunction-sections`，节名是 `.text.<sym>`）。
+    """
+    r = subprocess.run([OBJDUMP, "-h", str(obj)], cwd=str(ROOT), capture_output=True, text=True)
+    tot = 0
+    for line in r.stdout.splitlines():
+        p = line.split()
+        if len(p) >= 3 and p[0].isdigit() and p[1].startswith(".text"):
+            tot += int(p[2], 16)
+    return tot
+
+
 def verify(sym: str, source: Path) -> float | None:
     """Verify one candidate source and return the **best match rate over all compile flag levels**.
 
@@ -298,6 +330,14 @@ def verify(sym: str, source: Path) -> float | None:
                             "-I", "include", "-c", "-o", str(c_o), str(source)],
                            cwd=str(ROOT), capture_output=True, text=True)
         if r.returncode:
+            continue
+        # P-97 (measured 2026-10-12): objdiff 100.0 does **not** prove that the C object has the
+        # same length as the asm object. The mixed build removes the whole asm .o, so a shorter
+        # C object shifts every later byte and changes the payload. Require equal length here.
+        # P-97（2026-10-12 实测）：objdiff 100.0 **不保证** C 对象与 asm 对象等长；混合构建是整份
+        # 替换 .o，短一个字节就会让后续全体前移、载荷变化。这里要求等长。
+        a_o = ROOT / "build" / "asm" / "cod" / f"{sym}.o"
+        if a_o.is_file() and _text_size(c_o) != _text_size(a_o):
             continue
         m = _match_of(sym, c_o, d)
         if m is not None and (best is None or m > best):

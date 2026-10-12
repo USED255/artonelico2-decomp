@@ -56,6 +56,7 @@ from at2_paths import (  # noqa: E402  layout-independent path resolution (see t
     AS,
     OBJDIFF,
 )
+import split_asm as SPLIT  # noqa: E402  block-boundary rule shared with the mixed build
 
 REPO = PRIVATE_ROOT or ROOT          # Legacy alias: the private work area
 CFLAGS = ["-O2", "-falign-functions=4", "-ffunction-sections"]
@@ -78,9 +79,24 @@ def unmatched() -> list[dict]:
             # The gate column (index 11) holds direct/residual (safe to split) or
             # blocked_* (**no safe split**, so the code cannot add the symbol to the list).
             # gate 列（index 11）：取值 direct/residual（可拆）或 blocked_*（**无法安全拆分**，不能进清单）
-            if p[11].strip().startswith("blocked"):
-                continue
-            rows.append({"sym": p[0], "size": int(p[2]), "class": p[12]})
+            gate = p[11].strip()
+            if gate.startswith("blocked"):
+                # The column comes from a workqueue snapshot. The mixed build recomputes the
+                # split mode with split_asm.analyze, so re-ask split_asm here: the same
+                # question must have one source of truth (2026-10-12: 48 symbols marked
+                # blocked_no_endlabel became direct when split_asm learned the
+                # last-instruction boundary).
+                # 该列来自工作队列快照，混合构建却是用 split_asm.analyze 现算的。这里同样以
+                # split_asm 为准（同一个问题只能有一个事实源；2026-10-12：split_asm 支持
+                # 「最后一条指令」块尾后，48 个 blocked_no_endlabel 变为 direct）。
+                try:
+                    now = SPLIT.analyze(p[0], asm_dir=ROOT / "asm" / "cod")
+                except Exception:
+                    now = {"mode": gate}
+                if str(now.get("mode", gate)).startswith("blocked"):
+                    continue
+                gate = str(now["mode"])
+            rows.append({"sym": p[0], "size": int(p[2]), "class": p[12], "gate": gate})
     return rows
 
 
@@ -97,10 +113,39 @@ def probe(rec: dict, flags_sets: list[list[str]]) -> dict:
     L = f.read_text(encoding="utf-8", errors="replace").split("\n")
     gi = next((i for i, l in enumerate(L) if re.match(r"\s*glabel\s+", l)), None)
     en = next((i for i in range(gi or 0, len(L)) if re.match(r"\s*endlabel\s+", L[i])), None)
-    if gi is None or en is None:
-        out["err"] = "no glabel/endlabel"
+    if gi is None:
+        out["err"] = "no glabel"
         return out
-    (d / "target.s").write_text(PREAMBLE + "\n".join(L[gi:en + 1]) + "\n", encoding="utf-8")
+    if en is None:
+        # 54 .s files carry no endlabel: the block runs to the last instruction (2026-10-12,
+        # see split_asm.py and tools/report/gen_function_report.py). Ask split_asm for the
+        # block end. It accepts the file only when a direct replacement cannot lose a byte,
+        # so a wrong target block stays impossible here.
+        # 54 个 .s 没有 endlabel：块尾 = 最后一条指令（2026-10-12，见 split_asm.py 与
+        # tools/report/gen_function_report.py）。块尾交给 split_asm 判定；它只在「整份替换
+        # 不丢字节」时接受，因此这里不会取出错误的块。
+        try:
+            info = SPLIT.analyze(sym, asm_dir=ROOT / "asm" / "cod")
+        except Exception as exc:  # pragma: no cover - defensive
+            info = {"mode": "blocked_no_endlabel", "reason": str(exc)}
+        if info.get("mode") != "direct" or "end" not in info:
+            out["err"] = "no glabel/endlabel: " + str(info.get("reason", info.get("mode")))
+            return out
+        en = info["end"]
+    block = L[gi:en + 1]
+    if not any(re.match(r"\s*endlabel\s+", x) for x in block):
+        # Without an `endlabel` the target symbol carries no `.size`. objdiff then guesses the
+        # symbol size and can stop before the end of the block. On 2026-10-12 that produced a
+        # false 100.0 for func_002ea300: objdiff compared 20 B although the asm object holds
+        # 24 B (a trailing nop), so the mixed link lost 4 bytes and the payload changed.
+        # Write the endlabel macro (it emits only .size/.end, never a byte) so the target has
+        # an explicit size and the comparison covers the whole block.
+        # 没有 endlabel 时目标符号没有 .size，objdiff 会自行猜测长度并可能提前停止。
+        # 2026-10-12 实测：func_002ea300 因此出现**假 100.0**（只比了 20 B，而 asm 对象有 24 B，
+        # 尾巴是一条 nop），混合链接少 4 B、载荷变化。这里补写 endlabel 宏（只产 .size/.end，
+        # 不产字节），让目标带明确长度、比对覆盖整块。
+        block = block + [f"endlabel {sym}"]
+    (d / "target.s").write_text(PREAMBLE + "\n".join(block) + "\n", encoding="utf-8")
     r = subprocess.run([AS, "-EL", "-march=r5900", "-I", "include", "-o", str(d / "target.o"), str(d / "target.s")],
                        cwd=str(ROOT), capture_output=True, text=True)
     if r.returncode:
