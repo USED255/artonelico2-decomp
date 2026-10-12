@@ -8,17 +8,25 @@ documentation-only or pure-source change cannot break. This tool answers one que
 
 Modes
 -----
-  skip   every changed file is documentation. The gate runs no build at all. It never
-         applies to a push: the report artifact that decomp.dev publishes comes from a
-         push to the default branch.
-  fast   every changed file is documentation, matched source (`src/matched/**`), or the
-         progress report. The gate assembles the baseline, skips the baseline link, and
-         still runs the mixed build, the delta check, and the report. The mixed payload
-         is compared against the retail payload, so the image is verified byte for byte.
+  skip   every changed file is documentation or a pure test (`tools/check/test_*.py`).
+         The gate runs no build at all. It never applies to a push: the report artifact
+         that decomp.dev publishes comes from a push to the default branch.
+  fast   every changed file is documentation, a pure test, matched source
+         (`src/matched/**`), the progress report, or `config/**` except the two files
+         `splat split` reads (`config/symbol_addrs.txt`, `config/reloc_addrs.txt`). The
+         gate assembles the baseline, skips the baseline link, and still runs the mixed
+         build, the delta check, and the report. The mixed payload is compared against
+         the retail payload, so the image is verified byte for byte.
   full   everything else: any push, any manual run, and any change that touches a build
-         input (`splat.yaml`, `config/**`, `build*.sh`, `Makefile`, `configure.py`,
-         `tools/**`, `toolchain.lock.json`, the workflows). This is the default: the
-         tool denies by default, and an error also lands in `full`.
+         input (`splat.yaml`, the two splat inputs above, `build*.sh`, `Makefile`,
+         `configure.py`, the build tools, `toolchain.lock.json`, the workflows). This is
+         the default: the tool denies by default, and an error also lands in `full`.
+
+Why `config/**` may be fast: `build.sh` (the baseline link) does not read `config/` at all,
+and every config file the mixed build reads is covered by the mixed payload check, which
+compares the final image against the retail payload byte for byte. The two exceptions are
+the files `splat split` reads: they change the assembly tree, and only the baseline link
+verifies that tree.
 
 The decision is a property of the whole change set, never of a single file: a pull
 request that changes one `.c` file and one `.md` file is `fast`, not `skip`.
@@ -37,13 +45,18 @@ Exit code 2 is a usage error only. A git failure or an unusable base prints `ful
 
 模式
 ----
-  skip   改动全是文档 ⇒ 完全不构建。**不适用于 push**：decomp.dev 用的报告 artifact 来自
-         默认分支的 push。
-  fast   改动只落在文档、`src/matched/**` 或进度报告 ⇒ 装配基线、跳过基线链接，但混合构建、
-         delta、报告照跑；混合载荷比的是零售载荷，镜像仍被逐字节验证。
-  full   其余全部：任何 push、任何手动运行、以及任何触碰构建输入的改动（`splat.yaml`、
-         `config/**`、`build*.sh`、`Makefile`、`configure.py`、`tools/**`、
-         `toolchain.lock.json`、workflows）。这是默认值：本工具默认拒绝，出错也落到 full。
+  skip   改动全是文档、或纯测试（`tools/check/test_*.py`）⇒ 完全不构建。**不适用于 push**：
+         decomp.dev 用的报告 artifact 来自默认分支的 push。
+  fast   改动只落在文档、纯测试、`src/matched/**`、进度报告，或 `config/**`（但**不含**
+         `splat split` 会读的 `config/symbol_addrs.txt` 与 `config/reloc_addrs.txt`）⇒ 装配基线、
+         跳过基线链接，但混合构建、delta、报告照跑；混合载荷比的是零售载荷，镜像仍被逐字节验证。
+  full   其余全部：任何 push、任何手动运行、以及任何触碰构建输入的改动（`splat.yaml`、上面两个
+         splat 输入、`build*.sh`、`Makefile`、`configure.py`、构建工具、`toolchain.lock.json`、
+         workflows）。这是默认值：本工具默认拒绝，出错也落到 full。
+
+为什么 `config/**` 可以是 fast：`build.sh`（基线链接）根本不读 `config/`；而混合构建读的那些
+配置文件，其效果都已被「混合载荷 == 零售载荷」的逐字节比对覆盖。两个例外是 `splat split` 读的
+文件——它们改变汇编树，而只有基线链接能验那棵树。
 
 判定针对**整个改动集合**，不是单个文件：一个 PR 同时改了 `.c` 与 `.md` 属于 `fast`，不是 `skip`。
 
@@ -63,10 +76,15 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Default deny. A path that matches neither pattern lands in `full`.
-# 默认拒绝：两条都不匹配的路径落到 `full`。
-SKIP_ONLY = re.compile(r"^(docs/|.*\.md$|LICENSE$)")
-FAST_EXTRA = re.compile(r"^(src/matched/|progress/)")
+# Default deny. A path that matches neither pattern of the two wide sets lands in `full`.
+# 默认拒绝：两个宽集都不匹配的路径落到 `full`。
+SKIP_ONLY = re.compile(r"^(docs/|.*\.md$|LICENSE$|tools/check/test_[^/]*\.py$)")
+FAST_EXTRA = re.compile(r"^(src/matched/|progress/|config/)")
+# `splat split` reads these two, so they change the assembly tree that only the baseline link
+# verifies. They must stay `full` even though the rest of `config/` may be `fast`.
+# 这两个文件是 `splat split` 的输入，会改变只有基线链接能验证的汇编树，因此即使 `config/` 其余
+# 文件可以是 `fast`，这两个必须留在 `full`。
+FAST_DENY = re.compile(r"^config/(symbol_addrs|reloc_addrs)\.txt$")
 
 ZERO_SHA = re.compile(r"^0+$")
 
@@ -98,9 +116,14 @@ def classify(event: str, base: str, files: list[str] | None) -> tuple[str, str]:
     if not files:
         return "full", "the diff is empty"
     if all(SKIP_ONLY.match(f) for f in files):
-        return "skip", "every changed file is documentation"
+        return "skip", "every changed file is documentation or a pure test"
+    denied = [f for f in files if FAST_DENY.match(f)]
+    if denied:
+        return "full", ("the change touches a build input that only the baseline link can verify: "
+                        + ", ".join(sorted(denied)[:5]))
     if all(SKIP_ONLY.match(f) or FAST_EXTRA.match(f) for f in files):
-        return "fast", "every changed file is matched source, progress, or documentation"
+        return "fast", ("every changed file is documentation, a pure test, matched source, "
+                        "the progress report, or a configuration file the mixed build consumes")
     offending = [f for f in files if not (SKIP_ONLY.match(f) or FAST_EXTRA.match(f))]
     return "full", "the change touches a build input: " + ", ".join(sorted(offending)[:5])
 
@@ -108,8 +131,9 @@ def classify(event: str, base: str, files: list[str] | None) -> tuple[str, str]:
 def main() -> int:
     ap = argparse.ArgumentParser(
         prog="classify_change.py",
-        description="Classify a change set into the CI mode: skip (documentation only), "
-                    "fast (matched source / progress / documentation), or full (everything else).")
+        description="Classify a change set into the CI mode: skip (documentation or pure tests), "
+                    "fast (matched source / progress / configuration the mixed build consumes), "
+                    "or full (everything else).")
     ap.add_argument("--root", default=".", help="Repository root (default: the current directory)")
     ap.add_argument("--event", required=True, help="The GitHub event name (for example pull_request or push)")
     ap.add_argument("--base", default="", help="The base commit: pull_request.base.sha, or github.event.before")
