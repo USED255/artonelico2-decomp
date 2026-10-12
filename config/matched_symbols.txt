@@ -2336,6 +2336,7 @@ func_0030fcf8    # ghidra_draft:-O1
 func_00310050    # ret_const
 func_00310448    # permuter
 func_00310460    # llm_draft
+func_00312378    # llm_draft
 func_00312450    # ghidra_draft:-O2
 func_003125d8    # llm_draft
 func_00312658    # empty
