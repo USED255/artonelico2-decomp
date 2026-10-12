@@ -62,6 +62,7 @@ from auto_match_trivial import (  # noqa: E402
     ROOT, WORK_ROOT, EVIDENCE_ROOT, WORKQUEUE, MATCHED_LIST, SRCDIR, GCC, AS, OBJDIFF,
     CFLAGS, split_mode, matched_in_list, M3_BEGIN, M3_END,
 )
+import split_asm as SPLIT  # noqa: E402  block boundary rule shared with the mixed build
 
 BUILD = WORK_ROOT / "m2" / "ghidra_batch"
 FLAGS_FILE = ROOT / "config" / "source_flags.tsv"   # The config lives at the project root (public repo)
@@ -88,9 +89,25 @@ def target_block(sym: str) -> str | None:
     L = f.read_text(encoding="utf-8", errors="replace").split("\n")
     gi = next((i for i, x in enumerate(L) if re.match(r"\s*glabel\s+", x)), None)
     en = next((i for i in range(gi or 0, len(L)) if re.match(r"\s*endlabel\s+", L[i])), None)
-    if gi is None or en is None:
+    if gi is None:
         return None
-    return PREAMBLE + "\n".join(L[gi:en + 1]) + "\n"
+    if en is None:
+        # 54 of the 10,926 .s files carry no endlabel: their body runs to the last instruction
+        # (2026-10-12). split_asm decides the boundary and accepts only a whole-file
+        # replacement that cannot lose a byte, so a wrong block stays impossible here.
+        # 10,926 个 .s 里有 54 个没有 endlabel：块尾 = 最后一条指令（2026-10-12）。判定交给
+        # split_asm；它只在「整份替换不丢字节」时接受，因此这里不会取出错误的块。
+        info = SPLIT.analyze(sym, asm_dir=ROOT / "asm" / "cod")
+        if info.get("mode") != "direct" or "end" not in info:
+            return None
+        en = info["end"]
+    block = L[gi:en + 1]
+    if not any(re.match(r"\s*endlabel\s+", x) for x in block):
+        # Without an `endlabel` the target symbol carries no `.size`, so objdiff can guess the
+        # size and stop before the end of the block (false 100.0; see auto_match_m2c.py).
+        # 没有 endlabel 时目标符号没有 .size，objdiff 可能提前停止（假 100.0；见 auto_match_m2c.py）。
+        block = block + [f"endlabel {sym}"]
+    return PREAMBLE + "\n".join(block) + "\n"
 
 
 def candidates(classes: set[str], limit: int):
