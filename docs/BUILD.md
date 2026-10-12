@@ -31,8 +31,16 @@ export PATH="$HOME/eecc/ee-gcc3.2-040921/bin:$HOME/eecc/ee-gcc2.96/bin:$HOME/eec
 ```bash
 python3 configure.py --game /path/to/SLPS_258.19
 make build          # split, assemble, link, and check the payload hash
+make build-fast     # assemble the baseline without its link, then the mixed build
 make report         # write the progress report
 ```
+
+`make build-fast` is the lane the `matching-gate` workflow uses for a pull request that only
+touches `src/matched/**` (plus documentation and the progress report). It still checks the mixed
+payload against the retail payload, so the image is verified byte for byte; it skips the separate
+assertion that the pure-assembly baseline also rebuilds the retail image, and that one keeps
+running on every push to the default branch. Use `make build` when you are changing a build input
+(`splat.yaml`, `config/**`, `build*.sh`, the linker script) or when you want that assertion too.
 
 This is a mixed-compiler build: the game code uses `ee-gcc 3.2-ee-040921` and the
 CRI middleware uses `ee-gcc 2.96-ee-001003-1`. `config/compiler_map.tsv` states
