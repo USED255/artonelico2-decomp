@@ -17,7 +17,7 @@ GAME ?= orig/SLPS_258.19
 
 .DEFAULT_GOAL := help
 
-.PHONY: help configure rom split build report delta check check-tools check-pr clean
+.PHONY: help configure rom split build report progress delta check check-tools check-pr clean
 
 help:
 	@echo "Ar tonelico II matching decompilation - available targets"
@@ -26,6 +26,7 @@ help:
 	@echo "  make split                   run splat split, which writes asm/ and include/"
 	@echo "  make build                   split, assemble the baseline build, link, run the mixed build, assert the payload sha1"
 	@echo "  make report                  write the objdiff progress report (progress/SLPS_258.19_report.json)"
+	@echo "  make progress                print the static progress upper bound (no toolchain needed)"
 	@echo "  make delta BASE=<git-ref>    check that each changed src/matched/*.c file matches 100 percent"
 	@echo "  make check                   run the repository checks (paths, publication record, denied classes, report rules)"
 	@echo "  make check-pr BASE=<ref>     contribution mode: allow added or changed files only (for pull requests)"
@@ -51,6 +52,9 @@ report:
 	 $(PY) tools/report/gen_function_report.py --project . --jobs 4 --as "$$AS" \
 	   --objdiff "$${OBJDIFF:-$$HOME/eecc/objdiff-cli}" \
 	   --report-out progress/SLPS_258.19_report.json
+
+progress:
+	@$(PY) tools/report/progress_report.py
 
 delta:
 	@$(DRIVER) delta --base "$(BASE)"
