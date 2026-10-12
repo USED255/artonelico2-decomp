@@ -3384,3 +3384,7 @@ func_00236a00    # llm_draft+jtbl
 func_002650c4    # llm_draft
 func_00192644    # llm_draft
 func_00346518    # llm_draft
+func_00343630    # llm_draft+permuter
+func_0014d130    # llm_draft+permuter
+func_0028fcc0    # llm_draft+permuter
+func_0010838c    # llm_draft+permuter
