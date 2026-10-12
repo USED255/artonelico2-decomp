@@ -1481,6 +1481,7 @@ func_00340eb0	-O3
 func_00342c20	-O3
 func_00342d58	-O1
 func_003434d8	-O3
+func_00346278	-Os
 func_00346738	-O1
 func_00346750	-O3
 func_00346760	-O3
