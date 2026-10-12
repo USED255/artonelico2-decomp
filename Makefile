@@ -23,7 +23,7 @@ export JOBS
 
 .DEFAULT_GOAL := help
 
-.PHONY: help configure rom split build report progress delta check check-tools check-pr clean
+.PHONY: help configure rom split build build-fast report progress delta check check-tools check-tests check-pr clean
 
 help:
 	@echo "Ar tonelico II matching decompilation - available targets"
@@ -31,6 +31,7 @@ help:
 	@echo "  make rom                     derive the reference payload from the retail ELF (SLPS_258.19.rom)"
 	@echo "  make split                   run splat split, which writes asm/ and include/"
 	@echo "  make build                   split, assemble the baseline build, link, run the mixed build, assert the payload sha1"
+	@echo "  make build-fast              assemble the baseline but skip its link, then run the mixed build (the mixed payload is still asserted)"
 	@echo "  make report                  write the objdiff progress report (progress/SLPS_258.19_report.json)"
 	@echo "  make progress                print the static progress upper bound (no toolchain needed)"
 	@echo "  make delta BASE=<git-ref>    check that each changed src/matched/*.c file matches 100 percent"
@@ -53,6 +54,14 @@ split: rom
 build: split
 	@$(DRIVER) build
 
+# The fast lane of `matching-gate`: assemble the baseline, skip its link and payload extraction,
+# then run the mixed build and assert the mixed payload (which is compared against the retail
+# payload, so the image is still verified byte for byte). CI selects it from the change itself.
+# `matching-gate` 的快路：装配基线、跳过基线链接与载荷抽取，然后跑混合构建并断言混合载荷
+# （比的是零售载荷，镜像仍被逐字节验证）。CI 按改动面自动选择它。
+build-fast: split
+	@$(DRIVER) build --stage fast
+
 report:
 	@AS="$${BINUTILS:-$$HOME/eecc/ps2binutils}/mips-ps2-decompals-as"; \
 	 $(PY) tools/report/gen_function_report.py --project . --jobs $(JOBS) --as "$$AS" \
@@ -65,11 +74,19 @@ progress:
 delta:
 	@$(DRIVER) delta --base "$(BASE)"
 
-check: check-tools
+check: check-tools check-tests
 	@$(PY) tools/check/check_public_repo.py --check
 
 check-tools:
 	@$(PY) tools/check/test_tool_paths.py
+
+# Unit tests of the pure logic the workflows depend on. They are fast and need no toolchain.
+# The workflows rely on tools/ci/classify_change.py: a regression there would silently change
+# what CI verifies, so its test runs inside `make check`.
+# 工作流依赖的纯逻辑单测（快、不需要工具链）。classify_change.py 一旦回归会静默改变 CI 的验证
+# 范围，所以它的测试放进 `make check`。
+check-tests:
+	@$(PY) tools/check/test_classify_change.py
 
 check-pr:
 	@test -n "$(BASE)" || { echo "usage: make check-pr BASE=<git-ref> (compare that ref with HEAD)"; exit 2; }

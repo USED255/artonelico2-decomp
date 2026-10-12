@@ -46,6 +46,8 @@ cannot run a Maintainer tool.
 | `tools/check/check_public_repo.py` | Checks the publication record, the forbidden material, and the report rules. | Contributor needed |
 | `tools/check/test_matched_ledger.py` | Tests the match ledger parser and the delta check. | Contributor needed |
 | `tools/check/test_tool_paths.py` | Tests that each tool resolves the project paths. | Contributor needed |
+| `tools/check/test_classify_change.py` | Tests the CI mode classifier. | Contributor needed |
+| `tools/ci/classify_change.py` | Picks the `matching-gate` mode (skip / fast / full) from the change set. | Contributor needed |
 | `tools/ci/splat-requirements.txt` | Lists the public `splat` version for the CI job. | Contributor needed |
 | `tools/project/at2_paths.py` | Resolves the project paths for each repository layout. | Contributor needed |
 | `tools/project/compile_sources.py` | Compiles or assembles only the sources that changed. | Contributor needed |

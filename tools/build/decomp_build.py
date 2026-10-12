@@ -13,11 +13,15 @@ Subcommands
       Check the SHA1 of the retail ELF. Write `<root>/build/config.json`.
       With `--layout repo` and no `--game`, this command does nothing. The
       private repository keeps its current configuration.
-  build [--stage all|baseline|mixed]
+  build [--stage all|baseline|assemble|mixed|fast]
       Run the baseline build. Run the payload check. Run the mixed build. Run
       the payload check again. Each mismatch prints the expected value and the
       actual value, then the command returns a non-zero code. The mixed build
       also compares its payload with the baseline payload.
+      `all`, `baseline`, and `mixed` are the full pipeline. `assemble` stops the
+      baseline after the assembler (no link, no baseline payload). `fast` does
+      that, then runs the mixed build and checks the mixed payload only. CI uses
+      `fast` for a pure-source pull request and `all` everywhere else.
   report [--out JSON] [--full]
       Generate the objdiff report. The default output is
       `<root>/build/report.json`. With `--full`, the command first runs
@@ -58,6 +62,8 @@ The toolchain stays outside the workspace. See docs/kb/ENV.md. The script
 ------
   configure     校验原版 ELF 的 sha1，写 `<root>/build/config.json`。
   build         跑 baseline 构建、载荷校验、mixed 构建与第二次校验。
+                `--stage assemble` 只装配（不链接、不校验基线载荷）；`--stage fast` 在此基础上
+                再跑 mixed 构建，只校验混合载荷 —— CI 对纯源码 PR 用 fast，其余一律 all。
   report        用 objdiff-cli 生成报告；`--full` 先生成全量 objdiff.json。
   delta         只对 git diff 里改动的已匹配源逐个 objdiff，要求 100%。
   check-config  打印解析出的全部路径与存在性，便于自检。
@@ -310,7 +316,7 @@ def assert_payload(path: Path, label: str, exp: dict) -> None:
 
 
 def stage_script(ctx: Ctx, stage: str) -> Path:
-    return ctx.root / {"baseline": "build.sh", "mixed": "build_mixed.sh"}[stage]
+    return ctx.root / {"baseline": "build.sh", "assemble": "build.sh", "mixed": "build_mixed.sh"}[stage]
 
 
 def _run_stage(ctx: Ctx, stage: str) -> None:
@@ -320,6 +326,12 @@ def _run_stage(ctx: Ctx, stage: str) -> None:
     env = dict(os.environ)
     if getattr(ctx, "jobs", None):
         env["JOBS"] = str(ctx.jobs)
+    # `assemble` runs build.sh only up to the assembled baseline (no link, no payload extraction).
+    # Set the flag explicitly for every stage so an inherited BASELINE_ASSEMBLE_ONLY=1 in the
+    # caller's shell cannot silently change what a stage does.
+    # `assemble` 只跑到装配为止（不链接、不抽载荷）。对每个 stage 显式赋值，避免调用者 shell 里
+    # 残留的 BASELINE_ASSEMBLE_ONLY=1 悄悄改变某一阶段的行为。
+    env["BASELINE_ASSEMBLE_ONLY"] = "1" if stage == "assemble" else "0"
     print(f"-- {stage}: {script.name} --")
     if run(["bash", script.name], cwd=ctx.root, env=env) != 0:
         die(f"{script.name} failed", 1)
@@ -333,7 +345,11 @@ def cmd_build(args) -> int:
     if args.stage in ("all", "baseline"):
         _run_stage(ctx, "baseline")
         assert_payload(ctx.payload, "baseline build", exp)
-    if args.stage in ("all", "mixed"):
+    if args.stage in ("assemble", "fast"):
+        # assemble: the pure-asm baseline without its link. `fast` then runs the mixed build below.
+        # assemble：只装配的纯汇编基线；`fast` 会接着跑下面的混合构建。
+        _run_stage(ctx, "assemble")
+    if args.stage in ("all", "mixed", "fast"):
         _run_stage(ctx, "mixed")
         assert_payload(ctx.mixed_payload, "mixed build", exp)
         baseline_payload = ctx.payload
@@ -570,7 +586,9 @@ def main() -> int:
     p.set_defaults(func=cmd_configure)
 
     p = sub.add_parser("build", help="Run the baseline build and the mixed build, then check the payload (non-zero on failure)")
-    p.add_argument("--stage", choices=["all", "baseline", "mixed"], default="all")
+    p.add_argument("--stage", choices=["all", "baseline", "assemble", "mixed", "fast"], default="all",
+                   help="all/baseline/mixed = the full pipeline; assemble = the pure-asm baseline without its link; "
+                        "fast = assemble without the baseline link, then the mixed build and the mixed payload check")
     p.add_argument("--jobs", default=None, help="Parallelism (pass JOBS to the build script)")
     p.set_defaults(func=cmd_build)
 

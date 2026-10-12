@@ -132,6 +132,19 @@ open(p, 'w', encoding='utf-8').write(s)
 print("  applied: %s" % (", ".join(changed) if changed else "none (the script probably repaired it already)"))
 PATCH
 
+# `matching-gate` fast lane. The mixed build only needs the assembled objects (build/asm) and
+# the repaired linker script, so a pure-source pull request can stop here. The mixed payload is
+# still compared against the retail payload, so the image stays verified byte for byte; only the
+# separate "the pure-asm baseline also rebuilds the retail image" assertion is skipped (that one
+# keeps running on every push to main). Guarded by the caller (decomp_build.py --stage fast).
+# `matching-gate` 的快路：混合构建只需要 build/asm 的装配产物与修好的链接脚本，纯源码 PR 可以
+# 到此为止。混合载荷仍与零售载荷比对，镜像依旧逐字节验证；只跳过「纯汇编基线也能重建零售镜像」
+# 这条独立断言（它在每次 main push 上照跑）。由调用方（decomp_build.py --stage fast）控制。
+if [ "${BASELINE_ASSEMBLE_ONLY:-0}" = "1" ]; then
+    echo "== 2/4-4/4 skipped (BASELINE_ASSEMBLE_ONLY=1): the asm baseline is assembled, the link and the payload check are skipped =="
+    exit 0
+fi
+
 echo "== 2/4 Link =="
 rm -rf build/stage; mkdir -p build/stage
 "$LD" -EL -m elf32ltsmip -T "$LDS" -o /dev/null 2>build/ld.err || true
