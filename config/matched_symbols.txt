@@ -3373,3 +3373,9 @@ func_001a3aa0    # llm_draft
 func_001d659c    # llm_draft
 func_002428f8    # llm_draft
 func_0018e090    # llm_draft
+func_002e2cc8    # llm_draft
+func_002ebc60    # llm_draft
+func_00342488    # llm_draft
+func_00254a84    # llm_draft
+func_0012a77c    # llm_draft
+func_0014e52c    # llm_draft
