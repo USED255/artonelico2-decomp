@@ -32,7 +32,7 @@ help:
 	@echo "  make split                   run splat split, which writes asm/ and include/"
 	@echo "  make build                   split, assemble the baseline build, link, run the mixed build, assert the payload sha1"
 	@echo "  make build-fast              assemble the baseline but skip its link, then run the mixed build (the mixed payload is still asserted)"
-	@echo "  make report                  write the objdiff progress report (progress/SLPS_258.19_report.json)"
+	@echo "  make report                  write the objdiff progress report to build/ (progress/ is written only by publish_report.py)"
 	@echo "  make progress                print the static progress upper bound (no toolchain needed)"
 	@echo "  make delta BASE=<git-ref>    check that each changed src/matched/*.c file matches 100 percent"
 	@echo "  make check                   run the repository checks (paths, publication record, denied classes, report rules)"
@@ -62,11 +62,21 @@ build: split
 build-fast: split
 	@$(DRIVER) build --stage fast
 
+# The report and its provenance go to build/. `progress/**` is written only by
+# tools/maintainer/publish_report.py, after that tool verified the provenance: a local run must
+# never overwrite a published, hash-pinned artifact (R30 finding B2). `--require-c100` makes the
+# target fail when a C unit is below 100 percent, so a partial run cannot be mistaken for a
+# report worth publishing. Override REPORT_FLAGS= to get an exploratory report.
+# 报告与 provenance 写到 build/。`progress/**` 只由 tools/maintainer/publish_report.py 在校验
+# provenance 之后写入：本地跑一次不得覆盖已发布、已锁哈希的产物（R30 B2）。`--require-c100`
+# 让目标在任一 C 单元不足 100% 时失败，避免把半成品当成可发布报告。要探索性报告用 REPORT_FLAGS=。
+REPORT_FLAGS ?= --require-c100
 report:
 	@AS="$${BINUTILS:-$$HOME/eecc/ps2binutils}/mips-ps2-decompals-as"; \
 	 $(PY) tools/report/gen_function_report.py --project . --jobs $(JOBS) --as "$$AS" \
-	   --objdiff "$${OBJDIFF:-$$HOME/eecc/objdiff-cli}" \
-	   --report-out progress/SLPS_258.19_report.json
+	   --objdiff "$${OBJDIFF:-$$HOME/eecc/objdiff-cli}" $(REPORT_FLAGS) \
+	   --report-out build/SLPS_258.19_report.json \
+	   --baseline-out build/report_provenance.json
 
 progress:
 	@$(PY) tools/report/progress_report.py
@@ -82,12 +92,19 @@ check-tools:
 
 # Unit tests of the pure logic the workflows depend on. They are fast and need no toolchain.
 # The workflows rely on tools/ci/classify_change.py: a regression there would silently change
-# what CI verifies, so its test runs inside `make check`.
+# what CI verifies, so its test runs inside `make check`. The other tests guard the same class of
+# silent failure: the ledger parser (a delta run that skips entries but still says 100 percent),
+# the public-repository checks (the denied-material list and the git -z path handling) and the
+# shared path/atomic-write helpers.
 # 工作流依赖的纯逻辑单测（快、不需要工具链）。classify_change.py 一旦回归会静默改变 CI 的验证
-# 范围，所以它的测试放进 `make check`。
+# 范围，所以它的测试放进 `make check`。其余测试守同一类静默失败：台账解析（跳过条目却报 100%）、
+# 公开仓库检查（禁材列表与 git -z 路径处理）、共用路径/原子写助手。
 check-tests:
 	@$(PY) tools/check/test_classify_change.py
 	@$(PY) tools/check/test_splat_snapshot.py
+	@$(PY) tools/check/test_matched_ledger.py
+	@$(PY) tools/check/test_public_repo.py
+	@$(PY) tools/check/test_at2_io.py
 
 check-pr:
 	@test -n "$(BASE)" || { echo "usage: make check-pr BASE=<git-ref> (compare that ref with HEAD)"; exit 2; }
