@@ -47,6 +47,7 @@ jobs:
         env:
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           BASE_REPO: ${{ github.repository }}
+          AUTHOR_ASSOC: ${{ github.event.pull_request.author_association }}
         run: |
           set -euo pipefail
           args=(--pr "${{ github.event.pull_request.base.sha }}")
@@ -54,5 +55,13 @@ jobs:
           # 同仓库 PR 允许重命名与删除；外部 fork PR 保持严格。
           if [ "$HEAD_REPO" = "$BASE_REPO" ]; then
             args+=(--allow-restructure)
+            # `main` is protected by a ruleset, so a maintainer publishes through a pull request
+            # too. `--allow-publication` admits a *pure* publication change and then verifies the
+            # record, the provenance-carrying baseline, and the no-regression rule.
+            # 维护者也要走 PR 发布（main 受规则集保护）。`--allow-publication` 只接受**纯发布**改动，
+            # 并校验记录、带 provenance 的基线与不回归。
+            case "$AUTHOR_ASSOC" in
+              OWNER|MEMBER|COLLABORATOR) args+=(--allow-publication) ;;
+            esac
           fi
           python3 tools/check/check_public_repo.py "${args[@]}"

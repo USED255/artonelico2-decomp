@@ -63,6 +63,11 @@ make check                       # 仓库自检
 | `progress/` | 进度报告由经过验证的构建产出 |
 | `PUBLISHED.json` | 发布记录；由 `tools/maintainer/publish_report.py` 在一次已验证的构建后写入 |
 
+一个例外：**维护者**（同仓库 PR 的 `OWNER` / `MEMBER` / `COLLABORATOR`）可以开一个**发布 PR**，
+它只改 `progress/**` 与 `PUBLISHED.json`。此时 `validate` 不再拒绝，而是**校验这次发布**：记录必须与
+它指名的文件一致、`payload_verified` 必须为真、基线必须带「与所发布报告绑定且通过」的 provenance、
+且数字不得回退。把发布文件与其它改动混在一个 PR 里会被拒绝。
+
 其它路径都可以改。`config/`、`splat.yaml` 与三个构建脚本，**建议先开 issue 说明**再动手 —— 它们会影响整个构建。
 
 **新增函数注意**：你**不需要**改 `config/matched_symbols.txt`；维护者会替你补条目。`config/matched_symbols.txt` 与 `config/symbol_addrs.txt` 是**只读配置**，由维护者代填。详见 [config/README.zh-CN.md](config/README.zh-CN.md)。

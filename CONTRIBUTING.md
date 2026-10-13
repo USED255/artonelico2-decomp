@@ -68,6 +68,13 @@ These paths are **read-only**. A change there fails the `validate` check:
 | `progress/` | The progress report comes from a verified build. |
 | `PUBLISHED.json` | The release record. `tools/maintainer/publish_report.py` writes it after a verified build. |
 
+One exception: **a maintainer** (an `OWNER`, `MEMBER`, or `COLLABORATOR` of a same-repository pull
+request) may open a **publication pull request** that changes only `progress/**` and
+`PUBLISHED.json`. `validate` then verifies the publication instead of refusing it: the record must
+match the files it names, `payload_verified` must be true, the baseline must carry a passing
+provenance record bound to the published report, and the numbers must not regress. A pull request
+that mixes publication files with anything else is refused.
+
 You can change all other paths. The maintainers ask you to open an issue first
 for `config/`, `splat.yaml`, and the build scripts, because a change there can
 affect the whole build.

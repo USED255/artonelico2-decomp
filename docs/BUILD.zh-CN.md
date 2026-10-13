@@ -117,6 +117,18 @@ python3 tools/maintainer/publish_report.py \
 用 `--freeze-baseline` 把 provenance 记录变成新基线 —— 这是**单独且显式**的决定，因为
 `progress/baseline.json` 是冻结参照。改过 `toolchain.lock.json` 后用 `--refresh`。
 
+`main` 受仓库规则集保护，因此维护者也是走 PR 落地：
+
+```bash
+git switch -c publish/<run-id>
+git commit -am "publish: <这次已验证的运行>"
+git push -u origin publish/<run-id>
+gh pr create --base main --fill
+```
+
+`validate` 认识「维护者发布 PR」：只允许改 `progress/**` 与 `PUBLISHED.json`，且必须通过发布检查
+（记录哈希、`payload_verified`、基线带绑定所发布报告且通过的 provenance、不回归）。
+
 ## 6. 排障
 
 - **`payload sha1 mismatch`**：某个替换源与零售字节不一致。用 `make delta BASE=<上一个好提交>` 缩小范围。
