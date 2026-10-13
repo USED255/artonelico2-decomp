@@ -327,13 +327,25 @@ def rel(path: Path, base: Path) -> str:
 
 
 def git_head(repo: Path) -> tuple[str, str]:
+    """Return (HEAD, the working-tree status of TRACKED files).
+
+    `--untracked-files=no` matters: a build writes `build/`, `asm/`, `orig/`, `objdiff-cli` and
+    `SLPS_258.19.rom` as untracked paths, so a plain `status --porcelain` marked every CI run as
+    dirty and the publish gate would have refused every verified report (measured on PR #232:
+    source_dirty=true on a clean checkout). Only a modification of a tracked file is dirty.
+
+    返回 (HEAD, **tracked** 文件的工作树状态)。`--untracked-files=no` 很关键：构建会写出
+    `build/`、`asm/`、`orig/`、`objdiff-cli`、`SLPS_258.19.rom` 等未跟踪路径，普通
+    `status --porcelain` 会把每次 CI 运行都标成 dirty，发布门就会拒绝**每一份**已验证报告
+    （PR #232 实测：干净检出上 source_dirty=true）。只有 tracked 文件被改动才算 dirty。
+    """
     try:
         head = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"],
                               capture_output=True, text=True, check=True).stdout.strip()
     except Exception:
         head = "unknown"
     try:
-        st = subprocess.run(["git", "-C", str(repo), "status", "--porcelain"],
+        st = subprocess.run(["git", "-C", str(repo), "status", "--porcelain", "--untracked-files=no"],
                             capture_output=True, text=True, check=True).stdout
     except Exception:
         st = ""
