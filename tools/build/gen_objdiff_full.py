@@ -6,7 +6,7 @@ Background (private repository design note R15):
   * The report denominator comes from the `units` in objdiff.json. Each object
     that links into the binary must be one unit. A unit without C code can have
     `base_path: null`.
-  * routebjp/objdiff.json holds one unit. Therefore the measures in
+  * matching-jp/objdiff.json holds one unit. Therefore the measures in
     `build/report.json` cover 11 functions only. Those measures do not show the
     real progress of Route B, and the upload needs the full set.
 
@@ -29,13 +29,13 @@ Category rules (progress_categories):
 Usage:
   python3 tools/build/gen_objdiff_full.py                       # write objdiff.json only
   python3 tools/build/gen_objdiff_full.py --run                 # write the file, then generate a report
-  python3 tools/build/gen_objdiff_full.py --project routebjp --run
+  python3 tools/build/gen_objdiff_full.py --project matching-jp --run
 
 为路线 B（日版主目标）生成全量 unit 的 objdiff.json，这是 decomp.dev 上报的前置件。
 
 背景（私有仓库设计记录 R15）：decomp.dev 只接受 objdiff 报告；报告分母来自
 objdiff.json 的 units，每个被链接进二进制的对象都应是一条 unit，
-未反编译的 unit 允许 base_path 为 null。routebjp/objdiff.json 只有一条 unit，
+未反编译的 unit 允许 base_path 为 null。matching-jp/objdiff.json 只有一条 unit，
 所以 build/report.json 的 measure 只覆盖 11 个函数，不能代表路线 B 的真实进度。
 
 本脚本只读构建产物，不编译、不改动任何已有文件：
@@ -103,7 +103,7 @@ def build_units(project: Path, out_dir: Path, code_only: bool = False) -> tuple[
     asm_root = project / "build" / "asm"
     mixed_obj = project / "build" / "mixed" / "obj"
     if not asm_root.is_dir():
-        sys.exit(f"FAIL: missing {asm_root} (run routebjp/build.sh first to write the baseline assembly objects)")
+        sys.exit(f"FAIL: missing {asm_root} (run matching-jp/build.sh first to write the baseline assembly objects)")
 
     def rel(p: Path) -> str:
         return os.path.relpath(p, out_dir)
@@ -145,7 +145,7 @@ def build_units(project: Path, out_dir: Path, code_only: bool = False) -> tuple[
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--project", default="routebjp", help="Route B project directory (default routebjp)")
+    ap.add_argument("--project", default="matching-jp", help="Route B project directory (default matching-jp)")
     ap.add_argument("--code-only", action="store_true", help="Exclude build/asm/data/** (Route B publishes code only; this also skips the 13.7 MB data object)")
     ap.add_argument("--out", default=None, help="objdiff.json output path (default <project>/build/objdiff-full/objdiff.json)")
     ap.add_argument("--run", action="store_true", help="Call objdiff-cli report generate after the write")

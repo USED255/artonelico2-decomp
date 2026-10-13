@@ -82,7 +82,7 @@ DENY = [
     "*.lzr", "*.evd", "*.AFS", "*.ADX", "*.SFD",
     "*.zip", "*.7z", "*.tar", "*.tar.xz", "*.tar.gz", "*.tar.zst", "*.zst",
     "orig/*", "assets/*", "include/*", "out/*", ".tmp/*",
-    "routeb/*", "routebjp/*", "docs/private/*",
+    "matching-us/*", "matching-jp/*", "docs/private/*",
 ]
 
 # Backstop for a restricted file whose name carries no telling extension. Measured 2026-10-13:

@@ -106,7 +106,7 @@ def run_contrib(repo: Path, base: str, **kw) -> None:
 
 print("[1] the denied-material patterns cover the classes that matter")
 for rel in ("orig/SLPS_258.19", "orig/SLPS_258.19.elf", "build/SLPS_258.19.bin",
-            "routebjp/stubs/func_x.s", "asm/cod/func_00100000.s", "asm/日本.s",
+            "matching-jp/stubs/func_x.s", "asm/cod/func_00100000.s", "asm/日本.s",
             "assets/cod/x.bin", "assets/x.irx", "include/macro.inc",
             "toolchain/e32.tar.xz", "toolchain/x.zip", "docs/private/notes.md",
             "out/evidence/x.txt", "SLPS_258.19.rom"):
@@ -122,11 +122,11 @@ sizes = {
     "progress/baseline.json": 5_002_527,             # exempt
     "splat.yaml": 696_377,
     "exactly-eight-mib.bin": C.SIZE_BACKSTOP,        # boundary: not above
-    "routebjp/note.txt": 12 << 20,
+    "matching-jp/note.txt": 12 << 20,
 }
 hits = C.oversize_hits(list(sizes), size_of=sizes.get)
 check("a 9.35 MB extension-less file hits", any("orig/SLPS_258.19" in h for h in hits), str(hits))
-check("routebjp/note.txt hits by size", any("routebjp/note.txt" in h for h in hits), str(hits))
+check("matching-jp/note.txt hits by size", any("matching-jp/note.txt" in h for h in hits), str(hits))
 check("progress/*.json is exempt", not any("progress/" in h for h in hits), str(hits))
 check("the boundary itself does not hit", not any("exactly-eight-mib" in h for h in hits), str(hits))
 check("splat.yaml does not hit", not any("splat.yaml" in h for h in hits), str(hits))

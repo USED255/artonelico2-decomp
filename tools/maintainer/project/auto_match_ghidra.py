@@ -4,7 +4,7 @@
 
 Flow (for each candidate symbol):
   1. Extract the pseudo C of the function from
-     `routebjp/build/ghidra/SLPS_258.19.decomp.c`. Add the shim. Change `FUN_x` back to our
+     `matching-jp/build/ghidra/SLPS_258.19.decomp.c`. Add the shim. Change `FUN_x` back to our
      symbol name. Change `DAT_x/_DAT_x/PTR_..._x` back to `D_<HEX>`. Without that, the
      relocation name does not agree.
   2. Compile with the given flag level (default `-O2`; an optional `-O1` fallback).
@@ -25,7 +25,7 @@ Usage:
 matching batch 批量匹配：Ghidra 伪 C 草稿 → 编译 → objdiff 裁决 → 落地（P1a/P1d 的生产版）。
 
 流程（每个候选符号）：
-  1. 从 `routebjp/build/ghidra/SLPS_258.19.decomp.c` 抽该函数的伪 C，补 shim、
+  1. 从 `matching-jp/build/ghidra/SLPS_258.19.decomp.c` 抽该函数的伪 C，补 shim、
      把 `FUN_x` 改回我们的符号名、`DAT_x/_DAT_x/PTR_..._x` 改回 `D_<HEX>`（否则重定位名不匹配）；
   2. 用指定编译档（默认 `-O2`，可选追加 `-O1` 回退）编译；
   3. 与 `asm/cod/<sym>.s` 的目标块做 objdiff，**只收 100%**；
@@ -40,7 +40,7 @@ B/D 两类 27%/20%，高于 15% 判定线 ⇒ 采信伪 C 草稿路线。
       [--limit N] [--flags "-O2,-O1"] [--jobs 4] [--apply]
 """
 
-# Private layout names (routebjp/build/ghidra, routebjp/build/m2, jp_m3_workqueue.tsv), do not rename.  私有布局名（routebjp/build/ghidra、routebjp/build/m2、jp_m3_workqueue.tsv），勿改名。
+# Private layout names (matching-jp/build/ghidra, matching-jp/build/m2, jp_m3_workqueue.tsv), do not rename.  私有布局名（matching-jp/build/ghidra、matching-jp/build/m2、jp_m3_workqueue.tsv），勿改名。
 
 from __future__ import annotations
 

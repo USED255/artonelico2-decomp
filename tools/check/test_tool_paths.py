@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """Path self-check. This tool stops "a moved tool resolves the wrong project root" from returning.
 
-Background (2026-10-06, P-41): the batch matching tools moved from `routebjp/tools/` to
+Background (2026-10-06, P-41): the batch matching tools moved from `matching-jp/tools/` to
 `tools/project/`, but they still used `Path(__file__).resolve().parent.parent` as the project
 root. That path resolved to `tools/`, so every `auto_match_*` tool failed to find
 `config/matched_symbols.txt`. No check caught the failure, because a tool reports
@@ -20,7 +20,7 @@ Usage: `python3 tools/check/test_tool_paths.py` (`make check` calls this script)
 
 路径自检 —— 防止「工具搬家后路径锚点失效」再犯。
 
-背景（2026-10-06，P-41）：批量匹配工具从 `routebjp/tools/` 搬到 `tools/project/` 后，
+背景（2026-10-06，P-41）：批量匹配工具从 `matching-jp/tools/` 搬到 `tools/project/` 后，
 仍然写 `Path(__file__).resolve().parent.parent` 当项目根 ⇒ 解析成 `tools/`，
 `auto_match_*` 集体失效（找不到 `config/matched_symbols.txt`），而**没有任何自检会发现**——
 因为工具只在真正跑批时才报 FileNotFoundError。
@@ -102,14 +102,17 @@ def test_private_root_from_worktree() -> list[str]:
     2026-10-06 real trap: the old implementation tried `<project root>/../at2` only, and a
     worktree lives at `<workspace>/worktrees/<repo>-<slug>`. Its parent is `worktrees/`, so the
     private root was empty and the evidence directory landed inside the worktree (`make check`
-    showed one extra warning). This test builds a synthetic workspace, imports in a subprocess
-    with environment overrides, and asserts the resolved paths.
+    showed one extra warning). 2026-10-13 renamed the private directory to
+    `artonelico-research` and the matrices to `matching-jp/`; the test now covers both names.
+    This test builds a synthetic workspace, imports in a subprocess with environment
+    overrides, and asserts the resolved paths.
 
     回归：**任务工作树**里也必须能解析到私有仓库根。
 
     2026-10-06 的真实坑：旧实现只试 `<项目根>/../at2`，而工作树在 `<工作区>/worktrees/<repo>-<slug>`，
     上一级是 `worktrees/` ⇒ 私有根落空、证据目录错误地落到工作树里（`make check` 多 1 条 warn）。
-    这里造一个合成工作区、以子进程导入（环境变量覆盖项目根）来断言解析结果。
+    2026-10-13 私有目录改名为 `artonelico-research`、矩阵目录改名为 `matching-jp/`，
+    本测试同时覆盖新旧两套名字。这里造一个合成工作区、以子进程导入（环境变量覆盖项目根）来断言解析结果。
     """
     import os
     import subprocess
@@ -124,9 +127,10 @@ def test_private_root_from_worktree() -> list[str]:
     scratch_root.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=str(scratch_root)) as td:
         ws = Path(td) / "ws"
-        (ws / "at2" / "routebjp").mkdir(parents=True)
-        (ws / "at2" / "out" / "evidence").mkdir(parents=True)
-        wtree = ws / "worktrees" / "at2-public-x"
+        # New names (2026-10-13): workspace/artonelico-research/{matching-jp,out}.
+        (ws / "artonelico-research" / "matching-jp").mkdir(parents=True)
+        (ws / "artonelico-research" / "out" / "evidence").mkdir(parents=True)
+        wtree = ws / "worktrees" / "artonelico2-decomp-x"
         wtree.mkdir(parents=True)
         env = dict(os.environ, AT2_PROJECT_ROOT=str(wtree), AT2_PRIVATE_ROOT="", AT2_EVIDENCE_ROOT="")
         code = ("import sys; sys.path.insert(0, sys.argv[1]); import at2_paths as A;"
@@ -136,8 +140,8 @@ def test_private_root_from_worktree() -> list[str]:
         if r.returncode != 0:
             return [f"worktree path regression: the subprocess failed: {r.stderr.strip()[:200]}"]
         lines = [x.strip() for x in r.stdout.splitlines() if x.strip()]
-        want_priv = str((ws / "at2").resolve())
-        want_ev = str((ws / "at2" / "out" / "evidence").resolve())
+        want_priv = str((ws / "artonelico-research").resolve())
+        want_ev = str((ws / "artonelico-research" / "out" / "evidence").resolve())
         bad: list[str] = []
         got_priv = lines[0] if lines else "?"
         got_ev = lines[1] if len(lines) > 1 else "?"

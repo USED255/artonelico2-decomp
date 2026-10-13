@@ -28,7 +28,7 @@ Usage:
   python3 tools/maintainer/project/screen_flags.py report        # 打印历史最佳（build/screen/screen.json）
 """
 
-# Private layout names (routebjp/build/screen, routebjp/build/m2c, jp_m3_workqueue.tsv), do not rename.  私有布局名（routebjp/build/screen、routebjp/build/m2c、jp_m3_workqueue.tsv），勿改名。
+# Private layout names (matching-jp/build/screen, matching-jp/build/m2c, jp_m3_workqueue.tsv), do not rename.  私有布局名（matching-jp/build/screen、matching-jp/build/m2c、jp_m3_workqueue.tsv），勿改名。
 
 from __future__ import annotations
 

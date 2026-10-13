@@ -225,7 +225,7 @@ ENTRY(_start);
 
 - `build_mixed.sh` 的 `HYBRID_OUT`、`HYBRID_RESIDUAL` 与 `HYBRID_NO_CACHE` 三个变量。
   这三个变量沿用历史名。公开仓库的混合构建写 `build/mixed/`。
-- 私有布局路径 `routebjp/build/hybrid`。该产物目录属于私有仓库。公开仓库不再写它。
+- 私有布局路径 `matching-jp/build/hybrid`。该产物目录属于私有仓库。公开仓库不再写它。
 - 私有难度工作队列的文件名 `jp_m3_workqueue.tsv`。
 - 该工作队列的列名 `hybrid_ok`。
 - 私有证据文件名 `hybrid_build_result.txt`。

@@ -14,7 +14,7 @@ Why the code does not use `splat create_config` plus tools/maintainer/build/gen_
 
 This script **derives** the whole layout from the ELF section table and program headers. It
 hard-codes no address. The same script can therefore make a config for the US version with
-the same structure as `routeb/SLUS_217.88.yaml` (the one-segment case) for a self-test.
+the same structure as `matching-us/SLUS_217.88.yaml` (the one-segment case) for a self-test.
 
 Usage:
   python3 gen_splat_yaml_jp.py <elf> <symbol_addrs.txt> <out.yaml> [--name NAME]
@@ -31,7 +31,7 @@ Usage:
      start+vram，才能让所有子段的 vram 精确对上原版地址。
 
 本脚本从 ELF 节表/程序头**推导**全部布局（不写死地址），因此同一个脚本也能
-在美版上生成与 `routeb/SLUS_217.88.yaml` 同构的配置（单段情形），便于自检。
+在美版上生成与 `matching-us/SLUS_217.88.yaml` 同构的配置（单段情形），便于自检。
 
 用法:
   python3 gen_splat_yaml_jp.py <elf> <symbol_addrs.txt> <out.yaml> [--name NAME]

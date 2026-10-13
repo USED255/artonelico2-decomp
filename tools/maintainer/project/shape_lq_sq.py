@@ -4,7 +4,7 @@
 
 Background
 ----------
-- The true MMI pool = `class=G_mmi` and not in `routebjp/config/matched_symbols.txt`:
+- The true MMI pool = `class=G_mmi` and not in `matching-jp/config/matched_symbols.txt`:
   803 functions / 530,384 B.
 - **Class D = the block holds only `lq/sq` (plus `por/pand/pxor/pnor`)**: 350 functions /
   224,020 B ([R15]).
@@ -41,7 +41,7 @@ D 档（MMI 池中只用 ``lq/sq``，可含 ``por/pand/pxor/pnor`` 的 128 位�
 
 背景
 ----
-- MMI 真池 = `class=G_mmi` 且不在 `routebjp/config/matched_symbols.txt`：803 个 / 530,384 B。
+- MMI 真池 = `class=G_mmi` 且不在 `matching-jp/config/matched_symbols.txt`：803 个 / 530,384 B。
 - 其中 **D 档 = 块内只有 `lq/sq`（＋`por/pand/pxor/pnor`）**：350 个 / 224,020 B（[R15]）。
 - 机制已通（[P-22]）：`typedef int v4si __attribute__((mode(V4SI)));` 的 `*(v4si*)p`
   产 `lq`（`0x78820000`）、`*(v4si*)p = v` 产 `sq`（`0x7c850000`）。
@@ -66,7 +66,7 @@ CLI
 证据等级：本工具输出的数字均为 `[实测]`。编译/比对串行执行并有硬上限（默认 60）。
 """
 
-# Private layout path (routebjp/config/matched_symbols.txt), do not rename.  私有布局路径（routebjp/config/matched_symbols.txt），勿改名。
+# Private layout path (matching-jp/config/matched_symbols.txt), do not rename.  私有布局路径（matching-jp/config/matched_symbols.txt），勿改名。
 
 from __future__ import annotations
 

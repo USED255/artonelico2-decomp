@@ -258,7 +258,7 @@ names:
 - The `HYBRID_OUT`, `HYBRID_RESIDUAL`, and `HYBRID_NO_CACHE` variables of
   `build_mixed.sh`. The variables keep their historical names. The mixed build
   writes `build/mixed/` in this repository.
-- The private layout path `routebjp/build/hybrid`. The private repository owns that
+- The private layout path `matching-jp/build/hybrid`. The private repository owns that
   output directory. The public repository no longer writes it.
 - The file name `jp_m3_workqueue.tsv` of the private difficulty work queue.
 - The column name `hybrid_ok` of that work queue.

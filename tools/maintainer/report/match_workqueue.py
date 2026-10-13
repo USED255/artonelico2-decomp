@@ -22,10 +22,10 @@ Classification:
             C code with `extern D_x` gives the same lui/%lo absolute addressing.
             Evidence: the per-function compare sample baseelf_19 is objdiff 100 percent, and the payload check is green.
   gate      can the pipeline extract the target block alone: direct / residual / blocked_*
-            (the same rule as routebjp/tools/split_asm.py)
+            (the same rule as matching-jp/tools/split_asm.py)
 
 Private pipeline compatibility, do not rename: the file name jp_m3_workqueue.tsv,
-the column name hybrid_ok, and the private layout path routebjp/**.
+the column name hybrid_ok, and the private layout path matching-jp/**.
 
 Usage:
   python3 tools/maintainer/report/match_workqueue.py                     # Japanese target (default), print a summary
@@ -39,7 +39,7 @@ matching batch 工作量分级队列：把主程序函数按「能不能用现�
 hybrid_ok 旧口径、eligible 新口径、gate 目标块能否单独摘出。
 
 私有流水线兼容，勿改名：jp_m3_workqueue.tsv 文件名、hybrid_ok 列名、
-私有布局路径 routebjp/**。改了会打断正在跑的匹配流水线。
+私有布局路径 matching-jp/**。改了会打断正在跑的匹配流水线。
 """
 
 from __future__ import annotations
@@ -181,16 +181,16 @@ def main() -> int:
     ap.add_argument("--tsv", default="")
     args = ap.parse_args()
 
-    proj = ROOT / ("routebjp" if args.target == "jp" else "routeb")
+    proj = ROOT / ("matching-jp" if args.target == "jp" else "matching-us")
     syms = scan_syms(proj / "config" / "symbol_addrs.txt")
     if not syms:
         print(f"SKIP: {proj}/config/symbol_addrs.txt is missing or empty")
         return 0
 
-    # Reuse the gate rule from routebjp/tools/split_asm.py. The Japanese target
+    # Reuse the gate rule from matching-jp/tools/split_asm.py. The Japanese target
     # has the file. The US reference gives no gate.
     #
-    # gate 判据复用 routebjp/tools/split_asm.py（日版才有；美版参照不给 gate）。
+    # gate 判据复用 matching-jp/tools/split_asm.py（日版才有；美版参照不给 gate）。
     split_asm = None
     if args.target == "jp":
         sys.path.insert(0, str(proj / "tools" / "project"))
@@ -252,7 +252,7 @@ def main() -> int:
     #
     # 难度画像（未匹配函数走哪条流水线）——私有仓库长期计划 R11 §2.2 的仪表盘。
     matched = set()
-    ms = ROOT / ("routebjp" if args.target == "jp" else "routeb") / "config" / "matched_symbols.txt"
+    ms = ROOT / ("matching-jp" if args.target == "jp" else "matching-us") / "config" / "matched_symbols.txt"
     if ms.is_file():
         for line in ms.read_text(encoding="utf-8", errors="replace").splitlines():
             line = line.split("#", 1)[0].strip()

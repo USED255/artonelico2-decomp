@@ -55,7 +55,7 @@ matching batch mixed build 残差拆分工具：让「一个 asm .o 里的**某�
   python3 tools/project/split_asm.py stats [--jobs 4]          # 只统计各模式数量
 """
 
-# Private layout path (routebjp/tools/split_asm.py), do not rename.  私有布局路径（routebjp/tools/split_asm.py），勿改名。
+# Private layout path (matching-jp/tools/split_asm.py), do not rename.  私有布局路径（matching-jp/tools/split_asm.py），勿改名。
 
 from __future__ import annotations
 
@@ -74,12 +74,12 @@ import at2_io  # shared name/path/atomic-write helpers  # noqa: E402
 def _find_root(start: Path) -> Path:
     """Layout independent: walk up from the script and stop at a directory with asm/cod or splat.yaml.
 
-    Private layout: routebjp/tools/split_asm.py -> routebjp/.
+    Private layout: matching-jp/tools/split_asm.py -> matching-jp/.
     Public flat layout: tools/project/split_asm.py -> the repo root.
 
     布局无关：从脚本位置向上找同时含 asm/cod 或 splat.yaml 的目录。
 
-    私有布局 routebjp/tools/split_asm.py → routebjp/；公开扁平布局 tools/project/split_asm.py → 仓库根。
+    私有布局 matching-jp/tools/split_asm.py → matching-jp/；公开扁平布局 tools/project/split_asm.py → 仓库根。
     """
     for cand in [start] + list(start.parents):
         if (cand / "asm" / "cod").is_dir() or (cand / "splat.yaml").is_file():

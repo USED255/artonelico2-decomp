@@ -75,9 +75,9 @@ BASE_LDS="$HERE/build/SLPS_258.19.ld"            # the full-asm linker script th
 # 后者用于验证编译参数确实是「承重」的（见私有证据 out/evidence/hybrid_build_result.txt 的负面对照）。
 OUTREL="${HYBRID_OUT:-build/mixed}"
 # Private pipeline compatibility. The HYBRID_* variables keep their historical names. The private
-# repository keeps its own output directory routebjp/build/hybrid and its own evidence file name
+# repository keeps its own output directory matching-jp/build/hybrid and its own evidence file name
 # out/evidence/hybrid_build_result.txt. Do not rename any of them.
-# 私有流水线兼容，勿改名：HYBRID_* 变量沿用历史名；私有仓库的产物目录 routebjp/build/hybrid
+# 私有流水线兼容，勿改名：HYBRID_* 变量沿用历史名；私有仓库的产物目录 matching-jp/build/hybrid
 # 与私有证据文件名 hybrid_build_result.txt 也不改名。
 OUT="$HERE/$OUTREL"
 MATCHED_CFLAGS="${MATCHED_CFLAGS:--O2 -falign-functions=4 -ffunction-sections}"
