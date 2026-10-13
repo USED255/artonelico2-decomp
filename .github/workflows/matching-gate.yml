@@ -39,8 +39,18 @@
 # 从不依赖归档：混合载荷仍与零售载荷比对。
 #
 # A manual run can verify a pull request. Give the pull request number as input.
-# WARNING: a manual run uses the secret, and it runs the scripts of that commit.
-# Start a manual run only after you reviewed the commit.
+#
+# A manual run uses the secret, and it runs the scripts of that commit, so it may only target a
+# pull request from THIS repository: the guard step below checks `head.repo.full_name` before any
+# checkout. A fork pull request cannot be verified by a manual run, because the private companion
+# repository (retail executable and Sony toolchain) would sit on the same runner as the fork's
+# own scripts (R30 finding A4). Review a fork contribution by merging it into a branch of this
+# repository first; the regular `pull_request` run of a fork cannot get the secret at all.
+#
+# 手动运行会用私钥，并会执行那个提交里的脚本，因此只允许指向**本仓库**的 PR（下面的守卫步骤在
+# 任何 checkout 之前核对 `head.repo.full_name`）。fork PR 不能靠手动运行验证：门禁需要的私有
+# 伴生仓库（原版可执行文件与 Sony 工具链）会和 fork 自己的脚本同处一个 runner（R30 A4）。
+# 要审 fork 贡献，先把它合并进本仓库的分支；fork 的普通 `pull_request` 运行本来就拿不到 secret。
 name: matching-gate
 
 on:
@@ -56,6 +66,8 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read   # the manual-run guard reads the pull request's head repository
+                        # 手动运行的守卫要读 PR 的 head 仓库
 
 concurrency:
   group: matching-gate-${{ github.ref }}
@@ -73,6 +85,23 @@ jobs:
         if: env.HAS_ORIG != 'true'
         run: |
           echo "::notice::The secret ORIG_DEPLOY_KEY or the variable PRIVATE_ORIG_REPO is absent. Skip the build gate."
+
+      # The manual run must not execute a fork's scripts. This guard runs BEFORE every checkout,
+      # so a rejected fork PR never reaches the private companion download or its scripts.
+      # 手动运行不得执行 fork 的脚本。守卫排在**所有 checkout 之前**：被拒的 fork PR 不会走到
+      # 私有伴生仓库下载，也不会执行它的脚本。
+      - name: Guard the manual run (same-repository pull requests only)
+        if: env.HAS_ORIG == 'true' && github.event_name == 'workflow_dispatch' && github.event.inputs.pr != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          head="$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.inputs.pr }}" --jq .head.repo.full_name)"
+          if [ "$head" != "${{ github.repository }}" ]; then
+            echo "::error::a manual run may verify only a pull request from ${{ github.repository }} (got: $head). Merge the contribution into a branch of this repository first."
+            exit 1
+          fi
+          echo "::notice::manual-run guard passed: PR #${{ github.event.inputs.pr }} comes from $head"
 
       - name: Checkout this repository
         if: env.HAS_ORIG == 'true'
@@ -118,6 +147,16 @@ jobs:
           path: .orig
           persist-credentials: false
 
+      # Python first: `use` extracts with `tarfile ... filter="data"`, which needs Python 3.12+
+      # (or a 3.11.4+ backport). Running it before `actions/setup-python` meant it used whatever
+      # the runner image happened to ship, and a TypeError was outside its fallback handling.
+      # 先装 Python：`use` 解包时用 `tarfile ... filter="data"`，需要 Python 3.12+（或 3.11.4+ 的回移）。
+      # 排在 `actions/setup-python` 之前会用到 runner 镜像自带的版本，且 TypeError 不在它的回落处理里。
+      - uses: actions/setup-python@v5
+        if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
+        with:
+          python-version: '3.13'
+
       # `splat split` is about 150 s of the build, it is single-threaded, and its output is a
       # pure function of the retail executable plus a few inputs that rarely change. The
       # maintainer packs that output once (tools/ci/splat_snapshot.py create) and pushes the
@@ -131,11 +170,6 @@ jobs:
         id: snapshot
         if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
         run: python3 tools/ci/splat_snapshot.py use --project . --orig .orig --extract --github-output "$GITHUB_OUTPUT"
-
-      - uses: actions/setup-python@v5
-        if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
-        with:
-          python-version: '3.13'
 
       - name: Install the toolchain and check each sha256
         if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
@@ -259,13 +293,18 @@ jobs:
             ;;
           esac
 
+      # `make report` writes build/SLPS_258.19_report.json and build/report_provenance.json.
+      # `progress/**` is written only by tools/maintainer/publish_report.py, so a CI run never
+      # touches the published, hash-pinned copy in the checkout.
+      # `make report` 写 build/SLPS_258.19_report.json 与 build/report_provenance.json；
+      # `progress/**` 只由 publish_report.py 写入，CI 不会碰检出里已发布、已锁哈希的那份。
       - name: Write the progress report
         if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
         run: make report
 
       - name: The report must not be worse than the baseline
         if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
-        run: python3 tools/check/check_public_repo.py --compare-only --baseline progress/baseline.json --report progress/SLPS_258.19_report.json
+        run: python3 tools/check/check_public_repo.py --compare-only --baseline progress/baseline.json --report build/SLPS_258.19_report.json
 
       # The steps above must all pass to reach this step. A failed run writes no
       # report artifact. Therefore decomp.dev never receives an unverified number.
@@ -274,5 +313,20 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: SLPS_258.19_report
-          path: progress/SLPS_258.19_report.json
+          path: build/SLPS_258.19_report.json
+          if-no-files-found: error
+
+      # The provenance record proves WHAT was measured: the payload sha1 the build asserted, the
+      # commit, the dirty flag, and how many C units are below 100 percent. `publish_report.py`
+      # refuses to publish without it. It is a separate artifact, so decomp.dev keeps seeing
+      # exactly one file in `SLPS_258.19_report`.
+      # provenance 记录「到底量了什么」：构建断言的载荷 sha1、提交号、工作树是否脏、有多少 C 单元
+      # 不足 100%。publish_report.py 没有它就拒绝发布。它是**独立** artifact，decomp.dev 仍只在
+      # `SLPS_258.19_report` 里看到一个文件。
+      - name: Publish the report provenance
+        if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
+        uses: actions/upload-artifact@v4
+        with:
+          name: SLPS_258.19_report_provenance
+          path: build/report_provenance.json
           if-no-files-found: error

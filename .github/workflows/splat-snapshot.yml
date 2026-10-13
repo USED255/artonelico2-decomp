@@ -138,8 +138,13 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       # The archive is material this project cannot publish, so the artifact is only a handoff
-      # to the maintainer. Keep the default retention; it is deleted from GitHub after it expires.
-      # 归档属不可公开材料，artifact 只是交给维护者的中转，按默认保留期自动过期。
+      # to the maintainer. `retention-days: 1` is the shortest GitHub allows and is the whole
+      # mitigation for the fact that this artifact lives in a PUBLIC repository's Actions
+      # storage (R30 finding A1). The durable fix — pushing the archive straight into the
+      # private companion repository with a write-scoped deploy key — is tracked in O-34.
+      # 归档属不可公开材料，artifact 只是交给维护者的中转。`retention-days: 1` 是 GitHub 允许的
+      # 最短保留期，也是「它身处公开仓库的 Actions 存储」这一事实的全部缓解（R30 A1）。根治方案
+      # ——用写权限部署密钥直接把归档推进私有伴生仓库——登记在 O-34。
       - name: Upload the archive and the manifest
         if: env.HAS_ORIG == 'true'
         uses: actions/upload-artifact@v4
@@ -148,4 +153,5 @@ jobs:
           path: |
             .tmp/splat-SLPS_258.19.tar.zst
             toolchain/splat-snapshot.json
+          retention-days: 1
           if-no-files-found: error
