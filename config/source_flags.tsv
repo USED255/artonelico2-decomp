@@ -1584,3 +1584,6 @@ func_00340458	-O3
 func_001083e8	-Os
 func_00324de8	-O3
 func_00140974	-Os
+func_0029cd98	-Os
+baseelf_81	-O1
+func_0023631c	-Os

@@ -3393,3 +3393,6 @@ func_00340458    # llm_draft+permuter
 func_001083e8    # llm_draft+permuter
 func_00324de8    # llm_draft+permuter
 func_00140974    # llm_draft+permuter
+func_0029cd98    # llm_draft
+baseelf_81    # llm_draft
+func_0023631c    # llm_draft
