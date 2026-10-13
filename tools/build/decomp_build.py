@@ -46,7 +46,7 @@ Layout
                   flat. If not, the layout is repo.
 
 Exit codes: 0 success, 1 failed check, 2 missing input or missing tool, 3 usage error.
-The toolchain stays outside the workspace. See docs/kb/ENV.md. The script
+The toolchain stays outside the workspace. See docs/knowledge-base/ENV.md. The script
 `<root>/build.sh` finds as and ld. The objdiff-cli default is
 `~/eecc/objdiff-cli`. Set OBJDIFF to use another path.
 
@@ -93,11 +93,11 @@ import matched_ledger
 
 # --------------------------------------------------------------------------- #
 # Known targets (version -> expected values). An unknown target needs an
-# explicit --expect-sha1. The source of truth is docs/kb/facts.json. These
+# explicit --expect-sha1. The source of truth is docs/knowledge-base/facts.json. These
 # values are build defaults only.
 #
 # 已知目标（版本 -> 期望值）；未知目标必须用 --expect-sha1 显式给出。
-# 事实源是 docs/kb/facts.json，此处只做构建期默认值。
+# 事实源是 docs/knowledge-base/facts.json，此处只做构建期默认值。
 # --------------------------------------------------------------------------- #
 KNOWN_TARGETS = {
     "SLPS_258.19": {

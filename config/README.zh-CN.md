@@ -124,7 +124,7 @@ sha1 变红。项目已实测该负面对照。
 - CRI 中间件（ADXT 10.03、ADXRT 3100、ADXF 7.63，Build: Feb 9 2007）用
   `ee-gcc 2.96-ee-001003-1`。
 
-证据出处：私有报告 `docs/kb/reports/R17` §4.2。项目在 `recvx-decomp`（MIT）上实测：
+证据出处：私有报告 `docs/knowledge-base/reports/R17` §4.2。项目在 `recvx-decomp`（MIT）上实测：
 一份 CRI C 用 `ee-gcc 2.96 -O2 -G0` 编译后与日版逐字节一致。例：
 `AIFF_GetInfo`，908 B，两侧 sha1 都是 `4e205079...`。
 

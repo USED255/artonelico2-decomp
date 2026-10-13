@@ -142,7 +142,7 @@ This file states which compiler builds one source. This project is a
 - The CRI middleware (ADXT 10.03, ADXRT 3100, ADXF 7.63, Build: Feb 9 2007) uses
   `ee-gcc 2.96-ee-001003-1`.
 
-Evidence: private report `docs/kb/reports/R17` section 4.2. The project measured
+Evidence: private report `docs/knowledge-base/reports/R17` section 4.2. The project measured
 the result on `recvx-decomp` (MIT): a CRI C file built with
 `ee-gcc 2.96 -O2 -G0` agrees with the Japanese binary byte for byte. Example:
 `AIFF_GetInfo`, 908 bytes, sha1 `4e205079...` on both sides.
