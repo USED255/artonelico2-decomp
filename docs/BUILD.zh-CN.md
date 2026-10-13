@@ -90,9 +90,10 @@ make check                       # 仓库自检；不需要原版可执行文件
 不同、归档损坏、**成员内容**对不上）都打警告并回落真 splat；解包会先在暂存目录里校验，通过后
 才搬进检出。门禁从不依赖归档：混合载荷仍与零售载荷比对。
 
-打包 job（`.github/workflows/splat-snapshot.yml`）由维护者手动启动，把归档作为**本仓库的**
-Actions artifact 上传，并设 `retention-days: 1`：那是交给维护者的中转，不是发布；一天保留期就是
-全部缓解。根治方案是用写权限部署密钥把归档直接推进私有伴生仓库。
+打包 job（`.github/workflows/splat-snapshot.yml`）由维护者手动启动，跑在受保护的 `splat-snapshot`
+环境之后（需要一位 reviewer 批准），因为它要用写权限部署密钥。有该密钥时，job 把归档**直接推进私有
+伴生仓库**，归档因此不会进入本仓库的 Actions 存储；没有该密钥时回落到保留一天的中转 artifact。
+两种情况都由维护者在本仓库提交 `toolchain/splat-snapshot.json`。
 
 检查不过就**不产生**新的进度报告。因此公开的数字永远是**验证过的数字**。
 

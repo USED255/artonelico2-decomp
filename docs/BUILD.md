@@ -116,10 +116,12 @@ back to running splat, and the extraction is verified in a staging directory bef
 copied into the checkout. The gate never depends on the archive: the mixed payload is still
 compared against the retail payload.
 
-A maintainer starts the packing job (`.github/workflows/splat-snapshot.yml`). It uploads the
-archive as an Actions artifact of this repository with `retention-days: 1`: that is a handoff to
-the maintainer, not a publication, and one day is the whole mitigation. The durable fix is to
-push the archive straight into the private companion repository with a write-scoped deploy key.
+A maintainer starts the packing job (`.github/workflows/splat-snapshot.yml`). The job runs behind
+the protected `splat-snapshot` environment (a required reviewer approves the run) because it uses
+a write-scoped deploy key. With that key it pushes the archive straight into the private companion
+repository, so the archive never enters this repository's Actions storage. Without the key it falls
+back to a handoff artifact with `retention-days: 1`. Either way the maintainer commits
+`toolchain/splat-snapshot.json` in this repository.
 
 A failed check produces no new progress report. Therefore the public numbers are
 always verified numbers.

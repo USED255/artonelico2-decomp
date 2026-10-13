@@ -7,16 +7,19 @@
 # instead and can take the machine down (that happened on 2026-10-12). tools/ci/splat_snapshot.py
 # refuses to run without memory headroom, and this workflow is the sanctioned way to pack.
 #
-# This job never pushes anything. A maintainer starts it, downloads the `splat-snapshot`
-# artifact, pushes the archive to the private companion repository, and commits the manifest
-# (toolchain/splat-snapshot.json). See docs/BUILD.md section 4.
+# When the write-scoped deploy key is configured (the environment secret
+# ORIG_DEPLOY_KEY_WRITE on the protected `splat-snapshot` environment), the job pushes the archive
+# straight into the private companion repository, so it never enters this public repository's
+# Actions storage. Without that key it falls back to the handoff artifact with `retention-days: 1`.
+# Either way the maintainer commits `toolchain/splat-snapshot.json`. See docs/BUILD.md section 4.
 #
 # 为什么在 runner 上打包：`splat split` 在 4 vCPU runner 上约 150 s、峰值常驻内存约 1.3 GB；
 # 小机器上会换成换页，甚至把机器拖死（2026-10-12 发生过）。tools/ci/splat_snapshot.py 在没有
 # 内存余量时拒绝运行，本 workflow 是唯一被认可的打包路径。
 #
-# 本 job 不推送任何东西：维护者手动触发 → 下载 `splat-snapshot` artifact → 把归档推给私有伴生
-# 仓库 → 提交清单 toolchain/splat-snapshot.json。见 docs/BUILD.md 第 4 节。
+# 配置了写权限部署密钥时（受保护的 `splat-snapshot` 环境上的环境 secret ORIG_DEPLOY_KEY_WRITE），
+# 本 job 把归档**直接推进私有伴生仓库**，因此它不会出现在公开仓库的 Actions 存储里；没有该密钥时
+# 回落到保留一天的中转 artifact。两种情况都由维护者提交 `toolchain/splat-snapshot.json`。
 name: splat-snapshot
 
 on:
@@ -28,9 +31,16 @@ permissions:
 jobs:
   pack:
     runs-on: ubuntu-latest
+    # This workflow is manual-only, so a protected environment costs no automation time. It puts a
+    # human approval in front of the write-scoped deploy key (an environment secret) that the
+    # push step uses (R30 findings A1/A4).
+    # 本 workflow 只能手动触发 ⇒ 受保护环境不影响任何自动运行。它把推送步骤要用的写权限部署密钥
+    # （环境 secret）挡在人工批准之后（R30 A1/A4）。
+    environment: splat-snapshot
     timeout-minutes: 30
     env:
       HAS_ORIG: ${{ secrets.ORIG_DEPLOY_KEY != '' && vars.PRIVATE_ORIG_REPO != '' }}
+      HAS_WRITE: ${{ secrets.ORIG_DEPLOY_KEY_WRITE != '' }}
       PRIVATE_ORIG_REPO: ${{ vars.PRIVATE_ORIG_REPO }}
     steps:
       - name: Notice (no secret, so there is nothing to pack)
@@ -112,17 +122,61 @@ jobs:
             --remote-path toolchain/splat-SLPS_258.19.tar.zst \
             --scratch .tmp/splat-snapshot
 
-      - name: Show what to do with the artifacts
+      # The archive is material this project cannot publish, so it must not sit in this public
+      # repository's Actions storage. With the write key it goes straight into the private
+      # companion repository (R30 finding A1); without the key the job falls back to a one-day
+      # handoff artifact below.
+      # 归档属不可公开材料，不能留在公开仓库的 Actions 存储里。有写密钥时直接进私有伴生仓库（R30 A1）；
+      # 没有密钥则回落到下面那个只保留一天的中转 artifact。
+      - name: Checkout the private companion with the write key
+        if: env.HAS_ORIG == 'true' && env.HAS_WRITE == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.PRIVATE_ORIG_REPO }}
+          ssh-key: ${{ secrets.ORIG_DEPLOY_KEY_WRITE }}
+          path: .orig-write
+          fetch-depth: 1
+
+      - name: Push the archive into the private companion repository
+        if: env.HAS_ORIG == 'true' && env.HAS_WRITE == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p .orig-write/toolchain
+          cp .tmp/splat-SLPS_258.19.tar.zst .orig-write/toolchain/
+          cp toolchain/splat-snapshot.json .orig-write/toolchain/
+          cd .orig-write
+          git config user.name "splat-snapshot (CI)"
+          git config user.email "ci@users.noreply.github.com"
+          git add toolchain/splat-SLPS_258.19.tar.zst toolchain/splat-snapshot.json
+          if git diff --cached --quiet; then
+            echo "::notice::the companion repository already holds this archive; nothing to push"
+            exit 0
+          fi
+          git commit -q -m "toolchain: splat snapshot $(git -C .. rev-parse --short HEAD)"
+          git push
+
+      - name: Show what to do with the results
         if: env.HAS_ORIG == 'true'
         run: |
           set -euo pipefail
           {
             echo "## splat snapshot packed"
             echo
-            echo "1. Download the \`splat-snapshot\` artifact."
-            echo "2. Copy the archive into the private companion repository:"
-            echo "   \`toolchain/splat-SLPS_258.19.tar.zst\`"
-            echo "3. Commit \`toolchain/splat-snapshot.json\` in this repository."
+            if [ "${HAS_WRITE}" = "true" ]; then
+              echo "The archive went straight into the private companion repository at"
+              echo "\`toolchain/splat-SLPS_258.19.tar.zst\`. It never entered this repository's"
+              echo "Actions storage."
+              echo
+              echo "Next: commit \`toolchain/splat-snapshot.json\` in this repository (the"
+              echo "\`splat-snapshot\` artifact holds it)."
+            else
+              echo "No write key is configured, so the archive is offered as a one-day handoff."
+              echo
+              echo "1. Download the \`splat-snapshot-archive\` artifact (deleted after one day)."
+              echo "2. Copy the archive into the private companion repository:"
+              echo "   \`toolchain/splat-SLPS_258.19.tar.zst\`"
+              echo "3. Commit \`toolchain/splat-snapshot.json\` in this repository."
+            fi
             echo
             echo "sha256 of the archive:"
             echo
@@ -137,21 +191,24 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # The archive is material this project cannot publish, so the artifact is only a handoff
-      # to the maintainer. `retention-days: 1` is the shortest GitHub allows and is the whole
-      # mitigation for the fact that this artifact lives in a PUBLIC repository's Actions
-      # storage (R30 finding A1). The durable fix — pushing the archive straight into the
-      # private companion repository with a write-scoped deploy key — is tracked in O-34.
-      # 归档属不可公开材料，artifact 只是交给维护者的中转。`retention-days: 1` 是 GitHub 允许的
-      # 最短保留期，也是「它身处公开仓库的 Actions 存储」这一事实的全部缓解（R30 A1）。根治方案
-      # ——用写权限部署密钥直接把归档推进私有伴生仓库——登记在 O-34。
-      - name: Upload the archive and the manifest
+      # The manifest is public data (hashes and counts), so it travels as an ordinary artifact.
+      # 清单是公开数据（哈希与计数），按普通 artifact 传递。
+      - name: Upload the manifest
         if: env.HAS_ORIG == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: splat-snapshot
-          path: |
-            .tmp/splat-SLPS_258.19.tar.zst
-            toolchain/splat-snapshot.json
+          path: toolchain/splat-snapshot.json
+          if-no-files-found: error
+
+      # Fallback only: no write key means the archive still needs a handoff path. `retention-days: 1`
+      # is the shortest GitHub allows (R30 finding A1).
+      # 仅回落路径：没有写密钥时归档仍需要一个中转。`retention-days: 1` 是 GitHub 允许的最短保留期（R30 A1）。
+      - name: Upload the archive as a one-day handoff (only without the write key)
+        if: env.HAS_ORIG == 'true' && env.HAS_WRITE != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: splat-snapshot-archive
+          path: .tmp/splat-SLPS_258.19.tar.zst
           retention-days: 1
           if-no-files-found: error
