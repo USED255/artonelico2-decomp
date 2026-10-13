@@ -35,4 +35,7 @@ We treat that report as a blocker. We remove the material before any other work.
 - This policy applies to this repository.
 - Material that we cannot publish stays in a private companion repository. It
   holds the retail executable, the disassembly, and the Sony toolchain.
+- CI never commits restricted material. The only job that stages it is the manual
+  `splat-snapshot` packing job; its handoff archive is uploaded as an Actions artifact of this
+  repository with `retention-days: 1` and is never a publication.
 - You must own the game. This repository gives you no game data.

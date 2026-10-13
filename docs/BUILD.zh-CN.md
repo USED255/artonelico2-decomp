@@ -51,12 +51,18 @@ make check                       # 仓库自检；不需要原版可执行文件
 按符号表字节数打印静态上界。已发布数字见
 [progress/SLPS_258.19_report.json](../progress/SLPS_258.19_report.json)。
 
+`make report` 把结果写到 `build/`：`build/SLPS_258.19_report.json` 与
+`build/report_provenance.json`（记录了这次运行**量了什么**：构建断言的载荷 sha1、提交号、
+工作树是否脏、有多少 C 单元不足 100%）。它**不写** `progress/`：那棵树只由
+`tools/maintainer/publish_report.py` 在校验 provenance 之后写入。该目标在任一 C 单元不足 100%
+时失败（`--require-c100`）；要探索性报告用 `REPORT_FLAGS=` 覆盖。
+
 ## 4. CI
 
 | workflow | 何时跑 | 做什么 |
 | --- | --- | --- |
-| `validate` | 默认分支 push、每个 PR、手动触发 | push 校验**发布记录**（`PUBLISHED.json`）、禁止材料、报告 schema 与基线；PR 允许任何改动，**只读** `progress/**` 与 `PUBLISHED.json`。本仓库自己的分支还可以重命名或删除文件；外部 fork 的 PR 仍只能新增或修改。见 [CONTRIBUTING.zh-CN.md](../CONTRIBUTING.zh-CN.md) |
-| `matching-gate` | 默认分支 push、同仓库 PR、手动触发 | 从私有伴生仓库取原版可执行文件与工具链，跑 `make build` / `make delta` / `make report`；**全部通过才发布 artifact** |
+| `validate` | 默认分支 push、每个 PR、手动触发 | push 校验**发布记录**（`PUBLISHED.json`）、禁止材料（含「名字看不出类别」的兜底尺寸线）、报告 schema 与基线；PR 允许任何改动，**只读** `progress/**` 与 `PUBLISHED.json`，且新增/修改的路径必须是 1 MiB 以内的普通 UTF-8 文本文件——符号链接、或工作树里不存在的路径一律拒绝。本仓库自己的分支还可以重命名或删除文件；外部 fork 的 PR 仍只能新增或修改。见 [CONTRIBUTING.zh-CN.md](../CONTRIBUTING.zh-CN.md) |
+| `matching-gate` | 默认分支 push、同仓库 PR、手动触发 | 从私有伴生仓库取原版可执行文件与工具链，跑 `make build` / `make delta` / `make report`；**全部通过才发布两个 artifact**：`SLPS_258.19_report`（报告）与 `SLPS_258.19_report_provenance`（证明量了什么的记录）。带 PR 号的手动运行会先核对 PR 来自本仓库**再**做任何 checkout，因此 fork 的脚本永远不会与私有材料同处一个 job |
 
 `matching-gate` 有三种模式，由 [tools/ci/classify_change.py](../tools/ci/classify_change.py)
 按改动集合判定，且**默认拒绝**：出错、任何 push、任何手动运行都落到 `full`。
@@ -81,7 +87,12 @@ make check                       # 仓库自检；不需要原版可执行文件
 维护者若已用 [tools/ci/splat_snapshot.py](../tools/ci/splat_snapshot.py) 把 `splat split`
 的输出打包，门禁会直接还原归档而不再跑 splat。归档放在私有伴生仓库；本仓库只带
 `toolchain/splat-snapshot.json`（哈希与计数，不含内容）。任何不匹配（输入过期、原版可执行文件
-不同、归档损坏）都打警告并回落真 splat —— 门禁从不依赖归档：混合载荷仍与零售载荷比对。
+不同、归档损坏、**成员内容**对不上）都打警告并回落真 splat；解包会先在暂存目录里校验，通过后
+才搬进检出。门禁从不依赖归档：混合载荷仍与零售载荷比对。
+
+打包 job（`.github/workflows/splat-snapshot.yml`）由维护者手动启动，把归档作为**本仓库的**
+Actions artifact 上传，并设 `retention-days: 1`：那是交给维护者的中转，不是发布；一天保留期就是
+全部缓解。根治方案是用写权限部署密钥把归档直接推进私有伴生仓库。
 
 检查不过就**不产生**新的进度报告。因此公开的数字永远是**验证过的数字**。
 
@@ -89,15 +100,21 @@ make check                       # 仓库自检；不需要原版可执行文件
 
 ## 5. 发布报告
 
-默认分支上 `matching-gate` 跑绿之后，下载报告 artifact，再写进本仓库：
+默认分支上 `matching-gate` 跑绿之后，下载**两个** artifact，再把报告写进本仓库：
 
 ```bash
 gh run download <run-id> -R <owner>/<repo> -n SLPS_258.19_report -D .tmp/report
-python3 tools/maintainer/publish_report.py --report .tmp/report/SLPS_258.19_report.json
+gh run download <run-id> -R <owner>/<repo> -n SLPS_258.19_report_provenance -D .tmp/provenance
+python3 tools/maintainer/publish_report.py \
+  --report .tmp/report/SLPS_258.19_report.json \
+  --provenance .tmp/provenance/report_provenance.json
 ```
 
-该工具会写入 `progress/SLPS_258.19_report.json` 并更新 `PUBLISHED.json`，同时与基线比对数字。
-用 `--accept-baseline` 把新报告接受为新基线；改过 `toolchain.lock.json` 后用 `--refresh`。
+只有 provenance 记录表明「载荷 sha1 实测通过、全部 C 单元 100%、工作树干净、不是 `--limit`
+冒烟」时才会发布。随后它写入 `progress/SLPS_258.19_report.json` 并更新 `PUBLISHED.json`，同时与
+基线比对数字（**含分母**）。用 `--force --reason "..."` 越过门禁，理由会记进 `PUBLISHED.json`。
+用 `--freeze-baseline` 把 provenance 记录变成新基线 —— 这是**单独且显式**的决定，因为
+`progress/baseline.json` 是冻结参照。改过 `toolchain.lock.json` 后用 `--refresh`。
 
 ## 6. 排障
 

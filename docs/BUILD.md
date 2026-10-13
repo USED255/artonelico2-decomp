@@ -67,12 +67,19 @@ make check                       # repository checks. The retail executable is n
 It prints the static upper bound by symbol-table bytes. The published numbers are
 in [progress/SLPS_258.19_report.json](../progress/SLPS_258.19_report.json).
 
+`make report` writes its output to `build/`: `build/SLPS_258.19_report.json` plus
+`build/report_provenance.json`, the record of what the run measured (the payload sha1 the build
+asserted, the commit, the dirty flag, and how many C units are below 100 percent). It never
+writes into `progress/`: that tree is written only by `tools/maintainer/publish_report.py`, after
+that tool verified the provenance. The target also fails when any C unit is below 100 percent
+(`--require-c100`); pass `REPORT_FLAGS=` to get an exploratory report instead.
+
 ## 4. CI
 
 | Workflow | When it runs | What it does |
 | --- | --- | --- |
-| `validate` | Each push to `main`, each pull request, and a manual start | On a push it checks the publication record (`PUBLISHED.json`), the forbidden material, the report schema, and the baseline. On a pull request it allows any change **except** the publication content (`progress/**` and `PUBLISHED.json`). A branch of this repository may also rename or delete a file. A pull request from an external fork must still only add or change files. Read [CONTRIBUTING.md](../CONTRIBUTING.md). |
-| `matching-gate` | A push to the default branch, an internal pull request, or a manual start | Gets the retail executable and the toolchain from a private companion repository. Then it runs `make build`, `make delta`, and `make report`. It publishes the artifact **only** when all checks pass. |
+| `validate` | Each push to `main`, each pull request, and a manual start | On a push it checks the publication record (`PUBLISHED.json`), the forbidden material (including a size backstop for a restricted file whose name carries no telling extension), the report schema, and the baseline. On a pull request it allows any change **except** the publication content (`progress/**` and `PUBLISHED.json`); an added or changed path must be a regular UTF-8 text file below 1 MiB, so a symbolic link or a path that the working tree does not hold is refused. A branch of this repository may also rename or delete a file. A pull request from an external fork must still only add or change files. Read [CONTRIBUTING.md](../CONTRIBUTING.md). |
+| `matching-gate` | A push to the default branch, an internal pull request, or a manual start | Gets the retail executable and the toolchain from a private companion repository. Then it runs `make build`, `make delta`, and `make report`. It publishes two artifacts **only** when all checks pass: `SLPS_258.19_report` (the report) and `SLPS_258.19_report_provenance` (the record that proves what was measured). A manual run with a pull request number verifies that the pull request comes from this repository before any checkout, so a fork's scripts never run next to the private material. |
 
 `matching-gate` runs in one of three modes. [tools/ci/classify_change.py](../tools/ci/classify_change.py)
 picks the mode from the change set, and it denies by default: an error, a push, and a manual
@@ -104,8 +111,15 @@ The gate also restores the packaged `splat split` output when the maintainer has
 with [tools/ci/splat_snapshot.py](../tools/ci/splat_snapshot.py). The archive lives in the
 private companion repository; this repository only carries `toolchain/splat-snapshot.json`,
 which holds hashes and counts, never content. Any mismatch (a stale input, a different retail
-executable, a corrupt archive) prints a warning and falls back to running splat, so the gate
-never depends on the archive: the mixed payload is still compared against the retail payload.
+executable, a corrupt archive, a member whose content does not match) prints a warning and falls
+back to running splat, and the extraction is verified in a staging directory before anything is
+copied into the checkout. The gate never depends on the archive: the mixed payload is still
+compared against the retail payload.
+
+A maintainer starts the packing job (`.github/workflows/splat-snapshot.yml`). It uploads the
+archive as an Actions artifact of this repository with `retention-days: 1`: that is a handoff to
+the maintainer, not a publication, and one day is the whole mitigation. The durable fix is to
+push the archive straight into the private companion repository with a write-scoped deploy key.
 
 A failed check produces no new progress report. Therefore the public numbers are
 always verified numbers.
@@ -114,17 +128,24 @@ Do you want to contribute a matched function? Read [CONTRIBUTING.md](../CONTRIBU
 
 ## 5. Publish the report
 
-After a green `matching-gate` run on the default branch, download the report
-artifact. Then write it into this repository:
+After a green `matching-gate` run on the default branch, download both artifacts. Then write
+the report into this repository:
 
 ```bash
 gh run download <run-id> -R <owner>/<repo> -n SLPS_258.19_report -D .tmp/report
-python3 tools/maintainer/publish_report.py --report .tmp/report/SLPS_258.19_report.json
+gh run download <run-id> -R <owner>/<repo> -n SLPS_258.19_report_provenance -D .tmp/provenance
+python3 tools/maintainer/publish_report.py \
+  --report .tmp/report/SLPS_258.19_report.json \
+  --provenance .tmp/provenance/report_provenance.json
 ```
 
-The tool writes `progress/SLPS_258.19_report.json` and updates `PUBLISHED.json`.
-It also checks the numbers against the baseline. Use `--accept-baseline` to make
-the new report the baseline. Use `--refresh` after a change to
+The tool refuses to publish unless the provenance record says the payload sha1 was measured and
+matches, every C unit reached 100 percent, the tree was clean, and the run was not a `--limit`
+smoke test. It then writes `progress/SLPS_258.19_report.json` and updates `PUBLISHED.json`, and it
+checks the numbers (including the denominators) against the baseline. Use `--force --reason "..."`
+to override the gate; the reason is recorded in `PUBLISHED.json`. Use `--freeze-baseline` to make
+the provenance record the new baseline; that is a separate, explicit decision, because
+`progress/baseline.json` is the frozen reference. Use `--refresh` after a change to
 `toolchain.lock.json`.
 
 ## 6. Troubleshooting
