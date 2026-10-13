@@ -43,9 +43,9 @@ cannot run a Maintainer tool.
 | `tools/build/decomp_build.py` | The build driver that splits the payload, assembles, links, and verifies the result. | Contributor needed |
 | `tools/build/gen_objdiff_full.py` | Generates the full objdiff unit list for the progress report. | Contributor needed |
 | `tools/build/matched_ledger.py` | Parses the match ledger for the report tool and the delta check. | Contributor needed |
-| `tools/check/check_public_repo.py` | Checks the publication record, the forbidden material (denied classes plus a size backstop), and the report rules. Every git call uses `-z`, and contribution mode refuses a path that is not a regular file. | Contributor needed |
+| `tools/check/check_public_repo.py` | Checks the publication record, the forbidden material (denied classes plus a size backstop), and the report rules. Every git call uses `-z`, and contribution mode refuses a path that is not a regular file. `--allow-publication` admits a maintainer publication pull request (`progress/**` and `PUBLISHED.json` only) after the publication checks. | Contributor needed |
 | `tools/check/test_matched_ledger.py` | Tests the match ledger parser and the delta check. | Contributor needed |
-| `tools/check/test_public_repo.py` | Tests the denied-material patterns, the size backstop, the git `-z` path handling, and the contribution fail-closed rules. | Contributor needed |
+| `tools/check/test_public_repo.py` | Tests the denied-material patterns, the size backstop, the git `-z` path handling, the contribution fail-closed rules, and publication mode. | Contributor needed |
 | `tools/check/test_at2_io.py` | Tests the shared name/path/atomic-write helpers. | Contributor needed |
 | `tools/check/test_tool_paths.py` | Tests that each tool resolves the project paths. | Contributor needed |
 | `tools/check/test_classify_change.py` | Tests the CI mode classifier. | Contributor needed |

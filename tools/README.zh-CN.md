@@ -39,9 +39,9 @@ make check
 | `tools/build/decomp_build.py` | 构建驱动：切分载荷、汇编、链接并校验结果 | Contributor 需要 |
 | `tools/build/gen_objdiff_full.py` | 生成进度报告用的全量 objdiff unit 清单 | Contributor 需要 |
 | `tools/build/matched_ledger.py` | 解析匹配台账，供报告工具与增量检查使用 | Contributor 需要 |
-| `tools/check/check_public_repo.py` | 校验发布记录、禁止材料（禁材类别 + 尺寸兜底）与报告规则；所有 git 调用用 `-z`，贡献模式拒绝「不是普通文件」的路径 | Contributor 需要 |
+| `tools/check/check_public_repo.py` | 校验发布记录、禁止材料（禁材类别 + 尺寸兜底）与报告规则；所有 git 调用用 `-z`，贡献模式拒绝「不是普通文件」的路径；`--allow-publication` 在通过发布检查后接受维护者发布 PR（只含 `progress/**` 与 `PUBLISHED.json`） | Contributor 需要 |
 | `tools/check/test_matched_ledger.py` | 测试台账解析与增量检查 | Contributor 需要 |
-| `tools/check/test_public_repo.py` | 测试禁材模式、尺寸兜底、git `-z` 路径处理与贡献模式的 fail-closed 规则 | Contributor 需要 |
+| `tools/check/test_public_repo.py` | 测试禁材模式、尺寸兜底、git `-z` 路径处理、贡献模式 fail-closed 规则与发布模式 | Contributor 需要 |
 | `tools/check/test_at2_io.py` | 测试共用的名字/路径/原子写助手 | Contributor 需要 |
 | `tools/check/test_tool_paths.py` | 测试每个工具都能正确解析项目路径 | Contributor 需要 |
 | `tools/check/test_classify_change.py` | 测试 CI 模式分类器 | Contributor 需要 |

@@ -150,6 +150,20 @@ the provenance record the new baseline; that is a separate, explicit decision, b
 `progress/baseline.json` is the frozen reference. Use `--refresh` after a change to
 `toolchain.lock.json`.
 
+`main` is protected by a repository ruleset, so a maintainer lands the result through a pull
+request too:
+
+```bash
+git switch -c publish/<run-id>
+git commit -am "publish: <the verified run>"
+git push -u origin publish/<run-id>
+gh pr create --base main --fill
+```
+
+`validate` recognises a maintainer publication pull request: it must change only `progress/**` and
+`PUBLISHED.json`, and it must pass the publication checks (record hashes, `payload_verified`, a
+provenance-carrying baseline bound to the report, no regression).
+
 ## 6. Troubleshooting
 
 - **`payload sha1 mismatch`** — one replaced source does not agree with the
