@@ -48,7 +48,6 @@ import m2c_draft as M2C  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "project"))
 from at2_paths import (  # noqa: E402  layout-independent path resolution (see the top of at2_paths.py)
     PROJECT_ROOT as ROOT,
-    PRIVATE_ROOT,
     EVIDENCE_ROOT,
     WORK_ROOT,
     MATCHED_LIST,
@@ -60,14 +59,13 @@ from at2_paths import (  # noqa: E402  layout-independent path resolution (see t
     AS,
     OBJDIFF,
 )
+import at2_io  # noqa: E402  safe names / guarded JSON / atomic writes
 
-REPO = PRIVATE_ROOT or ROOT
 OUT = WORK_ROOT / "screen"
 PREAMBLE = '.include "macro.inc"\n\n.set noat\n.set noreorder\n\n.section .text, "ax"\n'
 DEFAULT_FLAGS = ("Os,O2,O1,O3,O2 -G8,O1 -G8,O3 -G8,Os -G8,O2 -fno-common,O3 -fno-common,"
                  "G0,G4,O2 -fomit-frame-pointer,O1 -fomit-frame-pointer,O2 -fno-builtin,"
                  "O2 -fno-schedule-insns2,Os -fno-schedule-insns2")
-WORKQUEUE = REPO / "out" / "evidence" / "jp_m3_workqueue.tsv"
 MATCHED = ROOT / "config" / "matched_symbols.txt"
 
 
@@ -144,7 +142,10 @@ def main() -> int:
         if not f.is_file():
             print("no screening result yet")
             return 0
-        data = json.loads(f.read_text(encoding="utf-8"))
+        data = at2_io.guarded_json_load(f)
+        if data is None:
+            print("screening result is missing or unreadable; treating it as empty")
+            return 0
         best = data.get("best", {})
         perfect = [s for s, v in best.items() if v.get("match") == 100.0]
         print(f"historical best: covers {len(best)} candidates, of which 100% = {len(perfect)}")
@@ -308,9 +309,8 @@ def main() -> int:
                                     cwd=str(ROOT), capture_output=True, text=True)
                 if rr.returncode:
                     continue
-                try:
-                    data = json.loads(dj.read_text(encoding="utf-8"))
-                except Exception:
+                data = at2_io.guarded_json_load(dj)
+                if data is None:
                     continue
                 per = {s["name"]: s.get("match_percent") for s in data["left"]["symbols"]
                        if s.get("kind") == "SYMBOL_FUNCTION"}
@@ -325,10 +325,8 @@ def main() -> int:
     sj = OUT / "screen.json"
     prev_all = {}
     if sj.is_file():
-        try:
-            prev_all = json.loads(sj.read_text(encoding="utf-8")).get("best", {})
-        except Exception:
-            prev_all = {}
+        prev = at2_io.guarded_json_load(sj)
+        prev_all = prev.get("best", {}) if isinstance(prev, dict) else {}
     for s, v in best.items():
         if s not in prev_all or v["match"] > prev_all[s]["match"]:
             prev_all[s] = v

@@ -68,6 +68,8 @@ import time
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "build"))
 import matched_ledger
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "project"))
+import at2_io
 
 REPO = Path(__file__).resolve().parents[2]          # at2/
 DEFAULT_AS = os.environ.get("MIPS_AS", str(Path.home() / "eecc" / "ps2binutils" / "mips-ps2-decompals-as"))
@@ -119,6 +121,71 @@ RE_INSTR = re.compile(r"^\s*/\* [0-9A-Fa-f]+ [0-9A-Fa-f]+ [0-9A-Fa-f]+ \*/")
 RE_INCBIN = re.compile(r'^\s*\.incbin\s+"([^"]+)"')
 
 AS_FLAGS = ["-EL", "-march=r5900"]
+
+
+def sha1_file(path: Path) -> str:
+    """Streaming sha1 of a file (the payload is 9.3 MB; do not read it into memory twice).
+
+    流式 sha1（载荷 9.3 MB，不要整份读进内存两次）。
+    """
+    h = hashlib.sha1()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+_INCLUDE_DIGEST: dict[str, str] = {}
+
+
+def include_digest(include_dir: Path) -> str:
+    """A digest of `include/**` (path + content). Computed once per process and cached.
+
+    The per-object assembly cache must notice a regenerated `include/macro.inc`, so the header
+    content is part of the cache key (R30 finding B6). The tree is hashed once: the assembler is
+    called for every symbol, and re-hashing the tree each time would dominate the run.
+
+    `include/**`（路径 + 内容）摘要，每进程只算一次并缓存。逐对象汇编缓存必须能察觉
+    `include/macro.inc` 被重新生成，因此头文件内容进缓存键（R30 B6）。整棵树只哈希一次：
+    每个符号都会调汇编器，逐次重算会变成主要开销。
+    """
+    key = str(include_dir)
+    cached = _INCLUDE_DIGEST.get(key)
+    if cached is not None:
+        return cached
+    lines = []
+    if include_dir.is_dir():
+        for p in sorted(include_dir.rglob("*")):
+            if p.is_file():
+                try:
+                    lines.append(f"{p.relative_to(include_dir).as_posix()}\t{sha1_file(p)}")
+                except OSError:
+                    lines.append(f"{p.relative_to(include_dir).as_posix()}\t?")
+    digest = hashlib.sha1(("\n".join(lines) + "\n").encode("utf-8")).hexdigest()
+    _INCLUDE_DIGEST[key] = digest
+    return digest
+
+
+def payload_check(project: Path, lock: dict) -> dict:
+    """Measure the payload the build produced and compare it with `toolchain.lock.json`.
+
+    The provenance record must not *claim* a payload check: this function is the only writer of
+    the `payload_check*` fields, and it reads the real files. `build.sh` writes the baseline
+    payload, `build_mixed.sh` the mixed one; both must equal the expected sha1.
+
+    provenance 不得只是「声称」做过载荷校验：`payload_check*` 字段只有这里会写，且读的是真文件。
+    `build.sh` 写基线载荷、`build_mixed.sh` 写混合载荷，两者都必须等于期望 sha1。
+    """
+    expected = (lock.get("game") or {}).get("payload_sha1")
+    out = {"expected_sha1": expected, "baseline_sha1": None, "mixed_sha1": None,
+           "baseline_path": "build/SLPS_258.19.bin", "mixed_path": "build/mixed/SLPS_258.19.bin",
+           "ok": False}
+    for key, rel in (("baseline_sha1", out["baseline_path"]), ("mixed_sha1", out["mixed_path"])):
+        p = project / rel
+        if p.is_file():
+            out[key] = sha1_file(p)
+    out["ok"] = bool(expected) and out["baseline_sha1"] == expected and out["mixed_sha1"] == expected
+    return out
 
 
 def parse_symbol_addrs(path: Path) -> list[str]:
@@ -223,18 +290,35 @@ def write_unit_source(path: Path, text: str) -> bool:
 
 
 def assemble_one(as_bin: str, include_dir: Path, cwd: Path, src_s: Path, out_o: Path) -> str | None:
-    """Assemble one single-function .s. Skip the file when the .o is not older than the .s. Return an error message or None.
+    """Assemble one single-function .s. Skip the file only when the whole cache key matches.
 
-    汇编一个单函数 .s；已存在且不比 .s 旧则跳过。返回错误信息或 None。
+    The key covers the source bytes, the assembler version, AS_FLAGS and the `include/**` digest.
+    A bare mtime comparison missed a regenerated `macro.inc` and a new AS_FLAGS value, so the
+    report could be measured from stale objects while it recorded the current tools (R30 B6).
+
+    汇编一个单函数 .s；只有缓存键整体匹配才跳过。键覆盖源字节、汇编器版本、AS_FLAGS 与
+    `include/**` 摘要。只比 mtime 会漏掉重生成的 `macro.inc` 与新 AS_FLAGS 值，报告就可能
+    用陈旧对象量出数字，却记录了当前工具（R30 B6）。
     """
-    if out_o.exists() and out_o.stat().st_mtime >= src_s.stat().st_mtime:
-        return None
+    stamp = out_o.with_suffix(".stamp")
+    want = "|".join((sha1_file(src_s), tool_version(as_bin), " ".join(AS_FLAGS),
+                     include_digest(include_dir)))
+    if out_o.exists() and stamp.is_file():
+        try:
+            if stamp.read_text(encoding="utf-8") == want:
+                return None
+        except OSError:
+            pass
     proc = subprocess.run(
         [as_bin, *AS_FLAGS, "-I", str(include_dir), "-o", str(out_o), str(src_s)],
         cwd=str(cwd), capture_output=True, text=True,
     )
     if proc.returncode != 0:
         return f"{src_s.name}: {proc.stderr.strip()[:400]}"
+    try:
+        stamp.write_text(want, encoding="utf-8")
+    except OSError:
+        pass
     return None
 
 
@@ -243,13 +327,25 @@ def rel(path: Path, base: Path) -> str:
 
 
 def git_head(repo: Path) -> tuple[str, str]:
+    """Return (HEAD, the working-tree status of TRACKED files).
+
+    `--untracked-files=no` matters: a build writes `build/`, `asm/`, `orig/`, `objdiff-cli` and
+    `SLPS_258.19.rom` as untracked paths, so a plain `status --porcelain` marked every CI run as
+    dirty and the publish gate would have refused every verified report (measured on PR #232:
+    source_dirty=true on a clean checkout). Only a modification of a tracked file is dirty.
+
+    返回 (HEAD, **tracked** 文件的工作树状态)。`--untracked-files=no` 很关键：构建会写出
+    `build/`、`asm/`、`orig/`、`objdiff-cli`、`SLPS_258.19.rom` 等未跟踪路径，普通
+    `status --porcelain` 会把每次 CI 运行都标成 dirty，发布门就会拒绝**每一份**已验证报告
+    （PR #232 实测：干净检出上 source_dirty=true）。只有 tracked 文件被改动才算 dirty。
+    """
     try:
         head = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"],
                               capture_output=True, text=True, check=True).stdout.strip()
     except Exception:
         head = "unknown"
     try:
-        st = subprocess.run(["git", "-C", str(repo), "status", "--porcelain"],
+        st = subprocess.run(["git", "-C", str(repo), "status", "--porcelain", "--untracked-files=no"],
                             capture_output=True, text=True, check=True).stdout
     except Exception:
         st = ""
@@ -280,6 +376,8 @@ def main() -> int:
     ap.add_argument("--baseline-out", default=None, help="Write the measures to a baseline JSON file")
     ap.add_argument("--public-dir", default=None, help="Also copy the report to <dir>/SLPS_258.19_report.json")
     ap.add_argument("--limit", type=int, default=0, help="Process the first N symbols only (smoke test)")
+    ap.add_argument("--require-c100", action="store_true",
+                    help="Fail (exit 1) when any C unit is below 100 percent; CI uses this so a partial run cannot be mistaken for a publishable report")
     ap.add_argument("--universe", choices=["symbol_addrs", "all"], default="symbol_addrs",
                     help="Unit set: symbol_addrs (default, the work-order rule) or all (this set adds the extra glabels that splat finds)")
     ap.add_argument("--no-run", action="store_true", help="Write objdiff.json only; do not call objdiff-cli")
@@ -300,6 +398,10 @@ def main() -> int:
     report_out = Path(args.report_out).resolve() if args.report_out else project / "build" / "report_function.json"
     out_dir.mkdir(parents=True, exist_ok=True)
     units_dir.mkdir(parents=True, exist_ok=True)
+    # The provenance record must measure, not claim: the lock file gives the expected payload
+    # sha1 and `payload_check()` reads the payloads the build really wrote.
+    # provenance 必须「实测」而不是「声称」：锁文件给期望载荷 sha1，payload_check() 读构建真正写出的载荷。
+    lock = at2_io.guarded_json_load(project / "toolchain.lock.json") or {}
 
     sa_syms = parse_symbol_addrs(project / "config" / "symbol_addrs.txt")
     print(f"[1/5] symbol_addrs functions: {len(sa_syms)}")
@@ -328,20 +430,40 @@ def main() -> int:
     extra = sorted(set(sym_body) - set(sa_syms))
     extra_code_bytes = 0
     extra_data_bytes = 0
+    unconfined_incbin: list[str] = []
     for e in extra:
         for line in sym_body[e]:
             if RE_INSTR.match(line):
                 extra_code_bytes += 4
             m = RE_INCBIN.match(line)
             if m:
-                asset = project / m.group(1)
-                if asset.is_file():
-                    extra_data_bytes += asset.stat().st_size
+                # The path comes from the asm tree, so it is repo-derived input, not a constant:
+                # resolve it and require it to stay inside the project (R30 finding B5).
+                # 路径来自 asm 树，属仓库派生输入而非常量：解析后必须仍在项目内（R30 B5）。
+                cand = (project / m.group(1)).resolve()
+                if cand != project and project not in cand.parents:
+                    unconfined_incbin.append(m.group(1))
+                    continue
+                if cand.is_file():
+                    extra_data_bytes += cand.stat().st_size
+    if unconfined_incbin:
+        print(f"WARNING: {len(unconfined_incbin)} .incbin path(s) escape the project root and count "
+              f"as 0 B: " + ", ".join(sorted(set(unconfined_incbin))[:3]))
     extra_bytes = extra_code_bytes + extra_data_bytes
 
     syms = sa_syms if args.universe == "symbol_addrs" else sorted(sym_body)
     if args.limit:
         syms = syms[: args.limit]
+    # Every unit name becomes a path (`units_dir/<sym>.s`) and a key in the report. A name that
+    # is not a plain path component would escape the units directory, and skipping it silently
+    # would shrink the published denominator. Refuse instead (R30 finding B5).
+    # 每个 unit 名都会变成路径（`units_dir/<sym>.s`）与报告里的键。不是普通路径分量的名字会逃出
+    # units 目录；静默跳过又会缩小已发布的分母。因此直接拒绝（R30 B5）。
+    bad_names = [s for s in syms if not at2_io.symbol_ok(s)]
+    if bad_names:
+        print(f"FAIL: the unit set holds {len(bad_names)} name(s) that are not safe path "
+              f"components (for example {bad_names[:5]})", file=sys.stderr)
+        return 2
     if args.universe != "symbol_addrs":
         print(f"      universe={args.universe}: units={len(syms)} (includes {len(extra)} extra glabels)")
 
@@ -380,6 +502,16 @@ def main() -> int:
 
     # ---- assemble objdiff.json ----
     matched = parse_matched(project / "config" / "matched_symbols.txt")
+    # The source basename from the ledger becomes `build/mixed/obj/<src>.o` and a metadata path.
+    # A name that is not a plain path component is refused, not skipped: skipping would shrink
+    # the denominator silently (R30 finding B5).
+    # 台账里的源基名会变成 `build/mixed/obj/<src>.o` 与 metadata 路径。不是普通路径分量的名字一律
+    # 拒绝而不是跳过：跳过会静默缩小分母（R30 B5）。
+    bad_srcs = sorted({src for src, _tag in matched.values() if not at2_io.symbol_ok(src)})
+    if bad_srcs:
+        print(f"FAIL: the ledger holds {len(bad_srcs)} source basename(s) that are not safe path "
+              f"components (for example {bad_srcs[:5]})", file=sys.stderr)
+        return 2
     cc_map = parse_kv_tsv(project / args.cc_map)
     extra_flags = parse_kv_tsv(project / args.flags_file)
     scratch_stats = {"game": 0, "cri": 0}
@@ -490,7 +622,18 @@ def main() -> int:
             print(f"       WARNING: {len(bad)} C units are below 100 percent:")
             for name, mcp, ms in bad[:20]:
                 print(f"         {name}: {mcp:.4f}%  {ms}")
+        if bad and args.require_c100:
+            print(f"FAIL: {len(bad)} C unit(s) are below 100 percent and --require-c100 is set; "
+                  f"a partial report is not publishable.", file=sys.stderr)
+            return 1
 
+        # Measured, not claimed: read the payloads the build wrote and compare them with the lock.
+        # 实测而非声称：读构建写出的载荷并与锁文件比对。
+        payload = payload_check(project, lock)
+        if not payload["ok"]:
+            print(f"       WARNING: the payload check did not pass "
+                  f"(baseline={payload['baseline_sha1']} mixed={payload['mixed_sha1']} "
+                  f"expected={payload['expected_sha1']}); the provenance records ok=false")
         head, dirty = git_head(REPO)
         baseline = {
             "schema": "at2-progress-baseline/1",
@@ -498,7 +641,10 @@ def main() -> int:
             "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
             "source_commit": head,
             "source_dirty": bool(dirty.strip()),
-            "payload_check_sha1": "7cc42d275750600d1f232b2632447f77205f3fc0",
+            "payload_check_sha1": payload["mixed_sha1"],
+            "payload_check": payload,
+            "require_c100": bool(args.require_c100),
+            "limit": int(args.limit),
             "report_sha256": hashlib.sha256(report_out.read_bytes()).hexdigest(),
             "measures": m,
             "categories": {c["id"]: c["measures"] for c in data.get("categories", [])},
@@ -549,18 +695,40 @@ def main() -> int:
                 "objdiff-cli": tool_version(cli),
                 "mips-ps2-decompals-as": tool_version(args.as_bin),
             },
+            # The runner identity, when the report is produced in CI. It makes the provenance
+            # record traceable to the run that measured it.
+            # CI 里产出报告时带上 runner 身份，使 provenance 可追溯到那一次运行。
+            "runner": {k.lower(): os.environ[k] for k in
+                       ("GITHUB_RUN_ID", "GITHUB_RUN_URL", "GITHUB_SHA") if os.environ.get(k)},
             "generator": "tools/report/gen_function_report.py",
         }
         if args.baseline_out:
             bp = Path(args.baseline_out)
-            bp.parent.mkdir(parents=True, exist_ok=True)
-            bp.write_text(json.dumps(baseline, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+            at2_io.atomic_write_text(bp, json.dumps(baseline, indent=1, ensure_ascii=False) + "\n")
             print(f"       baseline written {bp}")
         if args.public_dir:
+            # `--public-dir` writes into the published tree, so it refuses anything that is not a
+            # full verified run (R30 finding D2). `publish_report.py` applies the same gate plus
+            # its own provenance check.
+            # `--public-dir` 会写进已发布目录，因此拒绝任何「非完整已验证」的运行（R30 D2）。
+            # publish_report.py 施加同样的门，另有它自己的 provenance 校验。
+            problems = []
+            if bad:
+                problems.append(f"{len(bad)} C unit(s) are below 100 percent")
+            if args.limit:
+                problems.append(f"--limit {args.limit} was used (a smoke test is not publishable)")
+            if baseline.get("source_dirty"):
+                problems.append("the source tree is dirty")
+            if not payload.get("ok"):
+                problems.append("the payload check did not pass")
+            if not args.require_c100:
+                problems.append("--require-c100 was not set")
+            if problems:
+                print("FAIL: --public-dir refused: " + "; ".join(problems), file=sys.stderr)
+                return 1
             pd = Path(args.public_dir)
-            pd.mkdir(parents=True, exist_ok=True)
             dst = pd / "SLPS_258.19_report.json"
-            shutil.copyfile(report_out, dst)
+            at2_io.atomic_copy(report_out, dst)
             print(f"       public report written {dst}")
 
     print(f"done: total {time.time()-t0:.1f}s")

@@ -141,7 +141,7 @@ def main():
                           special2=dict(sp2), cop2=dict(cop2),
                           cop2_vu_upper=dict(cop2fn), cop2_vu_lower=dict(cop2lo),
                           regimm=dict(regimm), jr_ra=jr_ra, jr_indirect=indirect,
-                          micro_upload_lui=0, capstone_mnemonic=dict(cs_mne),
+                          micro_upload_lui=micro_upload, capstone_mnemonic=dict(cs_mne),
                           capstone_decoded=cs_n, capstone_undecoded=n-cs_n,
                           distinct_jal_targets=len(jal_targets))
         print('\n================ %s  vaddr=0x%06x size=0x%x words=%d entropy=%.4f' % (

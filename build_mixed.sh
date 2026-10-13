@@ -52,7 +52,14 @@ GCC="${GCC:-${EE_GCC:-$HOME/eecc/ee-gcc3.2-040921/bin/ee-gcc}}"
 GCC_CRI="${GCC_CRI:-${EE_GCC_CRI:-$HOME/eecc/ee-gcc2.96/bin/ee-gcc}}"   # CRI sections (ADXT 10.03 / ADXRT 3100, R17 section 4.2)
 CCMAP="$HERE/config/compiler_map.tsv"                    # the compiler of each source: <source><TAB>game|cri
 LD="${LD:-$HOME/eecc/deb/root/usr/bin/mips-linux-gnu-ld.bfd}"
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:/home/liutao/eecc/deb/root/usr/lib/x86_64-linux-gnu"
+# The ld from the Debian package needs its own shared libraries. Do not hard-code a personal home
+# directory: `LD_LIBDIR` (or `EE_LIBDIR`) names it, the default follows `$HOME`, and an absent
+# directory is simply not appended (R30 finding B1).
+# Debian 包里那份 ld 需要它自己的共享库。不要写死某个人的家目录：`LD_LIBDIR`（或 `EE_LIBDIR`）指定，
+# 缺省跟随 `$HOME`，目录不存在就不追加（R30 B1）。
+LD_LIBDIR="${EE_LIBDIR:-${LD_LIBDIR:-$HOME/eecc/deb/root/usr/lib/x86_64-linux-gnu}}"
+[ -d "$LD_LIBDIR" ] || LD_LIBDIR=""
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}${LD_LIBRARY_PATH:+:}${LD_LIBDIR}"
 AS="$BINUTILS/mips-ps2-decompals-as"
 OC="$BINUTILS/mips-ps2-decompals-objcopy"
 READELF="$BINUTILS/mips-ps2-decompals-readelf"
@@ -120,12 +127,25 @@ fi
 
 echo "== 1/6 Read the matched function ledger =="
 [ -f "$LIST" ] || { echo "missing $LIST" >&2; exit 1; }
+# A ledger name becomes `src/matched/<src>.{c,s}`, an object name and a row of the generated
+# linker script. Refuse anything that is not a plain symbol name BEFORE anything is written, so a
+# crafted ledger cannot escape the directory or inject linker-script text (R30 finding B5).
+# 台账里的名字会变成 `src/matched/<src>.{c,s}`、对象名与生成链接脚本的一行。任何写盘之前先拒绝
+# 不是普通符号名的输入：被构造的台账因此无法逃出目录或注入链接脚本文本（R30 B5）。
+valid_name() { [[ "$1" =~ ^[A-Za-z_][A-Za-z0-9_.]*$ ]]; }
 SYMS=(); SRCS=()
+nline=0
 while IFS= read -r line; do
+    nline=$((nline + 1))
     line="${line%%#*}"
     read -r sym src _rest <<< "$line" || true
     [ -z "${sym:-}" ] && continue
     [ -z "${src:-}" ] && src="$sym"
+    if ! valid_name "$sym" || ! valid_name "$src"; then
+        echo "FAIL: $LIST line $nline: unsafe symbol/source name (sym='$sym' src='$src');" >&2
+        echo "      expected [A-Za-z_][A-Za-z0-9_.]* (letters, digits, '_' and '.')" >&2
+        exit 1
+    fi
     SYMS+=("$sym"); SRCS+=("$src")
 done < "$LIST"
 nsym=${#SYMS[@]}

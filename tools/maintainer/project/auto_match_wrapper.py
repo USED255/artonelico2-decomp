@@ -81,6 +81,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 # Make the shared tools in tools/project importable.  让 tools/project 的共享工具可被导入。
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "project"))
+import at2_io  # noqa: E402  safe-name / atomic-write helpers (R30 D8/D12)
 from auto_match_trivial import (  # noqa: E402
     ROOT, WORK_ROOT, ASMDIR, MATCHED_LIST, SRCDIR, GCC, AS, OBJDIFF, CFLAGS, split_mode, matched_in_list,
     M3_BEGIN, M3_END, A0, A1, A2, A3, ZERO, CARG, ARG_OF_REG,
@@ -255,16 +256,40 @@ def run_objdiff(sym: str, info: dict, work: Path) -> float | None:
                        cwd=str(ROOT), capture_output=True, text=True)
     if r.returncode:
         return None
-    data = json.loads(dj.read_text(encoding="utf-8"))
+    data = at2_io.guarded_json_load(dj)
+    if data is None:
+        return None
     per = {s["name"]: s.get("match_percent") for s in data["left"]["symbols"]
            if s.get("kind") == "SYMBOL_FUNCTION"}
     return per.get(sym)
 
 
+def _safe_targets(winners: dict, suffix: str, source: str) -> dict:
+    """Validate every winner name and resolve its path before anything is written (R30 D8).
+
+    A repo-derived name must not escape `src/matched/`, and an invalid name must never leave a
+    partial apply. All names are checked first; on a bad one the tool prints it with its source
+    and exits non-zero with nothing written.
+
+    先整体校验中奖符号名并解析落盘路径（R30 D8）：名字不得逃出 `src/matched/`，也不允许「写到一半」
+    才失败；有非法名就逐个打印（含来源）并退非零，此时一个字节都还没写。
+    """
+    bad = [sym for sym in winners if not at2_io.symbol_ok(sym)]
+    if bad:
+        for sym in bad:
+            print(f"apply: refusing unsafe symbol name {sym!r} (source: {source}); nothing written",
+                  file=sys.stderr)
+        sys.exit(2)
+    return {sym: at2_io.safe_child(SRCDIR, sym, suffix) for sym in winners}
+
+
 def do_apply(winners: dict):
+    paths = _safe_targets(winners, ".c", "workqueue/result.json")
     SRCDIR.mkdir(parents=True, exist_ok=True)
+    # Generated sources first, the tracked config files last; all through the atomic helpers
+    # (R30 D8/D12).  先生成源码、最后写 tracked 配置，全部走原子写（R30 D8/D12）。
     for sym, info in winners.items():
-        (SRCDIR / f"{sym}.c").write_text(c_source(sym, info), encoding="utf-8")
+        at2_io.atomic_write_text(paths[sym], c_source(sym, info))
 
     # Matching batch section of the list (merge mode)  清单 matching batch 段（合并式）
     text = MATCHED_LIST.read_text(encoding="utf-8")
@@ -283,7 +308,7 @@ def do_apply(winners: dict):
     body = "\n".join(out)
     if post:
         body = body.rstrip("\n") + "\n" + post
-    MATCHED_LIST.write_text(body.rstrip("\n") + "\n", encoding="utf-8")
+    at2_io.atomic_write_text(MATCHED_LIST, body.rstrip("\n") + "\n")
 
     # Compile flag side table (the code writes only a non-default level)
     # 编译标志旁路表（只有非默认档才写）
@@ -305,7 +330,7 @@ def do_apply(winners: dict):
     lines = ["source-basename\textra-cflags"]
     for s in sorted(flags):
         lines.append(f"{s}\t{flags[s]}")
-    FLAGS_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    at2_io.atomic_write_text(FLAGS_FILE, "\n".join(lines) + "\n")
     print(f"apply: wrote {len(winners)} C sources; matching batch section {n0} -> {len(existing)}; "
           f"flag table {len(flags)} entries -> {FLAGS_FILE.relative_to(ROOT.parent)}")
 

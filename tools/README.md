@@ -43,14 +43,17 @@ cannot run a Maintainer tool.
 | `tools/build/decomp_build.py` | The build driver that splits the payload, assembles, links, and verifies the result. | Contributor needed |
 | `tools/build/gen_objdiff_full.py` | Generates the full objdiff unit list for the progress report. | Contributor needed |
 | `tools/build/matched_ledger.py` | Parses the match ledger for the report tool and the delta check. | Contributor needed |
-| `tools/check/check_public_repo.py` | Checks the publication record, the forbidden material, and the report rules. | Contributor needed |
+| `tools/check/check_public_repo.py` | Checks the publication record, the forbidden material (denied classes plus a size backstop), and the report rules. Every git call uses `-z`, and contribution mode refuses a path that is not a regular file. | Contributor needed |
 | `tools/check/test_matched_ledger.py` | Tests the match ledger parser and the delta check. | Contributor needed |
+| `tools/check/test_public_repo.py` | Tests the denied-material patterns, the size backstop, the git `-z` path handling, and the contribution fail-closed rules. | Contributor needed |
+| `tools/check/test_at2_io.py` | Tests the shared name/path/atomic-write helpers. | Contributor needed |
 | `tools/check/test_tool_paths.py` | Tests that each tool resolves the project paths. | Contributor needed |
 | `tools/check/test_classify_change.py` | Tests the CI mode classifier. | Contributor needed |
 | `tools/check/test_splat_snapshot.py` | Tests the packaged splat output tool. | Contributor needed |
 | `tools/ci/classify_change.py` | Picks the `matching-gate` mode (skip / fast / full) from the change set. | Contributor needed |
-| `tools/ci/splat_snapshot.py` | Packages the `splat split` output and the assembled objects into the private companion repository, and restores them in CI. | Maintainer internal |
+| `tools/ci/splat_snapshot.py` | Packages the `splat split` output and the assembled objects into the private companion repository, and restores them in CI. The restore verifies the content digest in a staging directory before it touches the checkout. | Maintainer internal |
 | `tools/ci/splat-requirements.txt` | Lists the public `splat` version for the CI job. | Contributor needed |
+| `tools/project/at2_io.py` | Shared helpers: a safe symbol name, a child path proven inside its root, atomic writes, and a guarded JSON load. | Contributor needed |
 | `tools/project/at2_paths.py` | Resolves the project paths for each repository layout. | Contributor needed |
 | `tools/project/compile_sources.py` | Compiles or assembles only the sources that changed. | Contributor needed |
 | `tools/project/extract_payload.py` | Extracts the payload from the retail executable. | Contributor needed |

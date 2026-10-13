@@ -78,10 +78,49 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import at2_io                          # shared name/path/atomic-write helpers  # noqa: E402
 try:                                   # jtbl jump table patch in the same directory. The module is optional.
     import jtbl_patch as JTBL          # noqa: E402
 except Exception:                      # pragma: no cover
     JTBL = None
+
+
+# Flags that make the compiler read an arbitrary file or run an arbitrary program. The per-source
+# flag table is repository content (a pull request can change it), so it may not carry them
+# (R30 finding B5).
+# 会让编译器读任意文件或运行任意程序的标志。每源标志表是仓库内容（PR 可改），因此不允许携带（R30 B5）。
+FORBIDDEN_FLAG = re.compile(r"^(@|-wrapper(=|$)|-fplugin(=|$)|-B(=|$)|-specs=)")
+
+
+def forbidden_flag(flags: str) -> str | None:
+    """The first forbidden flag in `flags`, or None."""
+    for tok in flags.split():
+        if FORBIDDEN_FLAG.match(tok):
+            return (f"the flag {tok!r}, which can make the compiler read an arbitrary file "
+                    f"or run an arbitrary program")
+    return None
+
+
+def include_digest(include_dir: str) -> str:
+    """sha1 over the include tree (path + content), or "none" when the directory is absent.
+
+    The stamp must notice a regenerated `include/macro.inc`: without it, a new splat split kept
+    the old objects and the report recorded the current tools over stale bytes (R30 finding B6).
+
+    include 树（路径 + 内容）的 sha1；目录不存在时返回 "none"。stamp 必须能察觉
+    `include/macro.inc` 被重新生成：否则重新 split 后会继续用旧对象，而记录里写的是当前工具（R30 B6）。
+    """
+    root = Path(include_dir)
+    if not root.is_dir():
+        return "none"
+    h = hashlib.sha1()
+    for p in sorted(root.rglob("*")):
+        if p.is_file():
+            h.update(p.relative_to(root).as_posix().encode("utf-8"))
+            h.update(b"\0")
+            h.update(sha1_file(p).encode("ascii"))
+            h.update(b"\n")
+    return h.hexdigest()
 
 
 OBJCOPY: str | None = None
@@ -226,6 +265,10 @@ def main() -> int:
             line = line.split("#", 1)[0].strip()
             if line:
                 a = line.split()
+                bad = forbidden_flag(" ".join(a[1:]))
+                if bad:
+                    print(f"FAIL: {args.flags_file}: {a[0]} carries {bad}", file=sys.stderr)
+                    return 2
                 extra[a[0]] = " ".join(a[1:])
 
     # Jump table file (a header row and data rows, <key>\t<jtbl_symbol>): after the compile,
@@ -267,7 +310,14 @@ def main() -> int:
             elif tag == "game":
                 cc_map[a[0]] = args.gcc
             else:
-                cc_map[a[0]] = tag          # An absolute path is also permitted.
+                # An absolute path is also permitted, but it must be a real executable: the map
+                # is repo content, and a typo or a crafted entry must fail loudly (R30 finding B5).
+                # 也允许绝对路径，但必须是真实可执行文件：该表是仓库内容，写错或被构造都必须显式失败（R30 B5）。
+                if not Path(tag).is_file() or not os.access(tag, os.X_OK):
+                    print(f"FAIL: cc-map entry {a[0]!r} names a compiler that is not an executable file: {tag!r}",
+                          file=sys.stderr)
+                    return 2
+                cc_map[a[0]] = tag
     _ver_cache: dict[str, str] = {}
 
     def cc_version(cc: str) -> str:
@@ -291,6 +341,10 @@ def main() -> int:
 
     todo, cached = [], 0
     seen = set()
+    # Hash the include tree once per run: every source depends on it, and re-hashing it per source
+    # would dominate the run (R30 finding B6).
+    # 每次运行只哈希一次 include 树：每个源都依赖它，逐源重算会成为主要开销（R30 B6）。
+    inc = include_digest(args.include)
     for line in Path(args.sources).read_text(encoding="utf-8").splitlines():
         line = line.rstrip("\n")
         if not line:
@@ -303,9 +357,30 @@ def main() -> int:
         if key in seen:                      # Several symbols use the same source. Compile it once.
             continue
         seen.add(key)
+        try:
+            # The key names the output object and its stamp. A key that is not a plain path
+            # component would write outside `--objdir` (R30 finding B5).
+            # key 决定输出对象与 stamp 的文件名。不是普通路径分量的 key 会写到 `--objdir` 之外（R30 B5）。
+            key = at2_io.safe_symbol(key, what="sources key")
+        except ValueError as exc:
+            print(f"FAIL: {exc}", file=sys.stderr)
+            return 2
         src = Path(srcfile)
         if not src.is_file():
             print(f"FAIL: replacement source is missing: {src}", file=sys.stderr)
+            return 2
+        # The source path is repo-derived too: keep it inside the project directory (the mixed
+        # build runs from the repository root) so a crafted TSV cannot compile an arbitrary file.
+        # 源路径同样是仓库派生：必须留在项目目录内（混合构建从仓库根运行），被构造的 TSV 无法编译任意文件。
+        cwd = Path.cwd().resolve()
+        cand = src.resolve()
+        if cand != cwd and cwd not in cand.parents:
+            print(f"FAIL: the replacement source {srcfile} is outside the project directory {cwd}",
+                  file=sys.stderr)
+            return 2
+        bad = forbidden_flag(extra.get(key, ""))
+        if bad:
+            print(f"FAIL: {key} carries {bad}", file=sys.stderr)
             return 2
         ex = extra.get(key, "")
         gcc = (cc_map.get(key, args.gcc) if kind == "cc" else args.gcc)
@@ -316,10 +391,11 @@ def main() -> int:
         # al4: from 2026-10-04, a cc object has its .text* alignment lowered to 4 (see the
         #      objcopy call in the build). The version string has a suffix, so an old cache
         #      entry is invalid.
-        # stamp 必须覆盖**基础标志**与**每源编译器**：MATCHED_CFLAGS/编译器被换掉时要失效重建
+        # stamp 必须覆盖**基础标志**、**每源编译器**与 **include 树内容**：MATCHED_CFLAGS/编译器/
+        # 头文件任何一个被换掉都要失效重建
         # al4：2026-10-04 起 cc 对象统一把 .text* 段对齐降到 4（见 build 里的 objcopy），
         #      版本串加后缀让旧缓存失效重建。
-        want = f"{kind}|{ver}|al4|{base}|{ex}|{gcc}|{sha1_file(src)}"
+        want = f"{kind}|{ver}|al4|{base}|{ex}|{gcc}|{inc}|{sha1_file(src)}"
         if jtbl.get(key):
             want += f"|jtbl={jtbl[key]}"
         stamp = objdir / f"{key}.stamp"

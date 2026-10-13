@@ -64,6 +64,7 @@ import ghidra_draft as GD  # noqa: E402
 import m2c_draft as M2C  # noqa: E402
 # Make the shared tools in tools/project importable.  让 tools/project 的共享工具可被导入。
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "project"))
+import at2_io  # noqa: E402  safe-name / atomic-write helpers (R30 D8/D12)
 from auto_match_trivial import (  # noqa: E402
     ROOT, PRIVATE_ROOT, WORK_ROOT, EVIDENCE_ROOT, MATCHED_LIST, SRCDIR, FLAGS_TSV,
     WORKQUEUE, GCC, AS, OBJDIFF, CFLAGS, M3_BEGIN, M3_END,
@@ -123,7 +124,9 @@ def llm_drafts(sym: str) -> list[Path]:
     return sorted(LLM_EVAL.glob(f"*/*/{sym}/cand.c"))
 FLAGS_TSV = FLAGS_TSV
 PREAMBLE = '.include "macro.inc"\n\n.set noat\n.set noreorder\n\n.section .text, "ax"\n'
-OBJDUMP = str(Path.home() / "eecc" / "ps2binutils" / "mips-ps2-decompals-objdump")
+# NOTE: OBJDUMP comes from at2_paths (import above) so that the OBJDUMP environment override
+# works. A module-level assignment here would shadow it (R30 D9).
+# 注意：OBJDUMP 来自上面的 at2_paths（保留 OBJDUMP 环境变量覆盖）；在此再赋值会把它遮蔽（R30 D9）。
 
 
 def _score(sym: str, src: Path, d: Path) -> float | None:
@@ -206,7 +209,15 @@ def best_flags(sym: str, src: Path, d: Path) -> list:
 
 
 def setup_dir(sym: str, frontend: str = "ghidra") -> Path | None:
-    d = WORK / sym
+    # R30 D8: the work directory is derived from a repo name. Prove it stays under WORK, and
+    # skip the candidate on an unsafe name instead of raising out of the worker.
+    # R30 D8：工作目录同样由仓库派生的名字拼成——先证明它仍在 WORK 之内；名字不合法就跳过该
+    # 候选，而不是从 worker 里抛异常。
+    try:
+        d = at2_io.safe_child(WORK, sym, what="symbol")
+    except ValueError as e:
+        print(f"  [skip] {sym}: {e}", file=sys.stderr)
+        return None
     d.mkdir(parents=True, exist_ok=True)
     cands = []
     if frontend in ("m2c", "best", "best3"):
@@ -333,17 +344,28 @@ def _match_of(sym: str, c_o: Path, d: Path) -> float | None:
     return float(m) if m is not None else None
 
 
-def _text_size(obj: Path) -> int:
+def _text_size(obj: Path) -> int | None:
     """Sum every `.text*` section of one object. The C objects use -ffunction-sections.
 
+    Return None when objdump failed or reported no `.text*` section: a length that cannot be
+    measured must never compare equal to another unmeasurable length (R30 D9, fail closed).
+
     求和一个对象的全部 `.text*` 节（C 对象带 `-ffunction-sections`，节名是 `.text.<sym>`）。
+
+    objdump 失败或没报出任何 `.text*` 节时返回 None：**量不出来**绝不与另一个量不出来的长度相等
+    （R30 D9，fail closed）。
     """
     r = subprocess.run([OBJDUMP, "-h", str(obj)], cwd=str(ROOT), capture_output=True, text=True)
-    tot = 0
+    if r.returncode:
+        return None
+    tot, n_sec = 0, 0
     for line in r.stdout.splitlines():
         p = line.split()
         if len(p) >= 3 and p[0].isdigit() and p[1].startswith(".text"):
+            n_sec += 1
             tot += int(p[2], 16)
+    if not n_sec:
+        return None
     return tot
 
 
@@ -387,14 +409,20 @@ def verify(sym: str, source: Path) -> float | None:
         # The target of the comparison is `d/target.o` (glabel..endlabel), NOT the whole asm
         # object: for a residual symbol the residual object supplies the rest (P-15/P-16).
         # Compare against the target object, and fall back to the asm object when it is missing.
+        # R30 D9: when either length cannot be measured (objdump failed / no .text section), the
+        # candidate is skipped. Comparing two unmeasurable lengths as 0 == 0 would accept a
+        # length-mismatched candidate at 100.0, which is exactly what P-97 forbids.
         # P-97（2026-10-12 实测）：objdiff 100.0 **不保证** C 对象与目标等长；direct 整份替换、
         # residual 是 [C 对象][残差对象]，长度不符都会让后续全体前移、载荷变化。
         # 比对的**目标**是 d/target.o（glabel..endlabel），**不是**整份 asm 对象
         # （residual 符号的其余字节由残差对象提供，见 P-15/P-16）；target.o 缺失时才退回 asm 对象。
+        # R30 D9：任一侧长度**量不出来**（objdump 失败 / 无 .text 节）就跳过该候选；
+        # 两个「量不出来」当成 0 == 0 会放过长度不符的候选，正是 P-97 禁止的。
         ref = d / "target.o"
         if not ref.is_file():
             ref = ROOT / "build" / "asm" / "cod" / f"{sym}.o"
-        if ref.is_file() and _text_size(c_o) != _text_size(ref):
+        c_sz, ref_sz = _text_size(c_o), _text_size(ref)
+        if c_sz is None or ref_sz is None or c_sz != ref_sz:
             continue
         if tbl:
             # Same redirect as the build does, so the verification sees the object that will be
@@ -465,7 +493,28 @@ def attempt(rec: dict, timeout: int, frontend: str = "ghidra") -> dict:
     return out
 
 
+def _safe_targets(winners: dict, suffix: str) -> dict:
+    """Validate every winner name and resolve its path before anything is written (R30 D8).
+
+    A repo-derived name must not escape `src/matched/`, and an invalid name must never leave a
+    partial apply. All names are checked first; on a bad one the tool prints it with the
+    candidate source that produced it and exits non-zero with nothing written.
+
+    先整体校验中奖符号名并解析落盘路径（R30 D8）：名字不得逃出 `src/matched/`，也不允许「写到一半」
+    才失败；有非法名就逐个打印（含产生它的候选源码）并退非零，此时一个字节都还没写。
+    """
+    bad = [(sym, (winners.get(sym) or {}).get("source", "workdir")) for sym in winners
+           if not at2_io.symbol_ok(sym)]
+    if bad:
+        for sym, src in bad:
+            print(f"apply: refusing unsafe symbol name {sym!r} (source: {src}); nothing written",
+                  file=sys.stderr)
+        sys.exit(2)
+    return {sym: at2_io.safe_child(SRCDIR, sym, suffix) for sym in winners}
+
+
 def do_apply(winners: dict):
+    paths = _safe_targets(winners, ".c")
     SRCDIR.mkdir(parents=True, exist_ok=True)
     # Write the compile flag level of each converged candidate into source_flags.tsv. The key
     # is the second list column, that is the symbol name without extension (see P-34). Without
@@ -481,18 +530,21 @@ def do_apply(winners: dict):
             a = line.split("\t")
             if len(a) >= 2 and not line.lstrip().startswith("#"):
                 fmap[a[0]] = a[1]
+    # Generated sources first, the tracked config files last; all through the atomic helpers
+    # (R30 D8/D12).  先生成源码、最后写 tracked 配置，全部走原子写（R30 D8/D12）。
     for sym, info in winners.items():
-        shutil.copyfile(info["source"], SRCDIR / f"{sym}.c")
+        at2_io.atomic_copy(Path(info["source"]), paths[sym])
         try:
-            rec = (WORK / sym / "_flags.txt").read_text(encoding="utf-8").split("\t")[0].strip()
+            rec = at2_io.safe_child(WORK, sym, "_flags.txt", what="symbol") \
+                .read_text(encoding="utf-8").split("\t")[0].strip()
         except Exception:
             rec = ""
         if rec and rec != "-O2":
             fmap[sym] = rec
         elif rec == "-O2" and sym in fmap:
             del fmap[sym]
-    FLAGS_TSV.write_text("\n".join(["source-basename\textra-cflags"]
-                                     + [f"{k}\t{fmap[k]}" for k in sorted(fmap)]) + "\n", encoding="utf-8")
+    at2_io.atomic_write_text(FLAGS_TSV, "\n".join(["source-basename\textra-cflags"]
+                                                   + [f"{k}\t{fmap[k]}" for k in sorted(fmap)]) + "\n")
     text = MATCHED_LIST.read_text(encoding="utf-8")
     pre = text.split(M3_BEGIN)[0].rstrip("\n") if M3_BEGIN in text else text.rstrip("\n")
     post = text.split(M3_END, 1)[1].lstrip("\n") if M3_END in text else ""
@@ -510,7 +562,7 @@ def do_apply(winners: dict):
     body = "\n".join([pre, "", M3_BEGIN] + [f"{s}    # {existing[s]}" for s in sorted(existing)] + [M3_END])
     if post:
         body = body.rstrip("\n") + "\n" + post
-    MATCHED_LIST.write_text(body.rstrip("\n") + "\n", encoding="utf-8")
+    at2_io.atomic_write_text(MATCHED_LIST, body.rstrip("\n") + "\n")
     print(f"apply: wrote {len(winners)} C sources; matching batch section {n0} -> {len(existing)}")
 
 
@@ -539,6 +591,12 @@ def main() -> int:
             if not outs or not (outs[-1] / "source.c").is_file():
                 continue
             sym = d.name
+            # R30 D8: the directory name becomes a path component again (WORK/<sym>/...).
+            # Reject anything that is not a plain symbol name instead of using it.
+            # R30 D8：目录名会再次拼成路径分量（WORK/<sym>/...），非普通符号名一律跳过。
+            if not at2_io.symbol_ok(sym):
+                print(f"  [skip] unsafe work-dir name {sym!r} under {WORK}", file=sys.stderr)
+                continue
             m = verify(sym, outs[-1] / "source.c")
             if m == 100.0:
                 winners[sym] = {"source": str(outs[-1] / "source.c"), "objdiff": m}

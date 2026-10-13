@@ -67,6 +67,9 @@ import struct
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import at2_io  # shared name/path helpers  # noqa: E402
+
 SHT_SYMTAB, SHT_REL = 2, 9
 STT_SECTION = 3
 SHN_UNDEF = 0
@@ -125,6 +128,14 @@ class Elf:
 
 
 def patch(obj: Path, table: str, out: Path | None = None, check: bool = False) -> tuple[bool, str]:
+    # The table name is written into the object's string table (and comes from
+    # config/jtbl_tables.tsv, which a pull request can change), so validate it here as well as in
+    # main(): a name with spaces or control bytes would produce a malformed object (R30 finding B5).
+    # 表名会被写进对象的字符串表（且来自 PR 可改的 config/jtbl_tables.tsv），因此这里与 main() 都校验：
+    # 含空白或控制字节的名字会产出畸形对象（R30 B5）。
+    if not at2_io.symbol_ok(table):
+        return False, (f"the jump table name is not a safe symbol name: {table!r} "
+                       f"(expected {at2_io.SYMBOL_RE.pattern})")
     e = Elf(obj.read_bytes())
     syms = e.syms()
     rodata = next((i for i in range(e.sh_num) if e.name(i) == ".rodata"), None)
@@ -196,6 +207,10 @@ def main() -> int:
     ap.add_argument("--out", default="")
     ap.add_argument("--check", action="store_true")
     a = ap.parse_args()
+    if not at2_io.symbol_ok(a.table):
+        print(f"[FAIL] the jump table name is not a safe symbol name: {a.table!r} "
+              f"(expected {at2_io.SYMBOL_RE.pattern})")
+        return 1
     ok, msg = patch(Path(a.obj), a.table, Path(a.out) if a.out else None, a.check)
     print(("[OK] " if ok else "[FAIL] ") + msg)
     return 0 if ok else 1

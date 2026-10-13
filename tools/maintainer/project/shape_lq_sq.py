@@ -91,6 +91,7 @@ from at2_paths import (  # noqa: E402  layout-independent path resolution
     WORKQUEUE,
     MATCHED_LIST as MATCHED,
 )
+import at2_io  # noqa: E402  safe names / guarded JSON / atomic writes
 GCC = Path(os.environ.get("GCC", str(Path.home() / "eecc/ee-gcc3.2-040921/bin/ee-gcc")))
 AS = Path(os.environ.get("AS", str(Path.home() / "eecc/ps2binutils/mips-ps2-decompals-as")))
 OBJDIFF = Path(os.environ.get("OBJDIFF", str(Path.home() / "eecc/objdiff-cli")))
@@ -528,6 +529,10 @@ class Emitter:
         sym, off, base = mo
         off = off if off is not None else 0
         if sym:
+            # The symbol comes from `%lo(SYM)` in repo-derived asm; reject any name that
+            # would break out of the generated C expression (D11).
+            # 符号来自仓库 asm 的 `%lo(SYM)`；拒绝任何会破坏生成 C 表达式的名字（D11）。
+            at2_io.safe_symbol(sym, what="external symbol")
             if sym not in self.externs:
                 self.externs.append(sym)
             return f"((char *)({sym}) + {off})" if off else f"({sym})"
@@ -565,8 +570,12 @@ class Emitter:
                 self.do_call(k); k += 1; continue
             if m == "j":
                 tgt = i.ops.split(",")[0].strip()
-                if tgt and tgt not in self.externs:
-                    self.externs.append(tgt)
+                if tgt:
+                    # Repo-derived jump target: validate before it becomes a C call (D11).
+                    # 仓库派生的跳转目标：变成 C 调用前先校验（D11）。
+                    at2_io.safe_symbol(tgt, what="jump target")
+                    if tgt not in self.externs:
+                        self.externs.append(tgt)
                 args = [f"arg{a}" for a in range(4) if (4 + a) in self.used_args]
                 self.lines.append(f"return {tgt}({', '.join(args)});")
                 k += 1; continue
@@ -667,6 +676,9 @@ class Emitter:
             sm = re.search(r"%hi\(([^)]+)\)", ops)
             if sm:
                 sym = sm.group(1).strip()
+                # `%hi(SYM)` feeds `_castptr`, which interpolates the name into generated C.
+                # `%hi(SYM)` 会经 `_castptr` 插进生成的 C，先校验（D11）。
+                at2_io.safe_symbol(sym, what="external symbol")
                 if sym not in self.externs:
                     self.externs.append(sym)
                 self.ptr_val[rt] = (sym, 0)
@@ -918,6 +930,10 @@ class Emitter:
             head += ["typedef int v4si __attribute__((mode(V4SI)));",
                      "typedef long long v2di __attribute__((mode(V2DI)));"]
         for e in self.externs:
+            # Every extern name lands in a declaration; validate all of them, not only the
+            # `extern int` branch (the `D_` branch used to skip the check). (D11)
+            # 每个 extern 名都会写进声明，必须全体校验（`D_` 分支原先没查）。 (D11)
+            at2_io.safe_symbol(e, what="external symbol")
             if e.startswith("D_"):
                 head.append(f"extern unsigned char {e}[];")
             elif re.match(r"^[A-Za-z_]\w*$", e):
@@ -942,11 +958,25 @@ class Emitter:
 
 
 def emit_c(sym, ins, labels, prelude=True, variant="direct"):
+    # The function name and every repo-derived symbol that lands in the generated C are
+    # validated with at2_io.safe_symbol. An unsafe name makes the symbol out-of-domain
+    # (reported like any other reason); it never aborts a batch. The asm tree does hold
+    # names such as `func_X + 0x14` in `%lo(...)`, so aborting would be a regression (D11).
+    # 函数名以及所有会写进生成 C 的仓库派生符号都用 at2_io.safe_symbol 校验；名字不安全
+    # 即视为出域（与其它原因同样上报），绝不中断整批。asm 树里确实存在
+    # `%lo(func_X + 0x14)` 这类名字，直接抛异常会造成回归（D11）。
+    try:
+        at2_io.safe_symbol(sym, what="symbol")
+    except ValueError as e:
+        return None, "unsafe_symbol: %s" % e
     reason = domain_check(ins, labels)
     if reason:
         return None, reason
     em = Emitter(sym, ins, labels, prelude, variant)
-    return em.build(), None
+    try:
+        return em.build(), None
+    except ValueError as e:
+        return None, "unsafe_symbol: %s" % e
 
 
 def refs_of(sym, ins):
@@ -988,7 +1018,11 @@ def match(sym, tgt, cand, work):
              "--format", "json"], cwd=str(REPO))
     if r.returncode:
         return None, "objdiff rc=%d %s" % (r.returncode, r.stderr[-160:])
-    data = json.loads(j.read_text())
+    data = at2_io.guarded_json_load(j)
+    if data is None:
+        # Unreadable score JSON: no score for this candidate, never raise (D14).
+        # 评分 JSON 读不出：该候选记为无分，不抛异常（D14）。
+        return None, "objdiff json unreadable: %s" % j
     per = {s["name"]: s.get("match_percent") for s in data["left"]["symbols"]
            if s.get("kind") == "SYMBOL_FUNCTION"}
     return per.get(sym), None
@@ -1207,7 +1241,12 @@ def cmd_combined(args):
     parts = []
     for i, n in enumerate(names):
         ins, labels = parse_block(n)
-        c, _ = emit_c(n, ins, labels, prelude=(i == 0))
+        c, reason = emit_c(n, ins, labels, prelude=(i == 0))
+        if c is None:
+            # Keep an unsafe / out-of-domain symbol out of the merged TU (D11).
+            # 不安全 / 出域的符号不进合并 TU（D11）。
+            print("  %s: skip (%s)" % (n, reason))
+            continue
         parts.append(f"/* {n} */\n{c}")
     probe = work / "probe.c"
     probe.write_text("\n".join(parts), encoding="utf-8")
@@ -1268,7 +1307,11 @@ def match_multi(tgt, cand, jpath):
              "--format", "json"], cwd=str(REPO))
     if r.returncode:
         return None, r.stderr[-200:]
-    data = json.loads(jpath.read_text())
+    data = at2_io.guarded_json_load(jpath)
+    if data is None:
+        # Unreadable score JSON: no score, never raise (D14).
+        # 评分 JSON 读不出：记为无分，不抛异常（D14）。
+        return None, "objdiff json unreadable: %s" % jpath
     return {s["name"]: s.get("match_percent") for s in data["left"]["symbols"]
             if s.get("kind") == "SYMBOL_FUNCTION"}, None
 
@@ -1289,7 +1332,13 @@ def main():
     a.add_argument("--max-compiles", type=int, default=3)
     a.set_defaults(func=cmd_combined)
     args = ap.parse_args()
-    return args.func(args) or 0
+    try:
+        return args.func(args) or 0
+    except ValueError as e:
+        # An unsafe repo-derived name (D11) or a bad numeric field: fail cleanly, no traceback.
+        # 不安全的仓库派生名（D11）或数值字段有误：干净报错退出，不抛 traceback。
+        print("error: %s" % e, file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

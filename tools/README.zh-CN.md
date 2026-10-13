@@ -39,14 +39,17 @@ make check
 | `tools/build/decomp_build.py` | 构建驱动：切分载荷、汇编、链接并校验结果 | Contributor 需要 |
 | `tools/build/gen_objdiff_full.py` | 生成进度报告用的全量 objdiff unit 清单 | Contributor 需要 |
 | `tools/build/matched_ledger.py` | 解析匹配台账，供报告工具与增量检查使用 | Contributor 需要 |
-| `tools/check/check_public_repo.py` | 校验发布记录、禁止材料与报告规则 | Contributor 需要 |
+| `tools/check/check_public_repo.py` | 校验发布记录、禁止材料（禁材类别 + 尺寸兜底）与报告规则；所有 git 调用用 `-z`，贡献模式拒绝「不是普通文件」的路径 | Contributor 需要 |
 | `tools/check/test_matched_ledger.py` | 测试台账解析与增量检查 | Contributor 需要 |
+| `tools/check/test_public_repo.py` | 测试禁材模式、尺寸兜底、git `-z` 路径处理与贡献模式的 fail-closed 规则 | Contributor 需要 |
+| `tools/check/test_at2_io.py` | 测试共用的名字/路径/原子写助手 | Contributor 需要 |
 | `tools/check/test_tool_paths.py` | 测试每个工具都能正确解析项目路径 | Contributor 需要 |
 | `tools/check/test_classify_change.py` | 测试 CI 模式分类器 | Contributor 需要 |
 | `tools/check/test_splat_snapshot.py` | 测试 splat 产物打包/还原工具 | Contributor 需要 |
 | `tools/ci/classify_change.py` | 按改动集合判定 `matching-gate` 的模式（skip / fast / full） | Contributor 需要 |
-| `tools/ci/splat_snapshot.py` | 把 `splat split` 的输出与汇编产物打包进私有伴生仓库，并在 CI 里还原 | Maintainer internal |
+| `tools/ci/splat_snapshot.py` | 把 `splat split` 的输出与汇编产物打包进私有伴生仓库，并在 CI 里还原；还原会先在暂存目录校验内容摘要，通过后才碰检出 | Maintainer internal |
 | `tools/ci/splat-requirements.txt` | 列出 CI 使用的公开 `splat` 版本 | Contributor 需要 |
+| `tools/project/at2_io.py` | 共用助手：安全符号名、证明留在根内的子路径、原子写、带守护的 JSON 读取 | Contributor 需要 |
 | `tools/project/at2_paths.py` | 按仓库布局解析项目路径 | Contributor 需要 |
 | `tools/project/compile_sources.py` | 只重编「源或标志变了」的对象 | Contributor 需要 |
 | `tools/project/extract_payload.py` | 从原版可执行文件抽取载荷 | Contributor 需要 |

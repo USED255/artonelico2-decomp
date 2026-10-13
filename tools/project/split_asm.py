@@ -67,6 +67,10 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import at2_io  # shared name/path/atomic-write helpers  # noqa: E402
+
+
 def _find_root(start: Path) -> Path:
     """Layout independent: walk up from the script and stop at a directory with asm/cod or splat.yaml.
 
@@ -191,6 +195,12 @@ def analyze(sym: str, asm_dir: Path = ASMDIR) -> dict:
 
     判定单个符号的拆分模式；不写盘、不汇编（汇编错误由 verify/assemble 阶段发现）。
     """
+    if not at2_io.symbol_ok(sym):
+        # The symbol comes from the ledger and names `asm/cod/<sym>.s`. Refuse anything that is
+        # not a plain path component instead of probing outside the tree (R30 finding B5).
+        # 符号来自台账，用来定位 `asm/cod/<sym>.s`。不是普通路径分量时直接拒绝，不去树外探测（R30 B5）。
+        return {"mode": "blocked_unsafe_name",
+                "reason": f"not a safe path component: {sym!r} (expected {at2_io.SYMBOL_RE.pattern})"}
     p = asm_dir / f"{sym}.s"
     if not p.is_file():
         return {"mode": "blocked_no_asm", "reason": f"missing {p}"}
@@ -311,10 +321,12 @@ def emit(sym: str, outdir: Path, info: dict | None = None) -> dict:
         return info
     lines, start, end = info["lines"], info["start"], info["end"]
     outdir.mkdir(parents=True, exist_ok=True)
-    target = outdir / f"{sym}.target.s"
-    residual = outdir / f"{sym}.residual.s"
-    target.write_text(PREAMBLE + "\n".join(lines[start:end + 1]) + "\n", encoding="utf-8")
-    residual.write_text("\n".join(lines[:start] + lines[end + 1:]), encoding="utf-8")
+    # Proven to stay inside `outdir`, and written atomically: these two files feed the linker.
+    # 证明仍在 `outdir` 之内，并原子写入：这两个文件会进链接。
+    target = at2_io.safe_child(outdir, sym, ".target.s", what="target symbol")
+    residual = at2_io.safe_child(outdir, sym, ".residual.s", what="target symbol")
+    at2_io.atomic_write_text(target, PREAMBLE + "\n".join(lines[start:end + 1]) + "\n")
+    at2_io.atomic_write_text(residual, "\n".join(lines[:start] + lines[end + 1:]))
     info["target_s"] = target
     info["residual_s"] = residual
     return info

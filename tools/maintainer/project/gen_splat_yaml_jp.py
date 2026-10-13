@@ -37,9 +37,15 @@ Usage:
   python3 gen_splat_yaml_jp.py <elf> <symbol_addrs.txt> <out.yaml> [--name NAME]
 """
 import hashlib
+import json
 import re
 import struct
 import sys
+from pathlib import Path
+
+# Make the shared tools in tools/project importable.  让 tools/project 的共享工具可被导入。
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "project"))
+import at2_io  # noqa: E402  safe symbols / atomic writes
 
 # Keep the same values as splat ps2elfinfo.ELF_SECTION_MAPPING
 # 与 splat ps2elfinfo.ELF_SECTION_MAPPING 保持一致
@@ -102,10 +108,18 @@ def va2rom(loads, va):
 
 
 def main():
+    if len(sys.argv) < 4:
+        print("usage: python3 gen_splat_yaml_jp.py <elf> <symbol_addrs.txt> <out.yaml> [--name NAME]",
+              file=sys.stderr)
+        return 2
     elf, sym_path, out_yaml = sys.argv[1:4]
     name = "SLPS_258.19"
     if "--name" in sys.argv:
-        name = sys.argv[sys.argv.index("--name") + 1]
+        i = sys.argv.index("--name")
+        if i + 1 >= len(sys.argv):
+            print("error: --name requires an argument", file=sys.stderr)
+            return 2
+        name = sys.argv[i + 1]
 
     d, phs, secs = parse_elf(elf)
     loads = rom_map(phs)
@@ -145,6 +159,11 @@ def main():
             # EE .reginfo: the last 4 bytes hold the gp value (measurement: true for the US and the JP version)
             # EE .reginfo：最后 4 字节是 gp 值（美版/日版实测均如此）
             gp = struct.unpack_from("<I", d, s["off"] + s["size"] - 4)[0]
+    if gp is None:
+        # `"0x%08X" % None` used to raise TypeError halfway through generation.
+        # `.reginfo` 缺失时 `"0x%08X" % None` 原先会在生成中途抛 TypeError。
+        print("error: cannot derive gp_value: no usable .reginfo section in %s" % elf, file=sys.stderr)
+        return 2
 
     def gname(i):
         return names[i]
@@ -246,9 +265,17 @@ def main():
             elif not in_text:
                 lines.append("      - [0x%X, asm, %s/head]" % (va2rom(loads, tstart_va), gn))
             for a in in_text:
-                fn = funcs[a][0]
-                lines.append("      - {start: 0x%X, type: asmtu, name: %s/%s}"
-                             % (va2rom(loads, a), gn, fn))
+                # Repo-derived function name: validate it, then emit the name as one quoted
+                # YAML scalar so `}` or a newline in it cannot inject entries. (D4)
+                # 函数名来自仓库：先校验，再作为一个带引号的 YAML 标量输出，
+                # 让名字里的 `}` 或换行无法注入条目。 (D4)
+                try:
+                    fn = at2_io.safe_symbol(funcs[a][0], what="function symbol")
+                except ValueError as e:
+                    print("error: %s (in %s)" % (e, sym_path), file=sys.stderr)
+                    return 2
+                lines.append("      - {start: 0x%X, type: asmtu, name: %s}"
+                             % (va2rom(loads, a), json.dumps("%s/%s" % (gn, fn))))
             if in_text:
                 last = in_text[-1]
                 last_end = last + funcs[last][1]
@@ -269,7 +296,9 @@ def main():
                              % (va2rom(loads, s["addr"]), st, gn, va2rom(loads, s["addr"]),
                                 s["name"]))
     lines.append("  - [0x%X]" % rom_size)
-    open(out_yaml, "w", encoding="utf-8").write("\n".join(lines) + "\n")
+    # The generated yaml can be a tracked config; write it in one atomic replace (D12).
+    # 生成的 yaml 可能是 tracked 配置，用一次原子替换写入（D12）。
+    at2_io.atomic_write_text(out_yaml, "\n".join(lines) + "\n")
     print("wrote %s" % out_yaml)
     print("group count = %d ; group names = %s" % (len(groups), names[:len(groups)]))
     print("rom_size (joined PT_LOAD) = 0x%X (%d B)" % (rom_size, rom_size))
@@ -278,7 +307,8 @@ def main():
         print("  [%s] rom 0x%06X vram 0x%08X bss 0x%X sections=%s"
               % (gname(i), L["rom"], L["vstart"], sum(s["size"] for s in gs if s["type"] == 8),
                  ",".join(s["name"] for s in gs)))
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -26,7 +26,7 @@
 # 日版对照函数（由 .erx.lib baseelf 槽位对齐得到）：
 #   baseelf_15 @0x1F5D20  ->  jr $ra ; lh $v0,24($a0)   （对照组，两版应一致）
 #   baseelf_19 @0x1E0F60  ->  lui $t7,0x7b ; jr $ra ; lw $v0,-3376($t7)  （判别点）
-set -u
+set -euo pipefail
 EECC="${EECC:-$HOME/eecc}"
 OD="${OD:-$HOME/ps2dev/ee/bin/mips64r5900el-ps2-elf-objdump}"
 W="$(cd "$(dirname "$0")/.." && pwd)"
@@ -48,12 +48,29 @@ for v in 2.96 3.2-040921; do
     [ -x "$GCC" ] || { echo "  $GCC is missing. Skip this compiler."; continue; }
     echo "--- ee-gcc $($GCC --version 2>&1 | head -1) ---"
     for g in 0 8; do
-        "$GCC" -O2 -G$g -c -o "$TMP/p.o" "$TMP/probe.c" 2>/dev/null
+        # Each -G level gets its own object. A shared "$TMP/p.o" plus a discarded return
+        # code made a failed -G8 silently print the -G0 disassembly.
+        # 每档 -G 用自己的对象文件；原先共用一个 "$TMP/p.o" 且丢弃返回码，
+        # 一旦 -G8 编译失败就会静默打印 -G0 的反汇编。
+        obj="$TMP/p-G$g.o"
+        cerr="$TMP/p-G$g.cerr"
+        if ! "$GCC" -O2 -G$g -c -o "$obj" "$TMP/probe.c" 2>"$cerr"; then
+            echo "  -G$g  COMPILE FAILED (skipped): $(head -n1 "$cerr" 2>/dev/null)"
+            continue
+        fi
+        # Check the objdump step explicitly (return code, stderr) instead of trusting it.
+        # 显式检查 objdump 这一步（返回码、stderr），不盲信。
+        dis="$TMP/p-G$g.dis"
+        oerr="$TMP/p-G$g.oerr"
+        if ! "$OD" -d "$obj" >"$dis" 2>"$oerr"; then
+            echo "  -G$g  OBJDUMP FAILED (skipped): $(head -n1 "$oerr" 2>/dev/null)"
+            continue
+        fi
         printf "  -G%-2s  f1: " "$g"
-        "$OD" -d "$TMP/p.o" | sed -n '/<f1>:/,/^$/p' | grep -E '^\s+[0-9a-f]+:' \
+        sed -n '/<f1>:/,/^$/p' "$dis" | { grep -E '^\s+[0-9a-f]+:' || true; } \
             | sed 's/^ *[0-9a-f]*:\t[0-9a-f]*\t//' | tr '\n' '|'
         printf "   f2: "
-        "$OD" -d "$TMP/p.o" | sed -n '/<f2>:/,/^$/p' | grep -E '^\s+[0-9a-f]+:' \
+        sed -n '/<f2>:/,/^$/p' "$dis" | { grep -E '^\s+[0-9a-f]+:' || true; } \
             | sed 's/^ *[0-9a-f]*:\t[0-9a-f]*\t//' | tr '\n' '|'
         echo
     done
@@ -62,12 +79,20 @@ done
 echo
 echo "=== Measured result on the JP target binary ==="
 printf "  f1 @0x1F5D20 : "
-"$OD" -d --start-address=0x1f5d20 --stop-address=0x1f5d28 "$ELF" | sed -n '/>:/,$p' \
-    | grep -E '^\s+[0-9a-f]+:' | sed 's/^ *[0-9a-f]*:\t[0-9a-f]*\t//' | tr '\n' '|'
+if "$OD" -d --start-address=0x1f5d20 --stop-address=0x1f5d28 "$ELF" >"$TMP/tgt_f1.dis" 2>"$TMP/tgt_f1.err"; then
+    sed -n '/>:/,$p' "$TMP/tgt_f1.dis" | { grep -E '^\s+[0-9a-f]+:' || true; } \
+        | sed 's/^ *[0-9a-f]*:\t[0-9a-f]*\t//' | tr '\n' '|'
+else
+    printf "OBJDUMP FAILED: %s" "$(head -n1 "$TMP/tgt_f1.err" 2>/dev/null)"
+fi
 echo
 printf "  f2 @0x1E0F60 : "
-"$OD" -d --start-address=0x1e0f60 --stop-address=0x1e0f6c "$ELF" | sed -n '/>:/,$p' \
-    | grep -E '^\s+[0-9a-f]+:' | sed 's/^ *[0-9a-f]*:\t[0-9a-f]*\t//' | tr '\n' '|'
+if "$OD" -d --start-address=0x1e0f60 --stop-address=0x1e0f6c "$ELF" >"$TMP/tgt_f2.dis" 2>"$TMP/tgt_f2.err"; then
+    sed -n '/>:/,$p' "$TMP/tgt_f2.dis" | { grep -E '^\s+[0-9a-f]+:' || true; } \
+        | sed 's/^ *[0-9a-f]*:\t[0-9a-f]*\t//' | tr '\n' '|'
+else
+    printf "OBJDUMP FAILED: %s" "$(head -n1 "$TMP/tgt_f2.err" 2>/dev/null)"
+fi
 echo
 echo
 echo "=== Histogram of the global-address register in the JP .text (evidence for the decision) ==="

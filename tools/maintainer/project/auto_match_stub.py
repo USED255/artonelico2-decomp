@@ -17,17 +17,21 @@ Position (the difference from auto_match_trivial.py):
     overwrites `.dat` beyond its limit. With a .s file, the symbol is at offset 0 and
     the `.text` size equals the instruction byte count. A byte-for-byte in-place
     replacement then works.
-  The evidence class is separate: byte equality is `[measured]` (objdiff 100% plus the
-  payload check). The meaning is `[verified]` (the instruction determines it
-  uniquely). Do **not** count this class as "derived C". The progress report counts
-  each shape class on its own.
+  The evidence class is separate: byte equality is `[measured]` (objdiff 100% against the
+  splat-derived target block **plus** a `.text` byte check against the object the build
+  links; the mixed-build payload check is the retail guarantee). The meaning is
+  `[verified]` (the instruction determines it uniquely). Do **not** count this class as
+  "derived C". The progress report counts each shape class on its own.
 
 Decision and gates:
   * A candidate is a symbol in the workqueue with `hybrid_ok=1` that is not in
     matched_symbols.txt and that has a safe split mode.
   * A stub shape holds syscall, break, or a hand-written instruction
     (mfc0/mtc0/ctc2/cfc2/vcallmsr/lq/sq/.word).
-  * The tool writes a symbol only when objdiff == 100.0.
+  * The tool writes a symbol only when the whole acceptance chain passes:
+    objdiff == 100.0 against the splat-derived target block, **and** byte equality of the
+    `.text` against the object the build links (`build/asm/cod/<sym>.o`, extracted with
+    OBJCOPY). The retail-byte guarantee comes from the mixed-build payload check.
 
 Usage:
   python3 tools/maintainer/project/auto_match_stub.py scan [--tier trivial]
@@ -44,13 +48,16 @@ matching batch 桩类自动生成器：syscall / break / 手写指令（日版�
   * 为什么不用「文件级 `__asm__` 的 .c」：实测 ee-gcc 3.2 对纯 asm TU 会在 `.text` 头部垫
     20 字节零字节（符号落在 0x14），这些字节会被一起放进镜像 → `.cod` 越界覆盖 `.dat`。
     改用 .s 后符号在偏移 0，`.text` 大小 = 指令字节数，逐字节可原位替换。
-  证据口径单列：字节一致是 `[实测]`（objdiff 100% + 载荷校验），语义是 `[已核实]`（指令唯一确定），
+  证据口径单列：字节一致是 `[实测]`（对 splat 目标块 objdiff 100% + 与构建汇编对象 `.text` 逐字节一致，
+  零售字节由混合构建载荷校验兜底），语义是 `[已核实]`（指令唯一确定），
   **不得**把这一类算作「反推 C」——进度报告按 shape 分类分别计数。
 
 判定与闸门：
   * 候选 = workqueue 里 `hybrid_ok=1`、未被 matched_symbols.txt 收录、且 split 模式可安全摘出的符号；
   * 桩形态 = 目标块含 syscall / break / 手写指令（mfc0/mtc0/ctc2/cfc2/vcallmsr/lq/sq/.word）；
-  * 只有 objdiff == 100.0 才落地。
+  * 只有**整条验收链**通过才落地：对 splat 目标块 objdiff == 100.0，
+    且 `.text` 与构建真正链接的对象（`build/asm/cod/<sym>.o`，用 OBJCOPY 抽节）逐字节一致；
+    零售字节的保证来自混合构建载荷校验。
 
 用法：
   python3 tools/maintainer/project/auto_match_stub.py scan [--tier trivial]
@@ -72,6 +79,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 # Make the shared tools in tools/project importable.  让 tools/project 的共享工具可被导入。
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "project"))
+import at2_io  # noqa: E402  safe-name / atomic-write helpers (R30 D8/D12)
+from at2_paths import BUILD_ASM_COD, OBJCOPY  # noqa: E402  byte check against the object the build links (R30 D10)
 from auto_match_trivial import (  # noqa: E402  reuse the same path and toolchain constants, so the rules cannot drift
     ROOT, REPO, WORK_ROOT, WORKQUEUE, ASMDIR, MATCHED_LIST, SRCDIR,
     GCC, AS, OBJDIFF, CFLAGS, split_mode, matched_in_list,
@@ -217,6 +226,20 @@ def s_source(sym: str, addr: int, size: int, shape: str, body: list[str]) -> str
     return hdr + "\n".join(out) + "\n"
 
 
+def text_bytes(obj: Path, out: Path) -> bytes | None:
+    """Extract the `.text` bytes of one object with OBJCOPY; None when that is not possible.
+
+    用 OBJCOPY 抽出对象的 `.text` 字节；抽不出来（缺节 / 工具失败 / 空结果）返回 None，
+    调用方按「无法验证」fail-closed 处理。
+    """
+    r = subprocess.run([OBJCOPY, "-O", "binary", "--only-section=.text", str(obj), str(out)],
+                       cwd=str(ROOT), capture_output=True, text=True)
+    if r.returncode or not out.is_file():
+        return None
+    data = out.read_bytes()
+    return data or None
+
+
 def run_objdiff(sym: str, work: Path) -> float | None:
     block = target_block(sym)
     if not block:
@@ -237,10 +260,33 @@ def run_objdiff(sym: str, work: Path) -> float | None:
                        cwd=str(ROOT), capture_output=True, text=True)
     if r.returncode:
         return None
-    data = json.loads(dj.read_text(encoding="utf-8"))
+    data = at2_io.guarded_json_load(dj)
+    if data is None:
+        return None
     per = {s["name"]: s.get("match_percent") for s in data["left"]["symbols"]
            if s.get("kind") == "SYMBOL_FUNCTION"}
-    return per.get(sym)
+    mp = per.get(sym)
+    if mp != 100.0:
+        return mp
+    # objdiff compares the probe against the splat-derived target block, and this tool
+    # assembles BOTH from the same target_block(sym) lines, so 100.0 alone is structurally
+    # guaranteed. Prove byte equality against the object the build really links.
+    # objdiff 的目标块与 probe 都来自同一份 target_block(sym) ⇒ 100.0 本身是结构性保证；
+    # 必须再与**构建真正链接**的对象做 `.text` 逐字节比对，否则这个 100% 证明不了任何事。
+    baseline = BUILD_ASM_COD / f"{sym}.o"
+    if not baseline.is_file():
+        print(f"   [stub] {sym}: baseline object missing ({baseline}) -- not verified", file=sys.stderr)
+        return None
+    got = text_bytes(c_o, d / "probe.text")
+    want = text_bytes(baseline, d / "base.text")
+    if got is None or want is None:
+        print(f"   [stub] {sym}: OBJCOPY could not extract .text -- not verified", file=sys.stderr)
+        return None
+    if got != want:
+        print(f"   [stub] {sym}: .text differs from the build object "
+              f"({len(got)} B vs {len(want)} B) -- not verified", file=sys.stderr)
+        return None
+    return mp
 
 
 def stub_section_syms() -> set:
@@ -276,11 +322,34 @@ def candidates(tier: str):
     return out
 
 
+def _safe_targets(winners: dict, suffix: str, source: str) -> dict:
+    """Validate every winner name and resolve its path before anything is written (R30 D8).
+
+    A repo-derived name must not escape `src/matched/`, and an invalid name must never leave a
+    partial apply. All names are checked first; on a bad one the tool prints it with its source
+    and exits non-zero with nothing written.
+
+    先整体校验中奖符号名并解析落盘路径（R30 D8）：名字不得逃出 `src/matched/`，也不允许「写到一半」
+    才失败；有非法名就逐个打印（含来源）并退非零，此时一个字节都还没写。
+    """
+    bad = [sym for sym in winners if not at2_io.symbol_ok(sym)]
+    if bad:
+        for sym in bad:
+            print(f"apply: refusing unsafe symbol name {sym!r} (source: {source}); nothing written",
+                  file=sys.stderr)
+        sys.exit(2)
+    return {sym: at2_io.safe_child(SRCDIR, sym, suffix) for sym in winners}
+
+
 def do_apply(winners: dict):
+    paths = _safe_targets(winners, ".s", "workqueue/result.json")
     SRCDIR.mkdir(parents=True, exist_ok=True)
+    # Generated sources first, the tracked list last; both through the atomic helpers (R30 D8/D12).
+    # 先生成源码、最后写清单，两者都走原子写（R30 D8/D12）。
     for sym, info in winners.items():
-        (SRCDIR / f"{sym}.s").write_text(
-            s_source(sym, info["addr"], info["size"], info["shape"], info["body"]), encoding="utf-8")
+        at2_io.atomic_write_text(
+            paths[sym],
+            s_source(sym, info["addr"], info["size"], info["shape"], info["body"]))
     text = MATCHED_LIST.read_text(encoding="utf-8")
     base = text.split(STUB_BEGIN)[0].rstrip("\n") if STUB_BEGIN in text else text.rstrip("\n")
     existing: "OrderedDict[str, str]" = OrderedDict()
@@ -299,7 +368,7 @@ def do_apply(winners: dict):
     for sym in sorted(existing):
         out.append(f"{sym}    # {existing[sym]}" if existing[sym] else sym)
     out.append(STUB_END)
-    MATCHED_LIST.write_text("\n".join(out) + "\n", encoding="utf-8")
+    at2_io.atomic_write_text(MATCHED_LIST, "\n".join(out) + "\n")
     print(f"apply: wrote {len(winners)} stub .s sources; stub section {n0} -> {len(existing)} entries")
 
 

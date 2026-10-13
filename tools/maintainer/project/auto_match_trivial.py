@@ -77,6 +77,7 @@ from pathlib import Path
 
 # Make the shared tools in tools/project importable.  让 tools/project 的共享工具可被导入。
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "project"))
+import at2_io  # noqa: E402  safe-name / atomic-write helpers (R30 D8/D11/D12)
 from at2_paths import (  # noqa: E402  layout-independent path resolution (see the top of at2_paths.py)
     PROJECT_ROOT as ROOT,
     PRIVATE_ROOT,
@@ -304,6 +305,23 @@ def wrap_void(sym, sig, variants_stmts):
     return [f"void {sym}({sig}) {{ " + " ".join(s) + " }" for s in variants_stmts]
 
 
+def _symbol_or_none(name, what, where):
+    """Return `name` when it is safe as a C identifier; else report once and return None (R30 D11).
+
+    Every name taken from the disassembly is interpolated into generated C (and later into a
+    path). at2_io.symbol_ok is the single rule; a rejected name drops the candidate instead of
+    producing C that cannot compile or that names something else.
+
+    从反汇编取出的名字都会被插进生成的 C（随后还会进路径）。规则只有 at2_io.symbol_ok 一条；
+    不合法就打印一行明确错误并放弃该候选，绝不生成编译不过 / 指向别处的 C。
+    """
+    if at2_io.symbol_ok(name):
+        return name
+    print(f"  [skip] unsafe {what} name {name!r} in {where}: not a usable C identifier",
+          file=sys.stderr)
+    return None
+
+
 # --------------------------------------------------------------------------
 # Shape recognizers  形状识别器
 # --------------------------------------------------------------------------
@@ -364,6 +382,10 @@ def recognizers():
         dsym, base = _lo_mem(c[1][1])
         if dsym != d or base != a[1][0]:
             return None
+        # R30 D11: `d` is interpolated into the generated C; reject a non-identifier.
+        # R30 D11：`d` 会插进生成的 C，非标识符一律拒绝。
+        if _symbol_or_none(d, "data symbol", sym) is None:
+            return None
         t = LOADS[c[0]]
         return [f"{t} {sym}(void) {{ return {d}; }}",
                 f"{t} {sym}(void) {{ return *({t} *)&{d}; }}"], [(d, t)]
@@ -383,6 +405,10 @@ def recognizers():
         if c[0] != "addiu" or len(c[1]) != 3 or c[1][0] != V0 or c[1][1] != V0:
             return None
         if _data_sym(c[1][2]) != d:
+            return None
+        # R30 D11: `d` is interpolated into the generated C; reject a non-identifier.
+        # R30 D11：`d` 会插进生成的 C，非标识符一律拒绝。
+        if _symbol_or_none(d, "data symbol", sym) is None:
             return None
         return [f"int {sym}(void) {{ return (int)&{d}; }}",
                 f"unsigned {sym}(void) {{ return (unsigned)&{d}; }}",
@@ -404,6 +430,10 @@ def recognizers():
             return None
         dsym, base = _lo_mem(c[1][1])
         if dsym != d or base != a[1][0]:
+            return None
+        # R30 D11: `d` is interpolated into the generated C; reject a non-identifier.
+        # R30 D11：`d` 会插进生成的 C，非标识符一律拒绝。
+        if _symbol_or_none(d, "data symbol", sym) is None:
             return None
         t, src = TYPE_OF[c[0]], c[1][0]
         if src == ZERO:
@@ -437,6 +467,10 @@ def recognizers():
             return None
         dsym, base = _lo_mem(c[1][1])
         if dsym != d or base != b[1][0]:
+            return None
+        # R30 D11: `d` is interpolated into the generated C; reject a non-identifier.
+        # R30 D11：`d` 会插进生成的 C，非标识符一律拒绝。
+        if _symbol_or_none(d, "data symbol", sym) is None:
             return None
         return [f"void {sym}(void) {{ {d} = {k}; }}"], [(d, STORES[c[0]])]
 
@@ -554,6 +588,10 @@ def recognizers():
             return None
         m = parse_mem(ins[1])
         if not m or m.kind != "gp" or m.base != GP:
+            return None
+        # R30 D11: `m.sym` (from %gp_rel(...)) is interpolated into the generated C.
+        # R30 D11：`m.sym`（来自 %gp_rel(...)）会插进生成的 C。
+        if _symbol_or_none(m.sym, "gp_rel symbol", sym) is None:
             return None
         if m.mn in LOADS:
             if m.reg != V0:
@@ -1085,6 +1123,12 @@ def recognizers():
         if len(ins) != 2 or not ins[0].startswith("j "):
             return None
         target = ins[0].split(None, 1)[1]
+        # R30 D11: the target becomes both an `extern` declaration and a call in generated C
+        # (the same rule auto_match_wrapper.py applies to its tail target).
+        # R30 D11：该目标既是生成 C 里的 `extern` 声明、又是调用（与 auto_match_wrapper.py 对尾调用
+        # 目标的做法一致）。
+        if _symbol_or_none(target, "tail-call target", sym) is None:
+            return None
         d = ins[1]
         if d == "nop":
             # Define with the old-style empty parameter list `()`. In one TU, another
@@ -1185,6 +1229,11 @@ def build_candidates(tier: str = "trivial"):
     stats = Counter()
     unrecognized = []
     for sym, addr, size in cands:
+        # R30 D11: `sym` itself is interpolated into the generated C and the file name.
+        # R30 D11：`sym` 本身也会插进生成的 C 与文件名，先过同一道校验。
+        if _symbol_or_none(sym, "symbol", str(WORKQUEUE)) is None:
+            stats["unsafe_name"] += 1
+            continue
         ins, _ = load_body(sym)
         if ins is None:
             stats["no_asm"] += 1
@@ -1237,6 +1286,10 @@ def build_candidates(tier: str = "trivial"):
 # Generate probe/target and run objdiff  生成 probe / target，跑 objdiff
 # --------------------------------------------------------------------------
 def extern_decl(name, t):
+    # R30 D11: this is the last gate before the name goes into generated C. The recognizers
+    # already reject an unsafe name; this guard makes the rule impossible to bypass.
+    # R30 D11：这是名字进入生成 C 之前的最后一道闸门；识别器已拒绝非法名，这里保证规则不可绕过。
+    at2_io.safe_symbol(name, what="extern")
     if t.startswith("func"):
         # No prototype: in one TU the symbol can be a 0-arg definition and also get a multi-arg tail call
         return "extern int %s();" % name
@@ -1388,6 +1441,25 @@ def shape_stats(winners, fails):
     return ws, fs
 
 
+def _safe_targets(winners: dict, suffix: str, source: str) -> dict:
+    """Validate every winner name and resolve its path before anything is written (R30 D8).
+
+    A repo-derived name must not escape `src/matched/`, and an invalid name must never leave a
+    partial apply. All names are checked first; on a bad one the tool prints it with its source
+    and exits non-zero with nothing written.
+
+    先整体校验中奖符号名并解析落盘路径（R30 D8）：名字不得逃出 `src/matched/`，也不允许「写到一半」
+    才失败；有非法名就逐个打印（含来源）并退非零，此时一个字节都还没写。
+    """
+    bad = [sym for sym in winners if not at2_io.symbol_ok(sym)]
+    if bad:
+        for sym in bad:
+            print(f"apply: refusing unsafe symbol name {sym!r} (source: {source}); nothing written",
+                  file=sys.stderr)
+        sys.exit(2)
+    return {sym: at2_io.safe_child(SRCDIR, sym, suffix) for sym in winners}
+
+
 def do_apply(winners):
     """Write src/matched/<sym>.c. Update the matching batch section of the list in merge mode.
 
@@ -1395,7 +1467,10 @@ def do_apply(winners):
 
     写 src/matched/<sym>.c 并把清单 matching batch 段**合并式**更新（已有条目保留，不整段重写）。
     """
+    paths = _safe_targets(winners, ".c", str(WORKQUEUE))
     SRCDIR.mkdir(parents=True, exist_ok=True)
+    # Generated sources first, the tracked config files last; all through the atomic helpers
+    # (R30 D8/D12).  先生成源码、最后写 tracked 配置，全部走原子写（R30 D8/D12）。
     for sym, info in winners.items():
         a, sz, shape = info["addr"], info["size"], info["shape"]
         hdr = (f"/* {sym} @ 0x{a:08x} ({sz} B, {info.get('tier', 'trivial')}) : shape={shape}\n"
@@ -1403,7 +1478,7 @@ def do_apply(winners):
                f"The entry joins the mixed build after objdiff verification at 100%. */\n")
         decls = "\n".join(extern_decl(n, t) for n, t in info["externs"])
         src = hdr + (decls + "\n\n" if decls else "") + info["_win_body"] + "\n"
-        (SRCDIR / f"{sym}.c").write_text(src, encoding="utf-8")
+        at2_io.atomic_write_text(paths[sym], src)
 
     # The compile flag level must go to disk (the key is the second list column, that is
     # the symbol name without extension; see P-34). If it does not, the build recompiles
@@ -1425,9 +1500,8 @@ def do_apply(winners):
             fmap[sym] = fl
         elif sym in fmap and (not fl or fl == "-O2"):
             del fmap[sym]
-    FLAGS_TSV.write_text("\n".join(["source-basename\textra-cflags"]
-                                    + [f"{k}\t{fmap[k]}" for k in sorted(fmap)]) + "\n",
-                         encoding="utf-8")
+    at2_io.atomic_write_text(FLAGS_TSV, "\n".join(["source-basename\textra-cflags"]
+                                                  + [f"{k}\t{fmap[k]}" for k in sorted(fmap)]) + "\n")
 
     text = MATCHED_LIST.read_text(encoding="utf-8")
     pre = text.split(M3_BEGIN)[0].rstrip("\n") if M3_BEGIN in text else text.rstrip("\n")
@@ -1458,7 +1532,7 @@ def do_apply(winners):
     body = "\n".join(lines)
     if post:
         body = body.rstrip("\n") + "\n" + post
-    MATCHED_LIST.write_text(body.rstrip("\n") + "\n", encoding="utf-8")
+    at2_io.atomic_write_text(MATCHED_LIST, body.rstrip("\n") + "\n")
     print(f"apply: wrote {len(winners)} C sources; matching batch section {n_before} -> {len(existing)} entries")
 
 
