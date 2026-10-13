@@ -48,7 +48,6 @@ import argparse
 import concurrent.futures as cf
 import json
 import re
-import shutil
 import subprocess
 import sys
 from collections import Counter, OrderedDict
@@ -58,6 +57,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ghidra_draft as GD  # noqa: E402
 # Make the shared tools in tools/project importable.  让 tools/project 的共享工具可被导入。
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "project"))
+import at2_io  # noqa: E402  safe-name / atomic-write helpers (R30 D8/D12)
 from auto_match_trivial import (  # noqa: E402
     ROOT, WORK_ROOT, EVIDENCE_ROOT, WORKQUEUE, MATCHED_LIST, SRCDIR, GCC, AS, OBJDIFF,
     CFLAGS, split_mode, matched_in_list, M3_BEGIN, M3_END,
@@ -181,7 +181,12 @@ def probe(rec: dict, flags_sets: list[list[str]]) -> dict:
                            cwd=str(ROOT), capture_output=True, text=True)
         if r.returncode:
             continue
-        data = json.loads(dj.read_text(encoding="utf-8"))
+        data = at2_io.guarded_json_load(dj)
+        if data is None:
+            # R30 D14: a missing / broken objdiff JSON is "no score" for this flag level, not
+            # an exception out of the worker.
+            # R30 D14：objdiff 的 JSON 缺失/损坏 = 该档位「没有评分」，不从这里抛异常。
+            continue
         per = {s["name"]: s.get("match_percent") for s in data["left"]["symbols"]
                if s.get("kind") == "SYMBOL_FUNCTION"}
         m = per.get(sym)
@@ -195,10 +200,32 @@ def probe(rec: dict, flags_sets: list[list[str]]) -> dict:
     return res
 
 
+def _safe_targets(winners: dict, suffix: str, source: str) -> dict:
+    """Validate every winner name and resolve its path before anything is written (R30 D8).
+
+    A repo-derived name must not escape `src/matched/`, and an invalid name must never leave a
+    partial apply. All names are checked first; on a bad one the tool prints it with its source
+    and exits non-zero with nothing written.
+
+    先整体校验中奖符号名并解析落盘路径（R30 D8）：名字不得逃出 `src/matched/`，也不允许「写到一半」
+    才失败；有非法名就逐个打印（含来源）并退非零，此时一个字节都还没写。
+    """
+    bad = [sym for sym in winners if not at2_io.symbol_ok(sym)]
+    if bad:
+        for sym in bad:
+            print(f"apply: refusing unsafe symbol name {sym!r} (source: {source}); nothing written",
+                  file=sys.stderr)
+        sys.exit(2)
+    return {sym: at2_io.safe_child(SRCDIR, sym, suffix) for sym in winners}
+
+
 def do_apply(winners: dict):
+    paths = _safe_targets(winners, ".c", "result.json / workqueue")
     SRCDIR.mkdir(parents=True, exist_ok=True)
+    # Generated sources first, the tracked config files last; all through the atomic helpers
+    # (R30 D8/D12).  先生成源码、最后写 tracked 配置，全部走原子写（R30 D8/D12）。
     for sym, info in winners.items():
-        shutil.copyfile(BUILD / sym / f"{sym}.draft.c", SRCDIR / f"{sym}.c")
+        at2_io.atomic_copy(BUILD / sym / f"{sym}.draft.c", paths[sym])
     text = MATCHED_LIST.read_text(encoding="utf-8")
     pre = text.split(M3_BEGIN)[0].rstrip("\n") if M3_BEGIN in text else text.rstrip("\n")
     post = text.split(M3_END, 1)[1].lstrip("\n") if M3_END in text else ""
@@ -216,7 +243,7 @@ def do_apply(winners: dict):
     body = "\n".join([pre, "", M3_BEGIN] + [f"{s}    # {existing[s]}" for s in sorted(existing)] + [M3_END])
     if post:
         body = body.rstrip("\n") + "\n" + post
-    MATCHED_LIST.write_text(body.rstrip("\n") + "\n", encoding="utf-8")
+    at2_io.atomic_write_text(MATCHED_LIST, body.rstrip("\n") + "\n")
 
     flags = {}
     if FLAGS_FILE.is_file():
@@ -235,7 +262,7 @@ def do_apply(winners: dict):
             flags.pop(sym, None)
     out = ["source-basename\textra-cflags"]
     out += [f"{s}\t{flags[s]}" for s in sorted(flags)]
-    FLAGS_FILE.write_text("\n".join(out) + "\n", encoding="utf-8")
+    at2_io.atomic_write_text(FLAGS_FILE, "\n".join(out) + "\n")
     print(f"apply: wrote {len(winners)} C sources; matching batch section {n0} -> {len(existing)}; flag table {len(flags)} entries")
 
 

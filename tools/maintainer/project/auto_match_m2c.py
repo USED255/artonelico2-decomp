@@ -31,7 +31,6 @@ import concurrent.futures as cf
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 from collections import Counter
@@ -42,6 +41,7 @@ import m2c_draft as M2C  # noqa: E402
 
 # Make the shared tools in tools/project importable.  让 tools/project 的共享工具可被导入。
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "project"))
+import at2_io  # noqa: E402  safe-name / atomic-write helpers (R30 D8/D12)
 from at2_paths import (  # noqa: E402  layout-independent path resolution (see the top of at2_paths.py)
     PROJECT_ROOT as ROOT,
     PRIVATE_ROOT,
@@ -183,8 +183,28 @@ def probe(rec: dict, flags_sets: list[list[str]]) -> dict:
     return out
 
 
+def _safe_targets(winners: dict, suffix: str, source: str) -> dict:
+    """Validate every winner name and resolve its path before anything is written (R30 D8).
+
+    A repo-derived name must not escape `src/matched/`, and an invalid name must never leave a
+    partial apply. All names are checked first; on a bad one the tool prints it with its source
+    and exits non-zero with nothing written.
+
+    先整体校验中奖符号名并解析落盘路径（R30 D8）：名字不得逃出 `src/matched/`，也不允许「写到一半」
+    才失败；有非法名就逐个打印（含来源）并退非零，此时一个字节都还没写。
+    """
+    bad = [sym for sym in winners if not at2_io.symbol_ok(sym)]
+    if bad:
+        for sym in bad:
+            print(f"apply: refusing unsafe symbol name {sym!r} (source: {source}); nothing written",
+                  file=sys.stderr)
+        sys.exit(2)
+    return {sym: at2_io.safe_child(SRCDIR, sym, suffix) for sym in winners}
+
+
 def apply(results: list[dict]) -> None:
     win = [r for r in results if r.get("match") == 100.0]
+    paths = _safe_targets({r["sym"]: r for r in win}, ".c", str(OUT / "result.json"))
     SRCDIR.mkdir(parents=True, exist_ok=True)
     fmap: dict[str, str] = {}
     if FLAGS_TSV.is_file():
@@ -195,9 +215,11 @@ def apply(results: list[dict]) -> None:
             p = line.split("\t")
             if len(p) >= 2:
                 fmap[p[0]] = p[1]
+    # Generated sources first, the tracked config files last; all through the atomic helpers
+    # (R30 D8/D12).  先生成源码、最后写 tracked 配置，全部走原子写（R30 D8/D12）。
     for r in win:
         sym = r["sym"]
-        shutil.copyfile(OUT / sym / f"{sym}.m2c.c", SRCDIR / f"{sym}.c")
+        at2_io.atomic_copy(OUT / sym / f"{sym}.m2c.c", paths[sym])
         if r.get("flags"):
             # The key must agree with the query key of build_mixed.sh: the second list
             # column (the symbol name by default, **without .c**). The form `<sym>.c` would
@@ -210,12 +232,12 @@ def apply(results: list[dict]) -> None:
     # header row one apply would erase it.
     # 先写冻结的表头行。本工具整份重写该文件；不写表头就会被一次 apply 抹掉。
     lines = ["source-basename\textra-cflags"] + ["\t".join(kv) for kv in sorted(fmap.items())]
-    FLAGS_TSV.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    at2_io.atomic_write_text(FLAGS_TSV, "\n".join(lines) + "\n")
     add = {r["sym"] for r in win}
     lines = MATCHED.read_text(encoding="utf-8").splitlines()
     kept = [l for l in lines if l.split("#", 1)[0].strip().split(" ")[0] not in add]
     kept += [f"{s}    # m2c_draft" for s in sorted(add)]
-    MATCHED.write_text("\n".join(kept) + "\n", encoding="utf-8")
+    at2_io.atomic_write_text(MATCHED, "\n".join(kept) + "\n")
     print(f"apply: wrote {len(win)} C sources; list {len(lines)} -> {len(kept)}; flag table {len(fmap)} entries")
 
 

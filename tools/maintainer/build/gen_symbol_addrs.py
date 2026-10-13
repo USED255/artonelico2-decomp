@@ -25,7 +25,15 @@ Default output: out/symbol_addrs.txt
 输入 out/ghidra/** 与 out/evidence/** 属私有侧证据，路径保留不改。
 命名优先级：.erx.lib 的库+槽名 > Ghidra 的 FUN_xxxxxxxx（转成 func_xxxxxxxx）。
 """
-import os, re, sys, collections
+import collections
+import os
+import re
+import sys
+from pathlib import Path
+
+# Make the shared tools in tools/project importable.  让 tools/project 的共享工具可被导入。
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "project"))
+import at2_io  # noqa: E402  safe symbols / atomic writes
 
 BASE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 FUNCS = os.path.join(BASE, 'out/ghidra/SLUS_217.88.functions.tsv')
@@ -75,7 +83,11 @@ def load_erx_names():
 def main():
     out_path = DEFAULT_OUT
     if '-o' in sys.argv:
-        out_path = sys.argv[sys.argv.index('-o') + 1]
+        i = sys.argv.index('-o')
+        if i + 1 >= len(sys.argv):
+            print("error: -o requires an output path", file=sys.stderr)
+            return 2
+        out_path = sys.argv[i + 1]
 
     funcs = load_functions()
     erx = load_erx_names()
@@ -88,6 +100,7 @@ def main():
     # 因此生成物必须是纯数据行，不能写表头注释行。
     lines = []
     named = 0
+    unsafe = 0
     used = {}          # name -> first address; a duplicate name gets an address suffix
     for addr in sorted(funcs):
         gname, size = funcs[addr]
@@ -108,6 +121,14 @@ def main():
         # 这里给重复项加地址后缀，别名关系仍保留在 erx_symbols.tsv。
         if name in used:
             name = '%s_%08x' % (name, addr)
+        try:
+            # A malformed name would inject arbitrary text into symbol_addrs.txt (D4).
+            # 名字不合法会把任意文本注入 symbol_addrs.txt（D4）。
+            at2_io.safe_symbol(name, what="symbol")
+        except ValueError as e:
+            unsafe += 1
+            print('  skip unsafe symbol: %s' % e, file=sys.stderr)
+            continue
         used[name] = addr
         lines.append('%s = 0x%08x; // type:func size:0x%x' % (name, addr, size))
 
@@ -124,15 +145,19 @@ def main():
     # out/evidence/erx_symbols.tsv 供人工命名参考。
     extra = [a for a in erx if a not in funcs]   # statistics only; never written to the symbol table
 
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    open(out_path, 'w', encoding='utf-8').write('\n'.join(lines) + '\n')
+    # The output can be the tracked config/symbol_addrs.txt; write it atomically (D12).
+    # 输出可能是 tracked 的 config/symbol_addrs.txt，用原子写（D12）。
+    at2_io.atomic_write_text(out_path, '\n'.join(lines) + '\n')
 
     print('function symbols   = %d' % len(funcs))
     print('  named or anchored = %d (%.1f%%)' % (named, 100 * named / max(len(funcs), 1)))
     print('  placeholder only  = %d' % (len(funcs) - named))
     print('extra labels       = %d' % len(extra))
+    if unsafe:
+        print('  unsafe rows skipped = %d' % unsafe)
     print('wrote              = %s' % os.path.relpath(out_path, BASE))
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

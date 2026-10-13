@@ -73,7 +73,14 @@ from pathlib import Path
 
 # Make the shared tools in tools/project importable.  让 tools/project 的共享工具可被导入。
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "project"))
-from at2_paths import PROJECT_ROOT as ROOT, PRIVATE_ROOT, WORK_ROOT, ASMDIR  # noqa: E402  layout independent
+from at2_paths import (  # noqa: E402  layout independent
+    PROJECT_ROOT as ROOT,
+    PRIVATE_ROOT,
+    WORK_ROOT,
+    WORKQUEUE,
+    ASMDIR,
+)
+import at2_io  # noqa: E402  safe names / guarded JSON / atomic writes
 
 REPO = PRIVATE_ROOT or ROOT                            # Private work area
 ASM = ASMDIR
@@ -187,12 +194,39 @@ def parse_file(path: Path) -> Parsed:
 
 
 # --- Index: callee -> [(file, lineno)]  索引：callee -> [(file, lineno)] -----
-def build_index(force: bool = False) -> dict[str, list]:
-    if not force and CACHE.is_file():
+def _asm_fingerprint() -> dict[str, list]:
+    """Cheap identity of every asm input: file name -> [mtime_ns, size].
+
+    The callsite cache used to be keyed on "does the file exist" only, so a cache
+    written before a `make split` was reused forever (the `force` flag is never true
+    at any call site). The fingerprint makes a stale cache detectable: one stat per
+    asm file is far cheaper than reparsing all of them.
+
+    所有 asm 输入的廉价指纹：文件名 -> [mtime_ns, size]。
+
+    调用点缓存原先只以「文件是否存在」为键，`force` 在任何调用点都不为真，于是
+    `make split` 之前写的缓存会被永久复用。指纹让过期缓存可被检测：每个 asm 文件一次
+    stat，远比全量重解析便宜。
+    """
+    fp: dict[str, list] = {}
+    for f in sorted(ASM.glob("*.s")):
         try:
-            return json.loads(CACHE.read_text(encoding="utf-8"))
-        except Exception:
-            pass
+            st = f.stat()
+        except OSError:
+            continue
+        fp[f.name] = [st.st_mtime_ns, st.st_size]
+    return fp
+
+
+def build_index(force: bool = False) -> dict[str, list]:
+    fp = _asm_fingerprint()
+    if not force and CACHE.is_file():
+        cached = at2_io.guarded_json_load(CACHE)
+        # A cache from an older format (a bare index without a fingerprint) is stale.
+        # 旧格式缓存（没有指纹的裸索引）一律视为过期。
+        if isinstance(cached, dict) and cached.get("fingerprint") == fp \
+                and isinstance(cached.get("index"), dict):
+            return cached["index"]
     idx: dict[str, list] = {}
     for f in sorted(ASM.glob("*.s")):
         p = parse_file(f)
@@ -201,7 +235,8 @@ def build_index(force: bool = False) -> dict[str, list]:
                 tgt = it["ops"][0].strip()
                 idx.setdefault(tgt, []).append([f.name, it["lineno"]])
     CACHE.parent.mkdir(parents=True, exist_ok=True)
-    CACHE.write_text(json.dumps(idx, separators=(",", ":")), encoding="utf-8")
+    CACHE.write_text(json.dumps({"fingerprint": fp, "index": idx}, separators=(",", ":")),
+                     encoding="utf-8")
     return idx
 
 
@@ -784,15 +819,19 @@ def main() -> int:
 
     # batch: one offline survey of the pool
     # batch：对池做一次离线普查
-    res_path = REPO / "routebjp" / "build" / "m2c" / "batch" / "result.json"
+    res_path = WORK_ROOT / "m2c" / "batch" / "result.json"
     wq = {}
-    for line in (REPO / "out" / "evidence" / "jp_m3_workqueue.tsv").read_text(encoding="utf-8").splitlines()[1:]:
+    for line in WORKQUEUE.read_text(encoding="utf-8").splitlines()[1:]:
         p = line.split("\t")
         if len(p) > 12:
             wq[p[0]] = {"size": int(p[2]), "class": p[12]}
     want = set(a.classes.split(","))
     rows = []
-    for r in json.loads(res_path.read_text(encoding="utf-8")):
+    res_rows = at2_io.guarded_json_load(res_path)
+    if res_rows is None:
+        print("error: cannot read %s (run the m2c batch first)" % res_path, file=sys.stderr)
+        return 2
+    for r in res_rows:
         w = wq.get(r["sym"])
         if not w or w["class"] not in want:
             continue

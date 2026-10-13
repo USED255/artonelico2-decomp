@@ -51,7 +51,6 @@ jtbl 池专项工具：真实池画像 / 样本选择 / （Stage 2）草稿生�
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import re
 import subprocess
@@ -61,15 +60,15 @@ from pathlib import Path
 # Make the shared tools in tools/project importable.  让 tools/project 的共享工具可被导入。
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "project"))
 from at2_paths import (  # noqa: E402
-    ASMDIR, PRIVATE_ROOT, PROJECT_ROOT as ROOT, WORKQUEUE,
+    ASMDIR, PROJECT_ROOT as ROOT, WORKQUEUE, WORK_ROOT,
     GCC, AS, OBJDIFF, INCLUDE,
 )
+import at2_io  # noqa: E402  safe names / guarded JSON / atomic writes
 
 DATA_DIR = ROOT / "asm" / "data"
 SYMADDRS = ROOT / "config" / "symbol_addrs.txt"
 PREAMBLE = '.include "macro.inc"\n\n.set noat\n.set noreorder\n\n.section .text, "ax"\n'
-_PRIV = Path(PRIVATE_ROOT) if PRIVATE_ROOT else ROOT.parent / "at2"
-WORK = Path(os.environ.get("AT2_JTBL_WORK", str(_PRIV / "routebjp" / "build" / "jtbl")))
+WORK = Path(os.environ.get("AT2_JTBL_WORK", str(WORK_ROOT / "jtbl")))
 
 # Flag matrix with the same rule as auto_match_permuter.py (17 flag levels)
 # 与 auto_match_permuter.py 同口径的档位矩阵（17 档）
@@ -274,9 +273,17 @@ def _target_block(sym: str) -> str | None:
 
 
 def _build_target(sym: str, d: Path) -> bool:
+    blk = _target_block(sym)
+    if blk is None:
+        # The workqueue can list a symbol that has no glabel..endlabel block in asm/cod.
+        # `PREAMBLE + None` used to raise TypeError; report and skip the symbol instead.
+        # 工作队列里的符号可能在 asm/cod 里没有 glabel..endlabel 块；
+        # `PREAMBLE + None` 原先会抛 TypeError，这里改为报告并跳过该符号。
+        print("  [FAIL] %s: no glabel..endlabel block (skipped)" % sym, file=sys.stderr)
+        return False
     d.mkdir(parents=True, exist_ok=True)
     ts, to = d / "target.s", d / "target.o"
-    ts.write_text(PREAMBLE + _target_block(sym), encoding="utf-8")
+    ts.write_text(PREAMBLE + blk, encoding="utf-8")
     r = subprocess.run([AS, "-EL", "-march=r5900", "-I", "include", "-o", str(to), str(ts)],
                        cwd=str(ROOT), capture_output=True, text=True)
     if r.returncode:
@@ -299,9 +306,8 @@ def _score(sym: str, src: Path, d: Path, flags: list[str]) -> float | None:
                        cwd=str(ROOT), capture_output=True, text=True)
     if r.returncode:
         return None
-    try:
-        data = json.loads(tj.read_text(encoding="utf-8"))
-    except Exception:
+    data = at2_io.guarded_json_load(tj)
+    if data is None:
         return None
     per = {s["name"]: s.get("match_percent") for s in data["left"]["symbols"]
            if s.get("kind") == "SYMBOL_FUNCTION"}

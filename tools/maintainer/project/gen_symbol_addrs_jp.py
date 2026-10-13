@@ -33,10 +33,26 @@ routeb/config/symbol_addrs.txt.
 """
 import re
 import sys
+from pathlib import Path
+
+# Make the shared tools in tools/project importable.  让 tools/project 的共享工具可被导入。
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "project"))
+import at2_io  # noqa: E402  safe symbols / atomic writes
 
 
 def load_functions(path):
+    """Return (addr -> (name, size_bytes), number of malformed rows).
+
+    A malformed row (a non-hex address or a non-integer size) is counted, not silently
+    swallowed; `main` reports the count at the end.
+
+    返回 (addr -> (name, size_bytes), 解析失败行数)。
+
+    解析失败的行（地址非十六进制 / size 非整数）会被计数而不是悄悄吞掉，`main` 最后
+    统一报告。
+    """
     out = {}
+    skipped = 0
     for line in open(path, encoding="utf-8"):
         p = line.rstrip("\n").split("\t")
         if len(p) < 3 or p[0] == "addr":
@@ -44,8 +60,8 @@ def load_functions(path):
         try:
             out[int(p[0], 16)] = (p[1], int(p[2]))
         except ValueError:
-            pass
-    return out
+            skipped += 1
+    return out, skipped
 
 
 def load_erx_names(path):
@@ -74,12 +90,17 @@ def load_erx_names(path):
 
 
 def main():
+    if len(sys.argv) < 4:
+        print("usage: python3 gen_symbol_addrs_jp.py <functions.tsv> <hle_tables.txt> <out.txt>",
+              file=sys.stderr)
+        return 2
     funcs_path, tables_path, out_path = sys.argv[1:4]
-    funcs = load_functions(funcs_path)
+    funcs, skipped_rows = load_functions(funcs_path)
     erx = load_erx_names(tables_path)
 
     lines = []
     named = 0
+    unsafe = 0
     used = {}
     for addr in sorted(funcs):
         gname, size = funcs[addr]
@@ -93,19 +114,33 @@ def main():
             named += 1
         if name in used:
             name = "%s_%08x" % (name, addr)
+        try:
+            # A malformed name would inject arbitrary text into the symbol table (D4).
+            # 名字不合法会把任意文本注入符号表（D4）。
+            at2_io.safe_symbol(name, what="symbol")
+        except ValueError as e:
+            unsafe += 1
+            print("  skip unsafe symbol: %s" % e, file=sys.stderr)
+            continue
         used[name] = addr
         lines.append("%s = 0x%08x; // type:func size:0x%x" % (name, addr, size))
 
     extra = [a for a in erx if a not in funcs]
-    with open(out_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines) + "\n")
+    # The output can be a tracked config/symbol_addrs.txt; write it atomically (D12).
+    # 输出可能是 tracked 的 config/symbol_addrs.txt，用原子写（D12）。
+    at2_io.atomic_write_text(out_path, "\n".join(lines) + "\n")
 
     print("function symbols   = %d" % len(funcs))
     print("  named/anchor     = %d (%.1f%%)" % (named, 100 * named / max(len(funcs), 1)))
     print("  placeholder only = %d" % (len(funcs) - named))
+    if skipped_rows:
+        print("  malformed input rows skipped = %d" % skipped_rows)
+    if unsafe:
+        print("  unsafe symbols skipped       = %d" % unsafe)
     print("erx unique addrs   = %d (not in the Ghidra function list = %d)" % (len(erx), len(extra)))
     print("written            = %s" % out_path)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
