@@ -42,7 +42,14 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 BINUTILS="${BINUTILS:-$HOME/eecc/ps2binutils}"
 AS="$BINUTILS/mips-ps2-decompals-as"      # decompals fork: binutils 2.45 rejects $t4-$t7
 LD="${LD:-$HOME/eecc/deb/root/usr/bin/mips-linux-gnu-ld.bfd}"
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:/home/liutao/eecc/deb/root/usr/lib/x86_64-linux-gnu"
+# The ld from the Debian package needs its own shared libraries. Do not hard-code a personal
+# home directory here: `LD_LIBDIR` (or `EE_LIBDIR`) names it, the default follows `$HOME`, and an
+# absent directory is simply not appended (R30 finding B1).
+# Debian 包里那份 ld 需要它自己的共享库。这里不要写死某个人的家目录：`LD_LIBDIR`（或 `EE_LIBDIR`）
+# 指定它，缺省跟随 `$HOME`，目录不存在就不追加（R30 B1）。
+LD_LIBDIR="${EE_LIBDIR:-${LD_LIBDIR:-$HOME/eecc/deb/root/usr/lib/x86_64-linux-gnu}}"
+[ -d "$LD_LIBDIR" ] || LD_LIBDIR=""
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}${LD_LIBRARY_PATH:+:}${LD_LIBDIR}"
 
 RET="${EE_GAME:-$HERE/orig/SLPS_258.19}"     # the Japanese retail ELF
 ROM="$HERE/SLPS_258.19.rom"                 # the payload from the PT_LOAD concatenation (the reference for the payload check)
@@ -173,6 +180,10 @@ while read -r sym; do
 done < build/undef.txt
 echo "  absolute address definitions: $(wc -l < build/defsyms.rsp)"
 
+# Remove any previous ELF first, so a failed link can never be masked by a stale output from an
+# earlier (successful) run. build_mixed.sh already does this (R30 finding B4).
+# 先删掉上一轮的 ELF：链接失败时不能被上一次成功链接的旧产物掩盖。build_mixed.sh 已经这么做（R30 B4）。
+rm -f build/SLPS_258.19.elf
 "$LD" -EL -m elf32ltsmip -T "$LDS" @build/defsyms.rsp -Map build/SLPS_258.19.map \
     -o build/SLPS_258.19.elf 2>build/ld.err || true
 if [ ! -f build/SLPS_258.19.elf ]; then
@@ -183,6 +194,9 @@ echo "== 3/4 Extract the payload (concatenate all PT_LOAD segments) =="
 python3 tools/project/extract_payload.py build/SLPS_258.19.elf build/SLPS_258.19.bin
 
 echo "== 4/4 Compare =="
+# The comparison must set the exit code: the payload check is the point of the script, and a
+# mismatch used to print a report and still return 0 when the script was run directly (R30 B4).
+# 比对必须设置退出码：载荷校验就是这个脚本的目的；此前直接运行时不一致也返回 0（R30 B4）。
 python3 - "$ROM" build/SLPS_258.19.bin <<'PY'
 import sys, struct, hashlib
 ref, built = sys.argv[1:3]
@@ -194,7 +208,8 @@ n = min(len(b), len(r))
 same = sum(1 for i in range(0, n, 4) if b[i:i+4] == r[i:i+4])
 tot = n // 4
 print("  word-identical = %d / %d (%.2f%%)" % (same, tot, 100*same/max(tot,1)))
-if b[:n] == r[:n] and len(b) == len(r):
+ok = (b == r)
+if ok:
     print("  >>> the payload is byte-identical <<<")
 else:
     d = [i for i in range(0, n, 4) if b[i:i+4] != r[i:i+4]]
@@ -202,4 +217,6 @@ else:
     for i in d[:6]:
         print("     +0x%06x rebuilt=%08x retail=%08x" % (i,
             struct.unpack_from('<I', b, i)[0], struct.unpack_from('<I', r, i)[0]))
+    print("FAIL: the rebuilt payload is not byte-identical to the retail payload", file=sys.stderr)
+sys.exit(0 if ok else 1)
 PY

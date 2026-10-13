@@ -63,6 +63,10 @@ TOOLS = (
     "p1a_pseudoc_probe",
     "screen_flags",
     "auto_match_permuter",
+    # Added by the R30 fixes: both resolve the project root at import time, so a future move must
+    # be caught here too. 由 R30 修复加入：两者都在 import 时解析项目根，未来再搬家也要在这里被发现。
+    "split_asm",
+    "jtbl_draft",
 )
 
 problems: list[str] = []
@@ -111,7 +115,14 @@ def test_private_root_from_worktree() -> list[str]:
     import subprocess
     import tempfile
 
-    with tempfile.TemporaryDirectory() as td:
+    # Keep the scratch tree inside the repository (the workspace rule is "no /tmp"), and compare
+    # resolved paths: the subprocess resolves, so a symlinked scratch root would otherwise produce
+    # a spurious failure.
+    # 临时树放在仓库内（工作区规则：不用 /tmp），并比较**解析后**的路径：子进程会 resolve，
+    # 否则一个被符号链接的临时根会造成假失败。
+    scratch_root = ROOT / ".tmp"
+    scratch_root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=str(scratch_root)) as td:
         ws = Path(td) / "ws"
         (ws / "at2" / "routebjp").mkdir(parents=True)
         (ws / "at2" / "out" / "evidence").mkdir(parents=True)
@@ -125,8 +136,8 @@ def test_private_root_from_worktree() -> list[str]:
         if r.returncode != 0:
             return [f"worktree path regression: the subprocess failed: {r.stderr.strip()[:200]}"]
         lines = [x.strip() for x in r.stdout.splitlines() if x.strip()]
-        want_priv = str(ws / "at2")
-        want_ev = str(ws / "at2" / "out" / "evidence")
+        want_priv = str((ws / "at2").resolve())
+        want_ev = str((ws / "at2" / "out" / "evidence").resolve())
         bad: list[str] = []
         got_priv = lines[0] if lines else "?"
         got_ev = lines[1] if len(lines) > 1 else "?"

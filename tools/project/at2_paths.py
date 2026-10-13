@@ -180,12 +180,17 @@ SRCDIR: Path = PROJECT_ROOT / "src" / "matched"
 FLAGS_TSV: Path = PROJECT_ROOT / "config" / "source_flags.tsv"
 WORKQUEUE: Path = EVIDENCE_ROOT / "jp_m3_workqueue.tsv"
 INCLUDE: Path = PROJECT_ROOT / "include"
+# The baseline assembly objects of `build.sh`. The mixed-build tools read them to prove that a
+# candidate object is byte-equal to the object the build really links (R30 finding D10).
+# `build.sh` 的基线汇编对象；混合构建工具用它证明候选对象与真正参与链接的对象逐字节一致（R30 D10）。
+BUILD_ASM_COD: Path = PROJECT_ROOT / "build" / "asm" / "cod"
 
 # ---- Toolchain (an environment variable can override each item)  工具链（可用环境变量覆盖）----
 GCC: str = os.environ.get("GCC", os.path.expanduser("~/eecc/ee-gcc3.2-040921/bin/ee-gcc"))
 BINUTILS: str = os.environ.get("BINUTILS", os.path.expanduser("~/eecc/ps2binutils"))
 AS: str = os.environ.get("AS", os.path.join(BINUTILS, "mips-ps2-decompals-as"))
 OBJDUMP: str = os.environ.get("OBJDUMP", os.path.join(BINUTILS, "mips-ps2-decompals-objdump"))
+OBJCOPY: str = os.environ.get("OBJCOPY", os.path.join(BINUTILS, "mips-ps2-decompals-objcopy"))
 OBJDIFF: str = os.environ.get("OBJDIFF", os.path.expanduser("~/eecc/objdiff-cli"))
 # The flags agree with MATCHED_CFLAGS in build_mixed.sh. Only a function with 100% here gets 100% in the mixed build.
 # 与 build_mixed.sh 的 MATCHED_CFLAGS 完全一致：只有在这里 100% 的才会在混合构建里 100%

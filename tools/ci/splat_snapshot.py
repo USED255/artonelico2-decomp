@@ -59,6 +59,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import tempfile
 from pathlib import Path
 
 SCHEMA = "at2-splat-snapshot/2"
@@ -144,13 +145,29 @@ def sha1_file(path: Path) -> str:
 def tree_digest(root: Path, rels) -> str:
     """A digest of the shape of a file set: every path and its size, order independent.
 
-    文件集合形状摘要：每个路径 + 大小，与顺序无关。
+    Shape only. `content_digest` covers the bytes: a same-size, different-content member used to
+    pass the group check (R30 finding B8).
+
+    文件集合**形状**摘要：每个路径 + 大小，与顺序无关。只管形状；字节由 `content_digest` 覆盖 ——
+    同大小不同内容的成员此前能通过组校验（R30 B8）。
     """
     lines = []
     for rel in sorted(rels):
         p = root / rel
         size = p.stat().st_size if p.is_file() else -1
         lines.append(f"{rel}\t{size}")
+    return hashlib.sha256(("\n".join(lines) + "\n").encode("utf-8")).hexdigest()
+
+
+def content_digest(root: Path, rels) -> str:
+    """A digest of the content of a file set: every path and its sha256, order independent.
+
+    文件集合**内容**摘要：每个路径 + 其 sha256，与顺序无关。
+    """
+    lines = []
+    for rel in sorted(rels):
+        p = root / rel
+        lines.append(f"{rel}\t{sha256_file(p) if p.is_file() else '-'}")
     return hashlib.sha256(("\n".join(lines) + "\n").encode("utf-8")).hexdigest()
 
 
@@ -310,13 +327,34 @@ def project_path(project: Path, value: str) -> Path:
     return (project / p if not p.is_absolute() else p).resolve()
 
 
+def guarded_scratch(project: Path, value: str) -> Path:
+    """Resolve `--scratch` and refuse anything that is not a child directory of the project.
+
+    `create` starts with `shutil.rmtree(scratch)`, and `--scratch .` would therefore delete the
+    repository; `--scratch ..` would delete the parent directory (R30 finding B7).
+
+    `create` 第一件事就是 `shutil.rmtree(scratch)`：`--scratch .` 会删掉整个仓库，`--scratch ..`
+    会删掉父目录（R30 B7）。
+    """
+    p = project_path(project, value)
+    if p == project or project not in p.parents:
+        raise SystemExit(f"--scratch must be a directory inside {project} (got {p})")
+    if p == Path("/") or p == Path.home().resolve():
+        raise SystemExit(f"--scratch must not be {p}")
+    return p
+
+
 def cmd_create(args) -> int:
     project = Path(args.project).resolve()
     game = project_path(project, args.game)
     splat = args.splat
     out = project_path(project, args.out)
     manifest_path = project_path(project, args.manifest)
-    scratch = project_path(project, args.scratch)
+    try:
+        scratch = guarded_scratch(project, args.scratch)
+    except SystemExit as exc:
+        print(f"FAIL: {exc}", file=sys.stderr)
+        return 2
     target = lock_game(project).get("id") or "SLPS_258.19"
 
     for rel in INPUT_FILES:
@@ -400,6 +438,7 @@ def cmd_create(args) -> int:
             "inputs": single_inputs,
             "entry_count": len(rels),
             "tree_sha256": tree_digest(scratch, rels),
+            "content_sha256": content_digest(scratch, rels),
         }
     }
     roots: list[tuple[Path, list[str]]] = [(scratch, sorted({rel.split("/", 1)[0] for rel in rels}))]
@@ -418,6 +457,7 @@ def cmd_create(args) -> int:
             "as_version": as_version(as_path),
             "entry_count": len(asm_rels),
             "tree_sha256": tree_digest(staging, asm_rels),
+            "content_sha256": content_digest(staging, asm_rels),
         }
         roots.append((staging, ["build/asm"]))
         asm_count = len(asm_rels)
@@ -539,30 +579,44 @@ def archive_reason(manifest: dict, archive: Path | None, game: Path) -> str | No
     return None
 
 
-def extract(project: Path, archive: Path, allow: set[str]) -> tuple[list[str], int]:
-    """Extract the members of `allow` into the project root. Returns (member paths, existing count).
+def extract(project: Path, archive: Path, allow: set[str]) -> tuple[list[str], int, Path]:
+    """Extract the allowed members into a staging directory. Nothing touches the project yet.
 
-    只解包 `allow` 里那些组的成员；返回（成员路径，其中原本已存在的个数）。
+    Returns `(member paths, count of members that already exist in the project, staging dir)`.
+    The caller verifies each group against the manifest and only then moves the kept files into
+    place. The previous version wrote into the project first and deleted on a mismatch, so a bad
+    archive had already overwritten (and could then delete) tracked files (R30 finding B3).
+
+    把 `allow` 里的成员解到**暂存目录**，此时不碰项目树。返回（成员路径, 项目中已存在的个数, 暂存目录）。
+    调用方逐组对照清单校验，通过后才把保留的文件搬到位。旧实现先写进项目、校验失败再删，于是坏归档
+    已经覆盖过（随后还可能删掉）tracked 文件（R30 B3）。
     """
+    stage_parent = project / ".tmp"
+    stage_parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(dir=str(stage_parent), prefix="splat-snapshot-stage-"))
     members: list[str] = []
     existed = 0
-    with subprocess.Popen(["zstd", "-dc", str(archive)], stdout=subprocess.PIPE) as proc:
-        with tarfile.open(fileobj=proc.stdout, mode="r|") as tf:
-            for member in tf:
-                name = member.name
-                if name.startswith(("/", "\\")) or ".." in Path(name).parts:
-                    raise SystemExit(f"the archive holds an unsafe path: {name}")
-                if not (member.isfile() or member.isdir()):
-                    raise SystemExit(f"the archive holds a non-regular member: {name}")
-                if member.isfile():
-                    rel = Path(name).as_posix()
-                    if group_of(rel) not in allow:
-                        continue          # leave this group alone  这一组不动
-                    members.append(rel)
-                    if (project / rel).exists():
-                        existed += 1
-                tf.extract(member, path=str(project), filter="data")
-    return members, existed
+    try:
+        with subprocess.Popen(["zstd", "-dc", str(archive)], stdout=subprocess.PIPE) as proc:
+            with tarfile.open(fileobj=proc.stdout, mode="r|") as tf:
+                for member in tf:
+                    name = member.name
+                    if name.startswith(("/", "\\")) or ".." in Path(name).parts:
+                        raise SystemExit(f"the archive holds an unsafe path: {name}")
+                    if not (member.isfile() or member.isdir()):
+                        raise SystemExit(f"the archive holds a non-regular member: {name}")
+                    if member.isfile():
+                        rel = Path(name).as_posix()
+                        if group_of(rel) not in allow:
+                            continue          # leave this group alone  这一组不动
+                        members.append(rel)
+                        if (project / rel).exists():
+                            existed += 1
+                    tf.extract(member, path=str(staging), filter="data")
+    except BaseException:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+    return members, existed, staging
 
 
 def cmd_use(args) -> int:
@@ -620,41 +674,57 @@ def cmd_use(args) -> int:
         return verdict("snapshot", "the archive matches this checkout (check only)", wanted)
 
     try:
-        members, existed = extract(project, archive, set(wanted))
+        members, existed, staging = extract(project, archive, set(wanted))
     except SystemExit as exc:
         return verdict("splat", str(exc), [])
     except FileNotFoundError as exc:
         return verdict("splat", f"cannot run the extractor: {exc}", [])
 
     if existed:
-        print(f"::warning::the extraction overwrote {existed} existing files")
+        print(f"::warning::the extraction will overwrite {existed} existing files")
 
-    # Verify each group against its count and digest; a group that fails is dropped and the
-    # files it just wrote are removed, so the build falls back for that group only.
-    # 逐组核对计数与摘要；失败的组被丢弃，并删掉它刚写出的文件 ⇒ 只有这一组回落。
+    # Verify each group against its count and digests IN THE STAGING DIRECTORY. A group that
+    # fails is dropped there; the project tree is only touched afterwards, and only for the kept
+    # groups. A bad archive therefore cannot overwrite or delete anything (R30 finding B3), and a
+    # same-size different-content member is caught by the content digest (R30 finding B8).
+    # 在**暂存目录**里逐组核对计数与摘要：失败的组就此丢弃，项目树只在校验之后、且只为保留的组
+    # 发生改动 ⇒ 坏归档无法覆盖或删除任何东西（R30 B3）；同大小不同内容的成员由内容摘要抓住（R30 B8）。
     dropped: list[str] = []
-    for name in wanted:
-        rels = [rel for rel in members if group_of(rel) == name]
-        group = groups[name]
-        want_count = int(group.get("entry_count") or -1)
-        if len(rels) != want_count:
-            dropped.append(name)
-            print(f"::warning::splat snapshot: the {name} group holds {len(rels)} files, "
-                  f"the manifest says {want_count}")
-        elif tree_digest(project, rels) != group.get("tree_sha256"):
-            dropped.append(name)
-            print(f"::warning::splat snapshot: the extracted {name} group does not match the manifest")
-        if name in dropped:
-            for rel in rels:
-                try:
-                    (project / rel).unlink()
-                except OSError:
-                    pass
+    try:
+        for name in wanted:
+            rels = [rel for rel in members if group_of(rel) == name]
+            group = groups[name]
+            want_count = int(group.get("entry_count") or -1)
+            if len(rels) != want_count:
+                dropped.append(name)
+                print(f"::warning::splat snapshot: the {name} group holds {len(rels)} files, "
+                      f"the manifest says {want_count}")
+                continue
+            want_content = group.get("content_sha256")
+            if want_content and content_digest(staging, rels) != want_content:
+                dropped.append(name)
+                print(f"::warning::splat snapshot: the {name} group content does not match the manifest")
+                continue
+            if tree_digest(staging, rels) != group.get("tree_sha256"):
+                dropped.append(name)
+                print(f"::warning::splat snapshot: the extracted {name} group does not match the manifest")
 
-    kept = [name for name in wanted if name not in dropped]
-    if GROUP_SPLAT in dropped or not kept:
-        return verdict("splat", "the extraction did not match the manifest", [])
-    detail = f"{len([m for m in members if group_of(m) in kept])} files extracted ({','.join(kept)})"
+        kept = [name for name in wanted if name not in dropped]
+        if GROUP_SPLAT in dropped or not kept:
+            return verdict("splat", "the extraction did not match the manifest", [])
+
+        moved = 0
+        for name in kept:
+            for rel in [m for m in members if group_of(m) == name]:
+                src = staging / rel
+                dst = project / rel
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                os.replace(src, dst)
+                moved += 1
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+
+    detail = f"{moved} files extracted ({','.join(kept)})"
     return verdict("snapshot", detail, kept)
 
 

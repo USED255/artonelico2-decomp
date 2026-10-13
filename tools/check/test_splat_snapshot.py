@@ -333,6 +333,48 @@ try:
 except SystemExit:
     check("an unsafe member raises", True)
 
+print("[11] a same-size, different-content member is refused (the content digest)")
+# The manifest's sha256 is kept in sync with the repacked archive and the tree digest still
+# matches (the sizes do not change), so ONLY the content digest can catch this (R30 finding B8).
+# 清单的 sha256 跟着重打包后的归档更新，树摘要也仍然匹配（大小没变）⇒ 只有内容摘要能抓住它（R30 B8）。
+# `assemble_objects` (test 8) replaces scratch-asm with a copy of the splat scratch, and its
+# failing-build.sh case leaves no build/asm there. Rebuild the synthetic object tree before
+# repacking, so this test compares content and nothing else.
+# 测试 8 的 `assemble_objects` 会用 splat scratch 的副本替换 scratch-asm，且最后一次「build.sh
+# 失败」的调用不产出 build/asm。重打包前重建合成对象树，让本测试只比内容。
+for rel in ("build/asm/cod/func_00100000.o", "build/asm/cod/func_00100001.o"):
+    p = STAGE_ASM / rel
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("obj\n", encoding="utf-8")
+write_manifest()
+splat_member = SCRATCH / "asm" / "cod" / "func_00100000.s"
+original_bytes = splat_member.read_bytes()
+old_content = ss.content_digest(SCRATCH, rels)
+splat_member.write_bytes(b"X" * len(original_bytes))
+ss.pack_multi(roots, archive)
+shutil.copy2(archive, ORIG / "toolchain" / archive.name)
+write_manifest(splat={"content_sha256": old_content})
+verdict, groups, text = use()
+check("the tampered group falls back", verdict == "splat" and groups == "", f"{verdict} {groups}")
+check("the tampered group wrote nothing into the project",
+      not any((PROJECT / r).exists() for r in rels), text.strip()[-160:])
+stages = list((PROJECT / ".tmp").glob("splat-snapshot-stage-*")) if (PROJECT / ".tmp").is_dir() else []
+check("the staging directory is cleaned up", not stages, str(stages))
+# Restore the member and repack, so nothing after this depends on the tampering.
+splat_member.write_bytes(original_bytes)
+ss.pack_multi(roots, archive)
+shutil.copy2(archive, ORIG / "toolchain" / archive.name)
+
+print("[12] --scratch is confined to the project")
+for bad in (".", "..", "/"):
+    try:
+        ss.guarded_scratch(PROJECT, bad)
+        check(f"guarded_scratch refuses {bad!r}", False, "no error")
+    except SystemExit:
+        check(f"guarded_scratch refuses {bad!r}", True)
+inside = ss.guarded_scratch(PROJECT, ".tmp/scratch")
+check("a child directory is accepted", inside == (PROJECT / ".tmp" / "scratch").resolve(), str(inside))
+
 shutil.rmtree(WORK, ignore_errors=True)
 
 print(f"\n{len(fails)} failed" if fails else "\nall splat_snapshot tests passed")
