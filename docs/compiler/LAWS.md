@@ -98,8 +98,10 @@ one instruction counts twice. `regs.h:79` defines `REG_FREQ_MAX 1000`, which mak
 
 * **Tier T1** · **Source anchor** `flow.c:2733` (also `flow.c:3413`, `flow.c:3578`); `regs.h:79`
 * **Binary anchor** `life_analysis @ 0x080ce2d8`; double `10.0 @ 0x0821e360`
-* **Receipt** source lines read; the binary's 10.0 constant confirms the factor. R28 recorded six
-  functions with one inversion each while using a de-duplicated instruction proxy.
+* **Receipt** 75 functions / 1,004 adjacent pairs. Counting **every register occurrence** reproduces
+  the exact allocation order in **44/75** (mean Kendall tau 0.877); a de-duplicated instruction proxy
+  reaches 33/75 (0.873). The source reading wins by 11 functions, and the binary's 10.0 constant
+  confirms the `REG_FREQ_MAX = 1000` factor.
 * **Falsifies** the reading that the factor is 1 — the misread is recorded in the research repository
   as pitfall `P-108`. **Read the `#define`, not the comment.**
 * **Scope** `ee-gcc 3.2-ee-040921`.
@@ -137,4 +139,4 @@ one instruction counts twice. `regs.h:79` defines `REG_FREQ_MAX 1000`, which mak
   identified: `reg_class_contents`, `fixed_reg_set` and `call_used_reg_set` are runtime-initialised
   (`.bss`), so a static read returns zeros and the exclusion sets in the replay are wrong. Reading
   those tables from a live process is the next step.
-* `freq` accumulation checked against a real multi-block function, not only the source.
+* ~~`freq` accumulation~~ — settled: the per-occurrence rule wins by measurement (L-EE-005).
