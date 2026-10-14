@@ -9,7 +9,9 @@
     "cc1_not_stripped": true,
     "dwarf": true,
     "sources_embedded": 135,
-    "mainline_reference": "gcc-3.2.3 (sha256 9229434cfdfb79d3183149ac09e1093be642d4be377cc491e75c23b856243fda)"
+    "mainline_reference": "gcc-3.2.3 (sha256 9229434cfdfb79d3183149ac09e1093be642d4be377cc491e75c23b856243fda)",
+    "build_flags": "-O2 -falign-functions=4 -ffunction-sections (no -G; the MIPS default 8 applies)",
+    "probe_flags": "-O2 -G0 (the conditions most measurements in this handbook were taken under)"
   },
   "laws": [
     {
@@ -546,6 +548,53 @@
       "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0; 48 synthetic functions, no game code",
       "evidence": [
         "private:out/evidence/ee_gcc_int_idioms.txt"
+      ]
+    },
+    {
+      "id": "L-EE-014",
+      "title": "Small-data addressing follows -G: objects up to the -G size go to .sdata/.sbss and are read as a bare symbol (gp_rel)",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "config/mips/mips.h",
+        "line": 4579,
+        "note": "MIPS_DEFAULT_GVALUE is 8, so a build that passes no -G uses 8. The backend keeps mips_section_threshold (EE line config/mips/mips5900.c:226) and treats -1 as 'unset'; the shipped binary stores -1 there in the file and resolves it at startup."
+      },
+      "binary_anchor": {
+        "symbol": "mips_section_threshold",
+        "addr": "0x0823ed20",
+        "related": [
+          {
+            "symbol": "g_switch_value",
+            "addr": "0x0830d0c0"
+          }
+        ],
+        "constants": [
+          {
+            "kind": "int32",
+            "value": -1,
+            "at": "0x0823ed20",
+            "means": "the 'unset' sentinel; the effective value comes from -G or MIPS_DEFAULT_GVALUE"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "the target reads a global as a bare symbol (`lw $2,g_int`) while the candidate emits lui %hi/%lo, or the reverse",
+        "an object lands in .sdata/.sbss in one build and .bss/.data in the other"
+      ],
+      "lever": [
+        "match the -G value to the target build before comparing globals: the project passes no -G, so the default 8 applies",
+        "objects up to 8 bytes (and not constants) become gp_rel; larger objects and every constant stay absolute"
+      ],
+      "receipt": "One fixture with 4 B globals, an 8 B double, a 32 B array, a static const and a float constant, built at -G0/-G4/-G8/no flag: 4 B objects are absolute at -G0 and small-data at -G4/-G8/default; the 8 B double is absolute up to -G4 and small-data at -G8/default; the 32 B array is absolute everywhere; a static const read folds to an immediate; the float constant is absolute (%hi/%lo($LCn)) in every setting.",
+      "falsifies": "the implicit assumption that measurements taken at -G0 describe the project build: the project passes no -G, so its default is 8 and its small-data behaviour differs",
+      "scope": "ee-gcc 3.2-ee-040921; one fixture per setting. The build flags come from the project's MATCHED_CFLAGS (no -G).",
+      "evidence": [
+        "private:out/evidence/ee_gcc_small_data.txt"
       ]
     }
   ]

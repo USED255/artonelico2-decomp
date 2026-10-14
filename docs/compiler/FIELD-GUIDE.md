@@ -130,6 +130,19 @@ inline with `dli` + `dsll` ([L-EE-011](LAWS.md#l-ee-011--float-constants-come-fr
 function. For a double, changing the value's low 32 bits (for example by adding a tiny term) changes
 the form, and that is a real lever; changing a float's spelling is not.
 
+## Lever 7 — Match `-G` before comparing globals
+
+**When**: a global is read as a bare symbol in one build and with `lui %hi`/`%lo` in the other, or an
+object lands in a different section.
+
+**Why**: small-data addressing follows `-G` ([L-EE-014](LAWS.md#l-ee-014--small-data-addressing-follows--g-objects-up-to-the--g-size-go-to-sdatasbss-and-are-read-as-a-bare-symbol-gp_rel)).
+The project's `MATCHED_CFLAGS` passes no `-G`, so the MIPS default **8** applies: objects up to 8 bytes
+become `gp_rel`, larger objects and all constants stay absolute.
+
+**Expected movement**: fixing `-G` moves the addressing form for every small global in the function —
+a whole family of rows at once, not one row. If a diff looks like a systematic addressing mismatch,
+check `-G` before rewriting anything.
+
 ---
 
 ## Recorded but not yet measured locally

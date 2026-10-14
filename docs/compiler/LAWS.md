@@ -20,6 +20,13 @@ each law live in [FIELD-GUIDE.md](FIELD-GUIDE.md); the workflow that finds the o
 **The rule that matters most:** cite the line number `addr2line` reports for the **shipped** `cc1`,
 and keep the mainline line only as a cross-reference with its measured offset.
 
+**Measurement conditions.** Scope lines name the flags a measurement was taken under. Most probes in this
+handbook used `-O2 -G0`. **The project itself builds with `-O2 -falign-functions=4
+-ffunction-sections` and passes no `-G`**, so the MIPS default (`MIPS_DEFAULT_GVALUE`, 8) applies. Laws
+about address materialisation ([L-EE-011](#l-ee-011--float-constants-come-from-the-pool-a-double-is-inline-when-its-low-32-bits-are-zero),
+[L-EE-014](#l-ee-014--small-data-addressing-follows--g-objects-up-to-the--g-size-go-to-sdatasbss-and-are-read-as-a-bare-symbol-gp_rel))
+are `-G` sensitive; the allocation and scheduling laws are not.
+
 Mainline reference: **gcc-3.2.3** (`sha256 9229434c…`). Comparing the same functions against
 gcc-3.2.2 changes the offsets by at most one line, so the drift measured in L-EE-006 is the EE
 snapshot's, not a point-release artefact.
@@ -268,6 +275,31 @@ otherwise                                    -> compare chain
 * **Lever** read the extension instruction in front of the compare as the **type's shape**: widening
   the type, or changing its signedness, moves exactly that instruction.
 * **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`; 48 synthetic functions.
+
+## L-EE-014 · Small-data addressing follows `-G`
+
+* **Tier T2** · **Source anchor** `config/mips/mips.h:4579` — `MIPS_DEFAULT_GVALUE` is **8**, so a build
+  that passes no `-G` uses 8. The backend keeps `mips_section_threshold` (EE
+  `config/mips/mips5900.c:226`) and treats `-1` as "unset".
+* **Binary anchors** `mips_section_threshold @ 0x0823ed20` (the file stores `-1`, the sentinel) and
+  `g_switch_value @ 0x0830d0c0`
+* **Receipt** one fixture, four settings:
+
+| probe | `-G0` | `-G4` | `-G8` | default |
+| --- | --- | --- | --- | --- |
+| 4 B global / static | absolute | small-data | small-data | small-data |
+| 8 B `double` | absolute | absolute | small-data | small-data |
+| 32 B array | absolute | absolute | absolute | absolute |
+| `static const int` read | folded to an immediate | — | — | — |
+| float constant `$LCn` | absolute | absolute | absolute | absolute |
+
+  `absolute` = `lui %hi` + `%lo`; `small-data` = the bare symbol (`lw $2,g_int`), which assembles to
+  `R_MIPS_GPREL16`.
+* **Falsifies** the implicit assumption that `-G0` measurements describe the project build. The project
+  passes no `-G`, so its default is 8.
+* **Lever** before comparing globals, match `-G` to the target build. Objects up to 8 bytes (and not
+  constants) become `gp_rel`; larger objects and every constant stay absolute.
+* **Scope** `ee-gcc 3.2-ee-040921`; one fixture per setting.
 
 ---
 

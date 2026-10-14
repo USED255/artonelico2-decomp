@@ -5,6 +5,10 @@
 本页记录**编译器怎么做**；由此推出的源写法杠杆在 [FIELD-GUIDE.md](FIELD-GUIDE.md)，定位流程在 [DIAGNOSTICS.md](DIAGNOSTICS.md)。
 英文版每条含完整模板（tier / 源码锚点 / 二进制锚点 / receipt / falsifies / scope）；本中文版按增量维护，先给条目与结论。
 
+**量测条件**：`scope` 写明该次测量用的旗标。本手册多数探针用 `-O2 -G0`；但**项目本身不带 `-G`**
+（`MATCHED_CFLAGS` = `-O2 -falign-functions=4 -ffunction-sections`），因此走 MIPS 默认值 8。
+与**寻址物化**有关的条目（L-EE-011、L-EE-014）对 `-G` 敏感，分配与调度类不敏感。
+
 **最重要的一条纪律**：引用行号时，一律用 `addr2line` 在**出厂 `cc1`** 上读出的那个行号；mainline 行号只能作为带位移的对照。
 
 ---
@@ -140,6 +144,24 @@ falsifies：「候选帧更大 = 保存了更多寄存器」——该函数上 +
 **T3**（只有行为证据；比较模式在 EE 后端，本机没有该源码）｜receipt：48 个合成函数（8 类型 × 5 模式 × 2 上下文）@ `-O2 -G0`｜
 falsifies：「`slt`/`sltiu` 与 `xori` 可区分窄无符号类型」（dds-decomp，2.96，无许可证）——`xori` 是**相等**判断；窄类型表现为 `andi` 掩码（无符号）或 `sll`+`sra` 扩展（有符号）。
 **杠杆**：把比较前那条扩展指令当作**类型的形状**读；把类型加宽或改有符号性，移动的正是这条指令。
+
+## L-EE-014 · 小数据寻址由 `-G` 决定
+
+**T2**｜源码锚点 `config/mips/mips.h:4579`（`MIPS_DEFAULT_GVALUE` = **8**；后端用 `mips_section_threshold`，EE 行 `config/mips/mips5900.c:226`，`-1` 表示未设）｜
+二进制锚点 `mips_section_threshold @ 0x0823ed20`（文件里存 `-1` 哨兵）、`g_switch_value @ 0x0830d0c0`｜
+receipt（同一夹具四种设置）：
+
+| 探针 | `-G0` | `-G4` | `-G8` | 默认 |
+| --- | --- | --- | --- | --- |
+| 4 B 全局/静态 | 绝对 | 小数据 | 小数据 | 小数据 |
+| 8 B `double` | 绝对 | 绝对 | 小数据 | 小数据 |
+| 32 B 数组 | 绝对 | 绝对 | 绝对 | 绝对 |
+| `static const int` 读取 | 折叠为立即数 | — | — | — |
+| 浮点常量 `$LCn` | 绝对 | 绝对 | 绝对 | 绝对 |
+
+`绝对` = `lui %hi` + `%lo`；`小数据` = 裸符号（`lw $2,g_int`），汇编后是 `R_MIPS_GPREL16`。
+falsifies：「`-G0` 下的量测能代表项目构建」——项目不带 `-G`，默认是 8。
+**杠杆**：比全局变量前先把 `-G` 对齐到目标构建；≤ 8 B 且非常量的对象走 `gp_rel`，大对象与所有常量走绝对寻址。
 
 ---
 
