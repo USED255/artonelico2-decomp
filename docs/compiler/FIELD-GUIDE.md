@@ -42,6 +42,21 @@ recorded as the first one to try.
 **Expected movement**: each value removed from the call-crossing set costs one 8-byte slot, so four
 values should remove the +32 B.
 
+**Measured — the mechanism holds, the objective did not move the right way.** Removing one value that
+was carried across a call (a `struct` copy held only to pass it to a later recursive call, replaced
+by passing the parameter directly):
+
+| Reading | Before | After | Movement |
+| --- | ---: | ---: | --- |
+| frame | 176 B | **160 B** | **−16 B = two 8-byte slots** |
+| instructions | 1,486 | 1,483 | −3 |
+| objdiff | 80.1847 | **78.95184** | **−1.23** |
+
+So the frame law is confirmed quantitatively — the frame moves in whole 8-byte slots as predicted —
+while the *matching* objective got worse: the retail code keeps that value live across the call.
+This is the most useful shape a lever can have here: it proves the mechanism and falsifies the
+route, so the next attempt should look for a different value, not a different mechanism.
+
 **Negative prior**: rewriting a local so that it is "kept in a register" cost 1.33 points
 (79.01 against an 80.34 baseline). The lever is *shortening liveness*, not moving the value into a
 register.
