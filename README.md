@@ -41,6 +41,25 @@ make build      # assemble, link, and check the payload hash
 make report     # write the progress report
 ```
 
+## Documentation
+
+New to the project? Start with:
+
+| | |
+| --- | --- |
+| [docs/BUILD.md](docs/BUILD.md) | how to configure and build |
+| **[docs/compiler/README.md](docs/compiler/README.md)** | **the EE GCC 3.2 code generation handbook** — every law is source-anchored, anchored to the shipped `cc1`, and verified by behaviour |
+| [docs/compiler/LAWS.md](docs/compiler/LAWS.md) | the laws themselves, with tiers and receipts |
+| [docs/compiler/DIAGNOSTICS.md](docs/compiler/DIAGNOSTICS.md) | from "the diff is wrong" to "which pass is responsible" |
+| [docs/compiler/FIELD-GUIDE.md](docs/compiler/FIELD-GUIDE.md) | source-level changes that move the numbers |
+| [docs/compiler/SOURCE-STUDY.md](docs/compiler/SOURCE-STUDY.md) | what compiler source exists, what does not, and how a rule is anchored |
+| [docs/compiler/AGENT-SKILL.md](docs/compiler/AGENT-SKILL.md) | the loop for an automated agent |
+
+Tools: `tools/compiler/laws-query.py` (query the laws), `tools/compiler/ee-gcc-anchor.py` (resolve a
+symbol, address, struct or constant in the shipped compiler), `tools/compiler/ee-gcc-passdiff.py`
+(first diverging pass), `tools/compiler/ee-gcc-spill-map.py` (map a too-large frame onto source lines).
+Chinese editions of every handbook page sit next to it (`*.zh-CN.md`).
+
 ## Legal
 
 - This repository contains no game code, no game asset, and no ROM image.

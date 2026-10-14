@@ -16,6 +16,10 @@
 | **问题报告** | 构建失败，或发现本仓库含不该有的材料。 |
 
 ## 2. 动手之前
+先读 [docs/BUILD.zh-CN.md](docs/BUILD.zh-CN.md)。当某个函数「能编过但匹配不上」时，按
+[docs/compiler/DIAGNOSTICS.zh-CN.md](docs/compiler/DIAGNOSTICS.zh-CN.md) 把残差路由到负责它的 pass，再用
+[docs/compiler/FIELD-GUIDE.zh-CN.md](docs/compiler/FIELD-GUIDE.zh-CN.md) 找能移动读数的源级改动。
+`python3 tools/compiler/laws-query.py` 回答「这个编译器在 pass X 怎么做」。
 
 先读 [docs/BUILD.zh-CN.md](docs/BUILD.zh-CN.md)。**游戏与原版编译器工具链由你自备**，本仓库不包含它们。
 
