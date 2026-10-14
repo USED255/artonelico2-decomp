@@ -441,6 +441,41 @@
       "evidence": [
         "private:out/evidence/ee_gcc_jumptable.txt"
       ]
+    },
+    {
+      "id": "L-EE-011",
+      "title": "Float constants always come from the constant pool except 0.0f; a double is built inline when its low 32 bits are zero",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips5900.c",
+        "line": 1638,
+        "note": "The EE backend carries mips_move_1word, which mainline gcc-3.2.3 does not have; the exact constant-materialisation case lives in that file, which is not on this machine. The rule below is therefore measured, not read."
+      },
+      "binary_anchor": {
+        "symbol": "mips_move_1word",
+        "addr": "0x0817298c",
+        "constants": [],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl",
+        "17.combine"
+      ],
+      "symptom": [
+        "the target loads a constant from `.rodata` (l.s / l.d) where the candidate materialises it inline, or the reverse",
+        "a float constant diff that survives every source-level respelling"
+      ],
+      "lever": [
+        "a nonzero float constant always comes from the pool, so the residual is not the constant but the code around it",
+        "for a double, check the low 32 bits: zero means the value is built with dli + dsll inline, nonzero means the pool"
+      ],
+      "receipt": "14 float and 9 double constants at -O2 -G0. Floats: 0.0f -> `mtc1 $0`; 0.5f, 1.0f, 2.5f, 1.5f, -1.0f, 0.01f, 3.14f, 100.0f, -0.25f, 0.1f, 123.456f, 1e30f, 1e-30f, -0.0f -> all from the pool via %hi/%lo($LCn) + l.s, regardless of the low halfword. Doubles: 0.0 -> `move $2,$0`; 0.5, 1.0, 1.5, 2.5, 2^52 (low 32 bits zero) -> inline `dli`+`dsll`; 0.01, pi, 1.0000000001 (low 32 bits nonzero) -> pool via l.d.",
+      "falsifies": "the IDO 5.3 rule that the constant's low halfword decides inline versus pool for floats (n64-decomp-workbench L62, CC0): on ee-gcc 3.2 that split exists for doubles only",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0; 23 synthetic constants, no game code. The binary anchor is a pointer into the EE backend, not a verification of the rule",
+      "evidence": [
+        "private:out/evidence/ee_gcc_float_constants.txt"
+      ]
     }
   ]
 }

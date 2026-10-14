@@ -197,6 +197,29 @@ otherwise                                    -> compare chain
   together, or adding a range guard ahead of the switch, changes the decision.
 * **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`; 11 synthetic switches.
 
+## L-EE-011 · Float constants come from the pool; a double is inline when its low 32 bits are zero
+
+| constant | form |
+| --- | --- |
+| `0.0f` | inline `mtc1 $0` |
+| any other `float` | constant pool: `lui %hi($LCn)` + `addiu %lo($LCn)` + `l.s` |
+| `0.0` (double) | `move $2,$0` |
+| `double` whose low 32 bits are zero (`0.5`, `1.0`, `1.5`, `2.5`, `2^52`) | inline `dli` + `dsll` |
+| other `double` (`0.01`, `π`, `1.0000000001`) | constant pool + `l.d` |
+
+* **Tier T2** · **Source anchor** `config/mips/mips5900.c:1638` — the EE backend carries
+  `mips_move_1word`, which mainline 3.2.3 does not have. The exact case lives in that file, which is
+  not on this machine, so the rule is measured rather than read.
+* **Binary anchor** `mips_move_1word @ 0x0817298c` (a pointer into the EE backend, not a verification
+  of the rule)
+* **Receipt** 14 floats and 9 doubles at `-O2 -G0`; every row matches the table above. Floats with a
+  zero low halfword (`0.5f`, `1.0f`, `2.5f`, `1.5f`) still come from the pool.
+* **Falsifies** the IDO 5.3 rule that a constant's low halfword decides inline versus pool (CC0
+  n64-decomp-workbench law L62): on this compiler that split exists for **doubles only**.
+* **Lever** if a constant-form difference survives every respelling of the C, check the value's bit
+  pattern for doubles; for floats, expect the pool and look elsewhere.
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`; 23 synthetic constants.
+
 ---
 
 ## Open items

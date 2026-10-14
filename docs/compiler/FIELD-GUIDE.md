@@ -106,6 +106,17 @@ in this corpus are handled by local allocation and never enter the list. Recorde
 **Expected movement**: none on the binary. This lever is about not spending a day chasing code that
 is not there.
 
+## Lever 6 — Check the constant form before rewriting around it
+
+**When**: a constant-related diff survives every respelling of the expression.
+
+**Why**: float constants come from the constant pool; a double whose low 32 bits are zero is built
+inline with `dli` + `dsll` ([L-EE-011](LAWS.md#l-ee-011--float-constants-come-from-the-pool-a-double-is-inline-when-its-low-32-bits-are-zero)).
+
+**Expected movement**: for a float, the form does not depend on the source — look elsewhere in the
+function. For a double, changing the value's low 32 bits (for example by adding a tiny term) changes
+the form, and that is a real lever; changing a float's spelling is not.
+
 ---
 
 ## Recorded but not yet measured locally
