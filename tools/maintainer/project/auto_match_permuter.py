@@ -535,8 +535,16 @@ def do_apply(winners: dict):
     for sym, info in winners.items():
         at2_io.atomic_copy(Path(info["source"]), paths[sym])
         try:
-            rec = at2_io.safe_child(WORK, sym, "_flags.txt", what="symbol") \
-                .read_text(encoding="utf-8").split("\t")[0].strip()
+            # `safe_child(root, name, suffix)` **concatenates** (`root/<name><suffix>`), it is not a
+            # path join. `verify()` writes `WORK/<sym>/_flags.txt`, so the reader must validate the
+            # symbol first and then append the file name. Reading `WORK/<sym>_flags.txt` never
+            # exists, the exception below swallowed it, and the winning level was silently dropped
+            # (measured 2026-10-15: two of three permuter landings were non-`-O2`).
+            # `safe_child(root, name, suffix)` 是**拼接**（`root/<name><suffix>`），不是路径 join；
+            # `verify()` 写在 `WORK/<sym>/_flags.txt`，所以先校验符号名、再拼文件名。
+            # 之前读成 `WORK/<sym>_flags.txt` 恒不存在，异常被吞 ⇒ 获胜档位静默丢失。
+            sym_dir = at2_io.safe_child(WORK, sym, what="symbol")
+            rec = (sym_dir / "_flags.txt").read_text(encoding="utf-8").split("\t")[0].strip()
         except Exception:
             rec = ""
         if rec and rec != "-O2":
