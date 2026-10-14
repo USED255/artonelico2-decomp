@@ -4,7 +4,7 @@
 
 Why this exists (measured 2026-10-13): 208 unmatched candidates had a draft at 80 % or better
 and **no permuter work directory**. The reason was structural, not random -- the permuter pools
-are normally driven with `--from routebjp/build/m2/ghidra_batch/result.json`, so a candidate
+are normally driven with `--from matching-jp/build/m2/ghidra_batch/result.json`, so a candidate
 whose only good draft comes from the m2c batch never entered the run. All 60 candidates at
 90 %+ in that gap shared that shape.
 
@@ -19,13 +19,13 @@ Usage:
 覆盖审计：哪些「有不错草稿但从未喂给某通道」的未匹配候选。
 
 存在理由（2026-10-13 实测）：208 个未匹配候选草稿 ≥80% 却**没有 permuter 工作目录**；原因是结构性的
-—— permuter 池通常用 `--from routebjp/build/m2/ghidra_batch/result.json` 驱动，于是「只有 m2c 草稿好」
+—— permuter 池通常用 `--from matching-jp/build/m2/ghidra_batch/result.json` 驱动，于是「只有 m2c 草稿好」
 的候选永远进不了跑批。该缺口里 90%+ 的 60 个全部是这一形态。
 
 教训（R11 §11.45–11.57）：覆盖必须按 **(候选, 通道) 对**审计 ——「在池子里」不等于「试过」。
 """
 
-# Private layout names (routebjp/build/m2c, routebjp/build/m2/ghidra_batch, routebjp/build/m2/perm),
+# Private layout names (matching-jp/build/m2c, matching-jp/build/m2/ghidra_batch, matching-jp/build/m2/perm),
 # do not rename.  私有布局名，勿改名。
 
 from __future__ import annotations

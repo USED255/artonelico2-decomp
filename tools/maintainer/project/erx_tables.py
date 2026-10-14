@@ -8,7 +8,7 @@ naming anchors. The 749 anchors of the US route B come from it (see the comments
 tools/maintainer/build/gen_symbol_addrs.py).
 
 Format (this script derives it from the US version by measurement. The JP structure is
-byte-identical. See `[verified]` in out/evidence/jp_routeb_m1_result.txt):
+byte-identical. See `[verified]` in out/evidence/jp_matching-us_m1_result.txt):
 
     .erx.lib record (one record per library):
       +0x00  u32 magic0 = 'eRxL' (0x4C785265 LE)
@@ -37,7 +37,7 @@ Usage: python3 erx_tables.py <elf> <out.json> [out.txt]
 来源。美版路线 B 的 749 个锚点就是这么来的（见 tools/maintainer/build/gen_symbol_addrs.py 的注释）。
 
 格式（本脚本对美版实测反推，日版结构逐字节同构；`[已核实]` 见 out/evidence/
-jp_routeb_m1_result.txt）：
+jp_matching-us_m1_result.txt）：
 
     .erx.lib 记录（每条库一条）：
       +0x00  u32 magic0 = 'eRxL' (0x4C785265 LE)

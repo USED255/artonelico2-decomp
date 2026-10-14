@@ -27,7 +27,7 @@ P1a 实验：Ghidra 伪 C 作为「匹配草稿」到底能不能用（闸门 G1
   python3 tools/maintainer/project/p1a_pseudoc_probe.py [--per-class 10] [--classes B_straight,D_single_call]
 """
 
-# Private layout names (routebjp/build/m2, jp_m3_workqueue.tsv), do not rename.  私有布局名（routebjp/build/m2、jp_m3_workqueue.tsv），勿改名。
+# Private layout names (matching-jp/build/m2, jp_m3_workqueue.tsv), do not rename.  私有布局名（matching-jp/build/m2、jp_m3_workqueue.tsv），勿改名。
 
 from __future__ import annotations
 

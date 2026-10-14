@@ -124,7 +124,7 @@ sha1 变红。项目已实测该负面对照。
 - CRI 中间件（ADXT 10.03、ADXRT 3100、ADXF 7.63，Build: Feb 9 2007）用
   `ee-gcc 2.96-ee-001003-1`。
 
-证据出处：私有报告 `docs/kb/reports/R17` §4.2。项目在 `recvx-decomp`（MIT）上实测：
+证据出处：私有报告 `docs/knowledge-base/reports/R17` §4.2。项目在 `recvx-decomp`（MIT）上实测：
 一份 CRI C 用 `ee-gcc 2.96 -O2 -G0` 编译后与日版逐字节一致。例：
 `AIFF_GetInfo`，908 B，两侧 sha1 都是 `4e205079...`。
 
@@ -225,7 +225,7 @@ ENTRY(_start);
 
 - `build_mixed.sh` 的 `HYBRID_OUT`、`HYBRID_RESIDUAL` 与 `HYBRID_NO_CACHE` 三个变量。
   这三个变量沿用历史名。公开仓库的混合构建写 `build/mixed/`。
-- 私有布局路径 `routebjp/build/hybrid`。该产物目录属于私有仓库。公开仓库不再写它。
+- 私有布局路径 `matching-jp/build/hybrid`。该产物目录属于私有仓库。公开仓库不再写它。
 - 私有难度工作队列的文件名 `jp_m3_workqueue.tsv`。
 - 该工作队列的列名 `hybrid_ok`。
 - 私有证据文件名 `hybrid_build_result.txt`。

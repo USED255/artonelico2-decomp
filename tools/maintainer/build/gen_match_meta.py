@@ -12,8 +12,8 @@ Why the file exists:
 
 Inputs. All inputs exist already. The script collects data only. It does not
 guess.
-  * routebjp/config/matched_symbols.txt  -- symbol, source basename, section
-  * routebjp/config/source_flags.tsv     -- extra compile flags for one source
+  * matching-jp/config/matched_symbols.txt  -- symbol, source basename, section
+  * matching-jp/config/source_flags.tsv     -- extra compile flags for one source
   * out/evidence/jp_m3_workqueue.tsv     -- difficulty category (class column)
     Private pipeline compatibility, do not rename: the file name
     jp_m3_workqueue.tsv and the private-side path out/evidence/**.
@@ -32,7 +32,7 @@ Usage: python3 tools/maintainer/build/gen_match_meta.py [--check]
 难度类别、批次与证据。多个匹配器各写自己的段，由本台账统一汇总。
 
 数据来源（全部已存在，本脚本只做汇总，不猜测）：私有侧输入，
-包括 routebjp/config/matched_symbols.txt、routebjp/config/source_flags.tsv
+包括 matching-jp/config/matched_symbols.txt、matching-jp/config/source_flags.tsv
 与 out/evidence/jp_m3_workqueue.tsv（难度 class 列）。
 私有流水线兼容，勿改名：jp_m3_workqueue.tsv 文件名与 out/evidence/** 私有侧路径。
 

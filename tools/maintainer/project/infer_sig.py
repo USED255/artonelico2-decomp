@@ -16,7 +16,7 @@ Motivation (2026-10-05, route B / task-3):
   **call site** evidence.
 
 What this tool does:
-  1. Scan every `jal <sym>` in `routebjp/asm/cod/*.s` (including the noreorder form with
+  1. Scan every `jal <sym>` in `matching-jp/asm/cod/*.s` (including the noreorder form with
      a delay slot). At each call site, look back at how `$a0` to `$a3` are set. Then look
      forward at how `$v0` is used.
   2. Print a **suggested signature** (return type, each parameter type, confidence, and
@@ -45,7 +45,7 @@ Usage:
   m2c 只看**函数体内部**用法；本工具补上**调用点**这一路证据。
 
 做什么：
-  1. 扫 `routebjp/asm/cod/*.s` 里所有 `jal <sym>`（含 delay slot 的 noreorder 形态），
+  1. 扫 `matching-jp/asm/cod/*.s` 里所有 `jal <sym>`（含 delay slot 的 noreorder 形态），
      按调用点回溯 `$a0`–`$a3` 是怎么被设置的，前向看 `$v0` 是怎么被用的；
   2. 输出**建议签名**（返回类型 + 每个参数类型 + 置信度 + 逐调用点证据）；
   3. `replace_signature()` / `suggest_and_replace()` 把建议**只改类型、不改参数名与个数**地
@@ -61,7 +61,7 @@ Usage:
   python3 tools/maintainer/project/infer_sig.py batch --classes F_branch_call,D2_multi_call [--limit N]
 """
 
-# Private layout names (routebjp/asm/cod, routebjp/build/m2c, jp_m3_workqueue.tsv), do not rename.  私有布局名（routebjp/asm/cod、routebjp/build/m2c、jp_m3_workqueue.tsv），勿改名。
+# Private layout names (matching-jp/asm/cod, matching-jp/build/m2c, jp_m3_workqueue.tsv), do not rename.  私有布局名（matching-jp/asm/cod、matching-jp/build/m2c、jp_m3_workqueue.tsv），勿改名。
 
 from __future__ import annotations
 

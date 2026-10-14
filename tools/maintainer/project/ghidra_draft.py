@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """Ghidra pseudo C -> compilable draft (experiment tool for P1a and gate G1).
 
-Background: `routebjp/build/ghidra/SLPS_258.19.decomp.c` (9.9 MB, 10,919 functions) is
+Background: `matching-jp/build/ghidra/SLPS_258.19.decomp.c` (9.9 MB, 10,919 functions) is
 pseudo C from Ghidra 12.1.4 and the R5900 language. The long-term plan section 4/P1a asks
 for a measurement: can pseudo C serve as a matching draft? This tool extracts the pseudo C
 of one function, adds a minimal shim, and maps `FUN_xxxxxxxx` back to our symbol names. It
@@ -19,7 +19,7 @@ Usage:
 
 Ghidra 伪 C → 可编译草稿（P1a / 闸门 G1 的实验工具）。
 
-背景：`routebjp/build/ghidra/SLPS_258.19.decomp.c`（9.9 MB，10,919 个函数）是 Ghidra 12.1.4
+背景：`matching-jp/build/ghidra/SLPS_258.19.decomp.c`（9.9 MB，10,919 个函数）是 Ghidra 12.1.4
 + R5900 语言的伪 C。长期计划 §4/P1a 要求实测：「伪 C 能否作为匹配草稿」。
 本工具把单个函数的伪 C 抽出来、补最小 shim、把 `FUN_xxxxxxxx` 改回我们的符号名，
 输出 `<sym>.draft.c`，供 `tools/maintainer/project/p1a_pseudoc_probe.py` 编译 + objdiff 打分。
@@ -32,7 +32,7 @@ Ghidra 伪 C → 可编译草稿（P1a / 闸门 G1 的实验工具）。
   python3 tools/maintainer/project/ghidra_draft.py list | emit <sym> <outdir>
 """
 
-# Private layout names (routebjp/build/ghidra, routebjp/build/hybrid, routebjp/build/mixed), do not rename.  私有布局名（routebjp/build/ghidra、routebjp/build/hybrid、routebjp/build/mixed），勿改名。
+# Private layout names (matching-jp/build/ghidra, matching-jp/build/hybrid, matching-jp/build/mixed), do not rename.  私有布局名（matching-jp/build/ghidra、matching-jp/build/hybrid、matching-jp/build/mixed），勿改名。
 
 from __future__ import annotations
 

@@ -4,7 +4,7 @@
 Why the script exists (P8, 2026-10-05):
   The older `tools/build/gen_objdiff_full.py` used the .s files from splat as the
   target. A splat `cod/*.s` file does not always hold one function. In
-  `routebjp/asm/cod`, 1,677 files hold two or more `glabel` lines. The whole asm
+  `matching-jp/asm/cod`, 1,677 files hold two or more `glabel` lines. The whole asm
   tree holds 13,250 glabel lines, and symbol_addrs lists 10,923. Therefore one
   unit held several functions. When the base held only one of them, objdiff
   marked the unit partial (`matched_code_percent < 100`) even though the linked
@@ -71,7 +71,7 @@ import matched_ledger
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "project"))
 import at2_io
 
-REPO = Path(__file__).resolve().parents[2]          # at2/
+REPO = Path(__file__).resolve().parents[2]          # artonelico-research/
 DEFAULT_AS = os.environ.get("MIPS_AS", str(Path.home() / "eecc" / "ps2binutils" / "mips-ps2-decompals-as"))
 DEFAULT_OBJDIFF = os.environ.get("OBJDIFF", str(Path.home() / "eecc" / "objdiff-cli"))
 SCHEMA = "https://raw.githubusercontent.com/encounter/objdiff/main/config.schema.json"
@@ -366,7 +366,7 @@ def tool_version(cmd: str) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--project", default="routebjp")
+    ap.add_argument("--project", default="matching-jp")
     ap.add_argument("--jobs", "-P", type=int, default=4, help="Assembly parallelism (default 4)")
     ap.add_argument("--as", dest="as_bin", default=DEFAULT_AS)
     ap.add_argument("--objdiff", default=DEFAULT_OBJDIFF)

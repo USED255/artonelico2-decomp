@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """jtbl pool tool: true pool profile, sample selection, and (stage 2) draft generation.
 
-Background (see `at2/docs/kb/reports/` and OPEN-ISSUES O-20):
+Background (see `artonelico-research/docs/knowledge-base/reports/` and OPEN-ISSUES O-20):
   The `jtbl` column of `match_workqueue.py` is a decision over the **whole `.s` file** (P-32).
   A public `asm/cod/<sym>.s` often holds a **sibling function** of the same address range.
   Therefore 7 of 316 entries are contaminated. The decision domain of this tool is the
@@ -28,7 +28,7 @@ Usage:
 
 jtbl 池专项工具：真实池画像 / 样本选择 / （Stage 2）草稿生成。
 
-背景（见 `at2/docs/kb/reports/` 与 OPEN-ISSUES O-20）：
+背景（见 `artonelico-research/docs/knowledge-base/reports/` 与 OPEN-ISSUES O-20）：
   `match_workqueue.py` 的 `jtbl` 列是**整份 `.s` 文件**判定的（P-32），而公开 `asm/cod/<sym>.s`
   里常含同地址段的**兄弟函数** ⇒ 316 个里 7 个是污染。本工具的判定域是**目标块**
   （`glabel/endlabel <sym>` 之间），得到的才是真池：309 个 / 334,632 B。
@@ -46,7 +46,7 @@ jtbl 池专项工具：真实池画像 / 样本选择 / （Stage 2）草稿生�
   python3 tools/maintainer/project/jtbl_draft.py probe <sym> --dir DIR          # DIR/*.c 逐档打分（Stage 1）
 """
 
-# Private layout names (routebjp/build/jtbl, jp_m3_workqueue.tsv), do not rename.  私有布局名（routebjp/build/jtbl、jp_m3_workqueue.tsv），勿改名。
+# Private layout names (matching-jp/build/jtbl, jp_m3_workqueue.tsv), do not rename.  私有布局名（matching-jp/build/jtbl、jp_m3_workqueue.tsv），勿改名。
 
 from __future__ import annotations
 

@@ -20,7 +20,7 @@ Method (for each candidate):
   4. `--apply`: write src/matched/<sym>.c and merge the list (the same as the other matchers).
 
 Usage:
-  python3 tools/maintainer/project/auto_match_permuter.py run --from routebjp/build/m2/ghidra_batch/result.json \
+  python3 tools/maintainer/project/auto_match_permuter.py run --from matching-jp/build/m2/ghidra_batch/result.json \
       --min-match 95 --limit 30 --timeout 120 --jobs 3 [--apply]
 
 近失收敛：把 decomp-permuter 接进路线 B 的「objdiff 只收 100%」流水线（P1c）。
@@ -39,11 +39,11 @@ Usage:
   4. `--apply`：写入 src/matched/<sym>.c + 合并清单（与其它匹配器一致）。
 
 用法：
-  python3 tools/maintainer/project/auto_match_permuter.py run --from routebjp/build/m2/ghidra_batch/result.json \
+  python3 tools/maintainer/project/auto_match_permuter.py run --from matching-jp/build/m2/ghidra_batch/result.json \
       --min-match 95 --limit 30 --timeout 120 --jobs 3 [--apply]
 """
 
-# Private layout names (routebjp/build/m2/perm, routebjp/.tmp/permvenv, routebjp/build/llm_eval), do not rename.  私有布局名（routebjp/build/m2/perm、routebjp/.tmp/permvenv、routebjp/build/llm_eval），勿改名。
+# Private layout names (matching-jp/build/m2/perm, matching-jp/.tmp/permvenv, matching-jp/build/llm_eval), do not rename.  私有布局名（matching-jp/build/m2/perm、matching-jp/.tmp/permvenv、matching-jp/build/llm_eval），勿改名。
 
 from __future__ import annotations
 
@@ -569,7 +569,7 @@ def do_apply(winners: dict):
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("mode", nargs="?", default="run", choices=["run", "apply-workdir"])
-    ap.add_argument("--from", dest="src_json", default="routebjp/build/m2/ghidra_batch/result.json")
+    ap.add_argument("--from", dest="src_json", default="matching-jp/build/m2/ghidra_batch/result.json")
     ap.add_argument("--min-match", type=float, default=95.0)
     ap.add_argument("--max-match", type=float, default=99.999)
     ap.add_argument("--classes", default="")

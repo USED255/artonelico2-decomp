@@ -36,8 +36,8 @@ Subcommands
 
 Layout
 ------
-  --layout repo   Main repository. Use `--root routebjp`. The project root is
-                  routebjp/ with asm/, build/, src/matched/, config/, and
+  --layout repo   Main repository. Use `--root matching-jp`. The project root is
+                  matching-jp/ with asm/, build/, src/matched/, config/, and
                   SLPS_258.19.yaml. The tools are in `<root>/../tools`.
   --layout flat   Public repository. Use `--root .`. The project root is `.`
                   with asm/, build/, src/matched/, config/, and splat.yaml.
@@ -46,7 +46,7 @@ Layout
                   flat. If not, the layout is repo.
 
 Exit codes: 0 success, 1 failed check, 2 missing input or missing tool, 3 usage error.
-The toolchain stays outside the workspace. See docs/kb/ENV.md. The script
+The toolchain stays outside the workspace. See docs/knowledge-base/ENV.md. The script
 `<root>/build.sh` finds as and ld. The objdiff-cli default is
 `~/eecc/objdiff-cli`. Set OBJDIFF to use another path.
 
@@ -54,7 +54,7 @@ The toolchain stays outside the workspace. See docs/kb/ENV.md. The script
 
 设计目标
 --------
-把 `routebjp/build.sh` 与 `build_mixed.sh` 里的路径假设收敛到本脚本。
+把 `matching-jp/build.sh` 与 `build_mixed.sh` 里的路径假设收敛到本脚本。
 那两个脚本仍是薄包装，但项目根、载荷名、期望 sha1 与 objdiff 配置
 全部由本脚本按 `--root` 与 `--layout` 解析，主仓库与公开仓库共用同一套命令。
 
@@ -70,7 +70,7 @@ The toolchain stays outside the workspace. See docs/kb/ENV.md. The script
 
 布局约定
 --------
-  repo  项目根在仓库子目录（如 routebjp/），工具在 `<root>/../tools`。
+  repo  项目根在仓库子目录（如 matching-jp/），工具在 `<root>/../tools`。
   flat  项目根就是仓库根，工具在 `<root>/tools`。
   auto  项目根下有 `tools/` 判为 flat，否则判为 repo。
 
@@ -93,11 +93,11 @@ import matched_ledger
 
 # --------------------------------------------------------------------------- #
 # Known targets (version -> expected values). An unknown target needs an
-# explicit --expect-sha1. The source of truth is docs/kb/facts.json. These
+# explicit --expect-sha1. The source of truth is docs/knowledge-base/facts.json. These
 # values are build defaults only.
 #
 # 已知目标（版本 -> 期望值）；未知目标必须用 --expect-sha1 显式给出。
-# 事实源是 docs/kb/facts.json，此处只做构建期默认值。
+# 事实源是 docs/knowledge-base/facts.json，此处只做构建期默认值。
 # --------------------------------------------------------------------------- #
 KNOWN_TARGETS = {
     "SLPS_258.19": {
@@ -569,7 +569,7 @@ def main() -> int:
         prog="decomp_build.py",
         description="Layout-independent build driver for the matching decompilation (repo=private main repository / flat=public repository)",
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--root", default=".", help="Project directory (the repo layout uses routebjp; the flat layout uses .)")
+    ap.add_argument("--root", default=".", help="Project directory (the repo layout uses matching-jp; the flat layout uses .)")
     ap.add_argument("--layout", choices=["auto", "repo", "flat"], default="auto",
                     help="Layout: repo = the project root is a subdirectory and the tools are in <root>/../tools; flat = the project root is the repository root and the tools are in <root>/tools")
     ap.add_argument("--name", default=None, help="Target name (default: detect it from <name>.yaml or build/config.json)")

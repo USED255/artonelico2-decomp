@@ -66,7 +66,7 @@ matching batch 包装函数自动匹配（-O1 / -O2 两种空壳栈帧模板，�
 `build_mixed.sh` 按它给对应源追加编译标志（-O1 等；-O2 为默认，不写字）。
 """
 
-# Private layout names (routebjp/build/m2, jp_m3_workqueue.tsv), do not rename.  私有布局名（routebjp/build/m2、jp_m3_workqueue.tsv），勿改名。
+# Private layout names (matching-jp/build/m2, jp_m3_workqueue.tsv), do not rename.  私有布局名（matching-jp/build/m2、jp_m3_workqueue.tsv），勿改名。
 
 from __future__ import annotations
 

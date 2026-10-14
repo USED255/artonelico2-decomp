@@ -22,7 +22,7 @@ m2c 草稿批量匹配：m2c 生成的 C 直接过 objdiff，收 100% 的符号�
   python3 tools/maintainer/project/auto_match_m2c.py apply-only
 """
 
-# Private layout names (routebjp/build/m2c, jp_m3_workqueue.tsv), do not rename.  私有布局名（routebjp/build/m2c、jp_m3_workqueue.tsv），勿改名。
+# Private layout names (matching-jp/build/m2c, jp_m3_workqueue.tsv), do not rename.  私有布局名（matching-jp/build/m2c、jp_m3_workqueue.tsv），勿改名。
 
 from __future__ import annotations
 

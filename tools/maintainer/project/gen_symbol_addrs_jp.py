@@ -14,7 +14,7 @@ An address in `.erx.lib` that is not a function entry gets **no** `type:label`
 entry (see P-06).
 
 Self-test: run this script on the US input. The output must be byte-identical to
-routeb/config/symbol_addrs.txt.
+matching-us/config/symbol_addrs.txt.
 
 生成 splat 用的 symbol_addrs.txt（版本无关）。
 
@@ -27,7 +27,7 @@ routeb/config/symbol_addrs.txt.
 命名优先级：`.erx.lib` 的 库_槽号 > Ghidra 的 FUN_xxxxxxxx（转 func_xxxxxxxx）。
 `.erx.lib` 里非函数入口的地址**不写入** `type:label`（见 P-06）。
 
-自检：用美版输入跑本脚本，输出应与 routeb/config/symbol_addrs.txt 逐字节一致。
+自检：用美版输入跑本脚本，输出应与 matching-us/config/symbol_addrs.txt 逐字节一致。
 
 用法: python3 gen_symbol_addrs_jp.py <functions.tsv> <hle_tables.txt> <out.txt>
 """

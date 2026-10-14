@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 """Project path resolution. The layout does not matter.
 
-The private `routebjp/` layout and the public flat layout both work.
+The private `matching-jp/` layout and the public flat layout both work.
 
 ## Why this module is necessary
 
-The tools lived in `routebjp/tools/`. They used
+The tools lived in `matching-jp/tools/`. They used
 `Path(__file__).resolve().parent.parent` as the project root. After the workspace
 refactor on 2026-10-05, they moved to `tools/project/`. The same code then
 resolved a root one level too high (to `tools/`). Batch tools such as
@@ -18,7 +18,7 @@ The refactor also put the data into two classes, with different rules:
 | Class | Location now | Purpose |
 | --- | --- | --- |
 | Source, config, assembly tree, include | project root (public repo) | `config/matched_symbols.txt`, `src/matched/`, `asm/cod/`, `include/` |
-| Evidence, batch work state | private repo | `out/evidence/jp_m3_workqueue.tsv`, `routebjp/build/{m2c,m2,screen}` |
+| Evidence, batch work state | private repo | `out/evidence/jp_m3_workqueue.tsv`, `matching-jp/build/{m2c,m2,screen}` |
 
 ## Resolution order (an environment variable can override each item)
 
@@ -26,19 +26,21 @@ The refactor also put the data into two classes, with different rules:
   at the first directory that holds `config/matched_symbols.txt`, `splat.yaml`, or
   `asm/cod`.
 * `AT2_EVIDENCE_ROOT` -- evidence directory: `<project root>/out/evidence`, then
-  `<project root>/../at2/out/evidence`.
-* `AT2_WORK_ROOT` -- batch work directory: `<project root>/routebjp/build`, then
-  `<project root>/../at2/routebjp/build`, then `<project root>/build`.
+  `<project root>/../artonelico-research/out/evidence`.
+* `AT2_WORK_ROOT` -- batch work directory: `<project root>/matching-jp/build`, then
+  `<project root>/../artonelico-research/matching-jp/build`, then `<project root>/build`.
 * `AT2_PRIVATE_ROOT` -- private repo root. The default walks up the ancestors of the
-  project root and tests `<ancestor>/at2`. The candidate must hold `routebjp/` or `out/`.
+  project root and tests `<ancestor>/artonelico-research`, then `<ancestor>/at2` (the name
+  before 2026-10-13). The candidate must hold `matching-jp/` (or the pre-rename
+  `routebjp/`) or `out/`.
 
 Self-test: `python3 tools/project/at2_paths.py`
 
-项目路径解析 —— **布局无关**（私有 `routebjp/` 布局与公开扁平布局都能用）。
+项目路径解析 —— **布局无关**（私有 `matching-jp/` 布局与公开扁平布局都能用）。
 
 ## 为什么需要这个模块
 
-工具原先住在 `routebjp/tools/`，用 `Path(__file__).resolve().parent.parent` 当项目根；
+工具原先住在 `matching-jp/tools/`，用 `Path(__file__).resolve().parent.parent` 当项目根；
 2026-10-05 工作区重构后它们搬到 `tools/project/`，同样写法就**少了一级**（解析成 `tools/`），
 于是 `auto_match_*` 等批量工具集体失效（找不到 `config/matched_symbols.txt`）。
 
@@ -47,21 +49,22 @@ Self-test: `python3 tools/project/at2_paths.py`
 | 类别 | 现在在哪 | 用途 |
 | --- | --- | --- |
 | 源码 / 配置 / 汇编树 / include | **项目根**（公开仓库） | `config/matched_symbols.txt`、`src/matched/`、`asm/cod/`、`include/` |
-| 证据 / 批量工作状态 | **私有仓库** | `out/evidence/jp_m3_workqueue.tsv`、`routebjp/build/{m2c,m2,screen}` |
+| 证据 / 批量工作状态 | **私有仓库** | `out/evidence/jp_m3_workqueue.tsv`、`matching-jp/build/{m2c,m2,screen}` |
 
 ## 解析顺序（都可用环境变量强制覆盖）
 
 * `AT2_PROJECT_ROOT` —— 项目根：默认从本文件向上找同时含 `config/matched_symbols.txt` /
   `splat.yaml` / `asm/cod` 的目录。
-* `AT2_EVIDENCE_ROOT` —— 证据目录：`<项目根>/out/evidence` → `<项目根>/../at2/out/evidence`。
-* `AT2_WORK_ROOT` —— 批量工作目录：`<项目根>/routebjp/build` → `<项目根>/../at2/routebjp/build`
+* `AT2_EVIDENCE_ROOT` —— 证据目录：`<项目根>/out/evidence` → `<项目根>/../artonelico-research/out/evidence`。
+* `AT2_WORK_ROOT` —— 批量工作目录：`<项目根>/matching-jp/build` → `<项目根>/../artonelico-research/matching-jp/build`
   → `<项目根>/build`。
-* `AT2_PRIVATE_ROOT` —— 私有仓库根：默认沿项目根的祖先逐级找 `<祖先>/at2`（要求含 `routebjp/` 或 `out/`）。
+* `AT2_PRIVATE_ROOT` —— 私有仓库根：默认沿项目根的祖先逐级找 `<祖先>/artonelico-research`，
+  再回落 `<祖先>/at2`（2026-10-13 之前的目录名）。要求候选含 `matching-jp/`（或改名前的 `routebjp/`）或 `out/`。
 
 自检：`python3 tools/project/at2_paths.py`
 """
 
-# Private layout names (routebjp/build/{m2c,m2,screen}, jp_m3_workqueue.tsv), do not rename.  私有布局名（routebjp/build/{m2c,m2,screen}、jp_m3_workqueue.tsv），勿改名。
+# Private layout names (matching-jp/build/{m2c,m2,screen}, jp_m3_workqueue.tsv), do not rename.  私有布局名（matching-jp/build/{m2c,m2,screen}、jp_m3_workqueue.tsv），勿改名。
 
 from __future__ import annotations
 
@@ -70,6 +73,12 @@ import sys
 from pathlib import Path
 
 MARKERS = ("config/matched_symbols.txt", "splat.yaml", "asm/cod")
+
+# Directory names of the private repository, newest first.  私有仓库目录名，新名在前。
+# 2026-10-13: `at2` -> `artonelico-research`. The old name stays as a fallback so an
+# older checkout or a stale worktree still resolves.
+# 2026-10-13：`at2` 改名 `artonelico-research`。旧名保留为回落，旧检出或旧工作树仍可解析。
+PRIVATE_DIR_NAMES = ("artonelico-research", "at2")
 
 
 def _find_project_root(start: Path) -> Path:
@@ -93,32 +102,40 @@ def _first_existing(*cands: Path) -> Path | None:
 def _find_private_root(project_root: Path) -> Path | None:
     """Find the private repo root (restricted material and work state).
 
-    A test of `<project root>/../at2` alone is not sufficient. A task worktree is at
-    `<workspace>/worktrees/<repo>-<slug>`, and its parent is `worktrees/`, not the
-    workspace root. The private root then fails to resolve, and the evidence
+    A test of `<project root>/../artonelico-research` alone is not sufficient. A task
+    worktree is at `<workspace>/worktrees/<repo>-<slug>`, and its parent is `worktrees/`,
+    not the workspace root. The private root then fails to resolve, and the evidence
     directory lands inside the worktree. (Measured on 2026-10-06: `make check` in a
     worktree then had 1 more warning than the main checkout, which had 0.)
 
-    This code walks up the ancestors and tests `<ancestor>/at2`. The candidate must
-    look like a private repo (it holds `routebjp/` or `out/`). This rule prevents a
-    directory with the same name from becoming the private root.
+    This code walks up the ancestors and tests every name in `PRIVATE_DIR_NAMES`
+    (`artonelico-research` first, then the pre-2026-10-13 name `at2`). The candidate
+    must look like a private repo (it holds `matching-jp/`, the pre-rename `routebjp/`,
+    or `out/`). This rule prevents a directory with the same name from becoming the
+    private root.
 
     定位私有仓库根（受限材料与工作状态）。
 
-    不能只试 `<项目根>/../at2`：任务工作树位于 `<工作区>/worktrees/<repo>-<slug>`，
+    不能只试 `<项目根>/../artonelico-research`：任务工作树位于 `<工作区>/worktrees/<repo>-<slug>`，
     它的上一级是 `worktrees/` 而不是工作区根，于是私有根解析失败、证据目录落到工作树里
     （2026-10-06 实测：工作树 `make check` 因此多 1 条 warn，主检出 0 条）。
 
-    这里沿祖先逐级试 `<祖先>/at2`，并要求它**看起来像**私有仓库（有 `routebjp/` 或 `out/`），
-    避免把任意同名目录当私有根。
+    这里沿祖先逐级试 `PRIVATE_DIR_NAMES` 里的每个名字（先新名 `artonelico-research`，
+    再改名前的 `at2`），并要求它**看起来像**私有仓库（有 `matching-jp/`、改名前的 `routebjp/`
+    或 `out/`），避免把任意同名目录当私有根。
     """
     for anc in [project_root, *project_root.parents]:
-        cand = anc / "at2"
-        try:
-            if cand.is_dir() and ((cand / "routebjp").is_dir() or (cand / "out").is_dir()):
-                return cand
-        except OSError:
-            continue
+        for name in PRIVATE_DIR_NAMES:
+            cand = anc / name
+            try:
+                if cand.is_dir() and (
+                    (cand / "matching-jp").is_dir()
+                    or (cand / "routebjp").is_dir()
+                    or (cand / "out").is_dir()
+                ):
+                    return cand
+            except OSError:
+                continue
     return None
 
 
@@ -155,7 +172,9 @@ WORK_ROOT: Path = (
     if _env_work
     else (
         _first_existing(
+            PROJECT_ROOT / "matching-jp" / "build",
             PROJECT_ROOT / "routebjp" / "build",
+            *([PRIVATE_ROOT / "matching-jp" / "build"] if PRIVATE_ROOT else []),
             *([PRIVATE_ROOT / "routebjp" / "build"] if PRIVATE_ROOT else []),
             PROJECT_ROOT / "build",
         )
@@ -167,6 +186,7 @@ WORK_ROOT: Path = (
 ASMDIR: Path = (
     _first_existing(
         PROJECT_ROOT / "asm" / "cod",
+        *([PRIVATE_ROOT / "matching-jp" / "asm" / "cod"] if PRIVATE_ROOT else []),
         *([PRIVATE_ROOT / "routebjp" / "asm" / "cod"] if PRIVATE_ROOT else []),
     )
     or (PROJECT_ROOT / "asm" / "cod")
