@@ -396,6 +396,51 @@
       "evidence": [
         "private:out/evidence/ee_gcc_delay_slots.txt"
       ]
+    },
+    {
+      "id": "L-EE-010",
+      "title": "A switch becomes a jump table only when count >= 5 AND range <= 10 * count",
+      "tier": "T1",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "stmt.c",
+        "line": 5401,
+        "note": "expand_end_case_type branches to conditional branches when `count < case_values_threshold () || range > 10 * count || ...`; otherwise it calls try_tablejump (stmt.c:5509). expr.c:10486 defines CASE_VALUES_THRESHOLD as (HAVE_casesi ? 4 : 5). EE lines: expand_end_case_type stmt.c:5238, case_values_threshold expr.c:10431, try_tablejump expr.c:10595."
+      },
+      "binary_anchor": {
+        "symbol": "expand_end_case_type",
+        "addr": "0x08154e0c",
+        "related": [
+          {
+            "symbol": "case_values_threshold",
+            "addr": "0x080cad50"
+          },
+          {
+            "symbol": "try_tablejump",
+            "addr": "0x080cae48"
+          }
+        ],
+        "constants": [],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl",
+        "03.jump"
+      ],
+      "symptom": [
+        "the target uses a jump table where the candidate uses a compare chain",
+        "a switch compiles to a table the candidate does not produce, or the reverse"
+      ],
+      "lever": [
+        "count the distinct cases and the (max - min) span before choosing a spelling: a table needs at least 5 cases and a span of at most 10 per case",
+        "moving case values closer together (or adding a range check before the switch) changes the decision"
+      ],
+      "receipt": "11 synthetic switches at -O2 -G0: dense 3 and 4 cases -> compare chain; dense 5, 6, 7, 8, 10, 16 -> table, table size exactly equal to the case count; cases {0,1,2,100,1000} (count 5, range 1000) -> chain; {0,10,20,30,40} (count 5, range 40 <= 50) -> table with 41 entries; {0,1,2,3,4,100,200,300} (count 8, range 300 > 80) -> chain. All 11 rows match the source rule.",
+      "falsifies": "the external claim that five distinct cases are enough for a jump table (dds-decomp, ee-gcc 2.96, no licence): five cases are necessary but not sufficient, the span must also satisfy range <= 10 * count",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0; 11 synthetic switches, no game code",
+      "evidence": [
+        "private:out/evidence/ee_gcc_jumptable.txt"
+      ]
     }
   ]
 }

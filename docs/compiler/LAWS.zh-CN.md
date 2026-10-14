@@ -81,6 +81,22 @@ receipt：10 个合成函数 / 29 个分支 @ `-O2 -G0`：**填 24 条（82.8%�
 falsifies：「延迟槽是 nop = 调度器没得可移」——这一层编译器根本不发 nop，剩下的是汇编器补的。
 **杠杆**：把延迟槽差异当**调度**问题处理——先重组语句、看分支后继能提供什么，再去改表达式。
 
+## L-EE-010 · `switch` 生成跳转表的条件：`case 数 >= 5` **且** `跨度 <= 10 × case 数`
+
+`expand_end_case_type`：`count < case_values_threshold ()` 或跨度超过 case 数 10 倍时退化为比较链，否则调用 `try_tablejump`。
+`CASE_VALUES_THRESHOLD = (HAVE_casesi ? 4 : 5)`，实测阈值是 **5** ⇒ 本后端没有 `casesi`。
+
+```
+case 数 >= 5  且  (max - min) <= 10 × case 数   → 跳转表
+否则                                          → 比较链
+```
+
+**T1**｜源码锚点 `stmt.c:5401`（判定）与 `expr.c:10486`（常量）；`try_tablejump` 在 `stmt.c:5509` 调用｜
+二进制锚点 `expand_end_case_type @ 0x08154e0c`（`stmt.c:5238`）、`case_values_threshold @ 0x080cad50`（`expr.c:10431`）、`try_tablejump @ 0x080cae48`（`expr.c:10595`）｜
+receipt：11 个合成 switch，**11/11 与规则一致**（dense 3/4 → 比较链；dense 5/6/7/8/10/16 → 表，**表项数 == case 数**；`{0,1,2,100,1000}` → 比较链；`{0,10,20,30,40}` → **41 项**表；`{0,1,2,3,4,100,200,300}` → 比较链）｜
+falsifies：「≥5 个不同 case 就生成跳转表」（dds-decomp，2.96，无许可证）——5 是必要不充分，还要满足跨度条件。
+**杠杆**：写 `switch` 前先数 case 与跨度；把值收拢，或在 `switch` 前加范围守卫，都会改变判定。
+
 ---
 
 ## 仍未解决

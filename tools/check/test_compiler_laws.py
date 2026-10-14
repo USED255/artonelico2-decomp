@@ -115,6 +115,13 @@ def check_binary_anchors(data: dict) -> None:
         if not symbol or not addr:
             continue
         law_id = law.get("id", "?")
+        anchors = [(symbol, addr)] + [(r.get("symbol", ""), r.get("addr", ""))
+                                      for r in anchor.get("related", []) or []]
+        for symbol, addr in anchors:
+            if symbol and addr:
+                check(f"{law_id}: {symbol} @ {addr} exists in cc1",
+                      int(addr, 16) in [a for _n, _t, a in module.lookup_symbol(rows, symbol)],
+                      f"candidates: {[hex(a) for _n, _t, a in module.lookup_symbol(rows, symbol)]}")
         hits = [a for _n, _t, a in module.lookup_symbol(rows, symbol)]
         want = int(addr, 16)
         check(f"{law_id}: {symbol} @ {addr} exists in cc1", want in hits,

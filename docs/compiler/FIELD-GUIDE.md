@@ -115,7 +115,7 @@ them here before relying on them.
 
 | Lead | Origin | Status |
 | --- | --- | --- |
-| `switch` needs five or more distinct cases to become a jump table | dds-decomp (ee-gcc 2.96, unlicensed) | unverified on 3.2; the pass numbers differ |
+| ~~`switch` needs five or more distinct cases to become a jump table~~ | dds-decomp (ee-gcc 2.96, unlicensed) | **verified and refined on 3.2**: five cases are necessary but not sufficient — the span must also satisfy `range <= 10 * count` ([L-EE-010](LAWS.md#l-ee-010--a-switch-becomes-a-jump-table-only-when-count--5-and-range--10--count)) |
 | `slt`/`sltiu` against `xori` distinguishes narrow unsigned types | dds-decomp | unverified |
 | The scheduler's tie-break reads a physical source line number, so folding statements onto one line is a lever | n64-decomp-workbench (IDO 5.3, CC0) | mechanism not confirmed for ee-gcc 3.2; scheduling drift is large (`haifa-sched.c` +263), so it needs the anchor method |
 | A discarded-value statement can be load-bearing with zero instructions | n64-decomp-workbench (IDO 5.3) | unverified under ee-gcc 3.2 |

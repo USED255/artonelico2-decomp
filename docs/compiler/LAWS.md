@@ -165,6 +165,38 @@ placed it.
 * **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`; 10 synthetic functions. A rule read from
   `reorg.c` was not verified instruction-by-instruction in the binary, which is why this is T2.
 
+## L-EE-010 · A switch becomes a jump table only when `count >= 5` **and** `range <= 10 * count`
+
+`expand_end_case_type` falls back to a compare chain when `count < case_values_threshold ()` or when
+the span is more than ten times the number of cases; otherwise it calls `try_tablejump`.
+`CASE_VALUES_THRESHOLD` is `HAVE_casesi ? 4 : 5`, and the measurement shows **5**, so this backend has
+no `casesi`.
+
+```
+count >= 5  AND  (max - min) <= 10 * count   -> jump table
+otherwise                                    -> compare chain
+```
+
+* **Tier T1** · **Source anchor** `stmt.c:5401` (the decision) and `expr.c:10486` (the constant);
+  `try_tablejump` is called at `stmt.c:5509`
+* **Binary anchors** `expand_end_case_type @ 0x08154e0c` (`stmt.c:5238`),
+  `case_values_threshold @ 0x080cad50` (`expr.c:10431`), `try_tablejump @ 0x080cae48` (`expr.c:10595`)
+* **Receipt** 11 synthetic switches at `-O2 -G0`, **all 11 matching the rule**:
+
+| switch | count | range | result |
+| --- | ---: | ---: | --- |
+| dense 3 / dense 4 | 3 / 4 | 2 / 3 | compare chain |
+| dense 5 / 6 / 7 / 8 / 10 / 16 | 5–16 | count−1 | table, **size == count** |
+| `{0,1,2,100,1000}` | 5 | 1000 | compare chain |
+| `{0,10,20,30,40}` | 5 | 40 ≤ 50 | table with **41** entries |
+| `{0,1,2,3,4,100,200,300}` | 8 | 300 > 80 | compare chain |
+
+* **Falsifies** the external claim that five distinct cases are enough (dds-decomp, ee-gcc 2.96, no
+  licence). Five is necessary, not sufficient: the span must also fit `range <= 10 * count`.
+* **Lever** count the cases and the span before choosing a spelling; pulling case values closer
+  together, or adding a range guard ahead of the switch, changes the decision.
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`; 11 synthetic switches.
+
 ---
 
 ## Open items
