@@ -128,11 +128,33 @@ one instruction counts twice. `regs.h:79` defines `REG_FREQ_MAX 1000`, which mak
   function.
 * **Scope** `ee-gcc 3.2-ee-040921` at `-O2`. The exact `$L` counter formula is still open.
 
+## L-EE-008 · In `23.greg`, `regs to allocate` is the local-allocation residue; `conflicts` lists every allocno
+
+The `;; N regs to allocate:` line skips allocnos that already have a register (`reg_renumber >= 0`).
+The `;; N conflicts:` lines do not: they list every allocno, whether or not local allocation already
+placed it.
+
+* **Tier T1** · **Source anchor** `global.c:1926` (the count loop skips at 1922; the conflicts loop at
+  1945 has no test). The shipped binary resolves `dump_conflicts` to `global.c:2265`.
+* **Binary anchor** `dump_conflicts @ 0x081af134`
+* **Pass** `22.lreg`, `23.greg`
+* **Receipt** 166 functions: the conflict lines list **10,450** allocnos, `regs to allocate` lists
+  **1,079**. The two differ in **166/166** functions; `fx_arith` reports 8 and 0.
+* **Falsifies** the reading that the conflict lines list only the allocnos still waiting for a
+  register. Treating the extra numbers as hard registers is a measured failure mode: it produced the
+  wrong candidate sets in the first colouring replay.
+* **Lever** take the still-unplaced set from `regs to allocate`, the interference graph from
+  `conflicts`, and classify a number as a hard register only when it is not an allocno (allocno
+  numbers are the `;; N conflicts:` keys and the `[N]` brackets in the RTL).
+* **Scope** `ee-gcc 3.2-ee-040921`.
+
 ---
 
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).
+* `FIRST_PSEUDO_REGISTER` for the EE build is bounded but not read exactly (the class tables are
+  runtime-initialised); the practical classifier is L-EE-008's lever.
 * **Colouring replay is not modelled yet.** On 527 allocnos, a preference-first heuristic reproduces
   **34.3%** of the recorded dispositions, and a replay that follows `find_reg`'s two passes plus its
   preference override reproduces only **9.1%** — implementing more of the source *hurt*. The cause is

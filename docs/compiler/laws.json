@@ -325,6 +325,42 @@
         "party:R28-ee-gcc-3.2决策模型.md",
         "private:out/evidence/ee_gcc_tu_state.txt"
       ]
+    },
+    {
+      "id": "L-EE-008",
+      "title": "In 23.greg, `regs to allocate` is the residue after local allocation, while `conflicts` lists every allocno",
+      "tier": "T1",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "global.c",
+        "line": 1926,
+        "note": "dump_conflicts: the count loop skips `reg_renumber >= 0` at line 1922 and prints at 1926; the conflicts loop at 1945 has no such test. The shipped binary resolves dump_conflicts to global.c:2265."
+      },
+      "binary_anchor": {
+        "symbol": "dump_conflicts",
+        "addr": "0x081af134",
+        "constants": [],
+        "struct": {}
+      },
+      "pass": [
+        "22.lreg",
+        "23.greg"
+      ],
+      "symptom": [
+        "a value the dump reports was placed is treated as a hard register",
+        "a replay built from the conflict lines scores far below a simple heuristic"
+      ],
+      "lever": [
+        "take the still-unplaced allocnos from `regs to allocate` and the interference graph from `conflicts`",
+        "classify a conflict number as a hard register only when it is not an allocno (the allocno reg numbers are the `;; N conflicts:` keys and the `[N]` brackets in the RTL)"
+      ],
+      "receipt": "166 functions: the conflicts lines list 10,450 allocnos while `regs to allocate` lists 1,079 locally placed residue; the two differ in 166/166 functions (fx_arith: 8 vs 0). Misclassifying the extra numbers as hard registers was a measured failure mode in the colouring replay.",
+      "falsifies": "the reading that `conflicts` lists only the allocnos still waiting for a register",
+      "scope": "ee-gcc 3.2-ee-040921 dumps; mainline semantics verified in global.c",
+      "evidence": [
+        "party:R33-EE-GCC-3.2编译器行为手册与社区先例调研.md",
+        "private:out/evidence/ee_gcc_anchor_db.txt"
+      ]
     }
   ]
 }

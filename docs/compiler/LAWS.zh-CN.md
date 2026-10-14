@@ -64,6 +64,15 @@ falsifies：「因子是 1」的误读（已登记为私有仓库的 P-108）。
 指令序列 / `.sdata` / 跳转表**完全相同**，只有 `$L` 编号按前置带标签函数 +1（且不改字节）｜
 falsifies：「往同一 TU 加无关函数会扰动目标函数」。
 
+## L-EE-008 · `23.greg` 里 `regs to allocate` 是局部分配**残留**，`conflicts` 列的是**全部** allocno
+
+`;; N regs to allocate:` 会跳过已有寄存器的 allocno（`reg_renumber >= 0`）；`;; N conflicts:` **不跳**，
+列出每一个 allocno。
+**T1**｜源码锚点 `global.c:1926`（计数循环在 1922 跳过；1945 的冲突循环没有这个判断），出厂二进制把 `dump_conflicts` 解析到 `global.c:2265`｜
+二进制锚点 `dump_conflicts @ 0x081af134`｜
+receipt：166 个函数里冲突行列出 **10,450** 个 allocno，而 `regs to allocate` 只有 **1,079** 个；两者在 **166/166** 个函数里都不同（`fx_arith`：8 vs 0）｜
+falsifies：「冲突行只列等寄存器的 allocno」。把多出来的号当成硬寄存器是**实测过的失败模式**（我第一次着色重放的候选集就是这么错的）。
+
 ---
 
 ## 仍未解决
