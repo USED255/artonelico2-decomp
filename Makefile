@@ -89,6 +89,7 @@ check: check-tools check-tests check-compiler
 
 check-compiler:
 	@$(PY) tools/check/test_compiler_laws.py
+	@$(PY) tools/check/test_compiler_tools.py
 
 check-tools:
 	@$(PY) tools/check/test_tool_paths.py

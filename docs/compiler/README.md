@@ -4,7 +4,9 @@
 
 **Verified against the shipped compiler.** All **13** binary anchors cited here have been resolved
 against the shipped `cc1` and match their addresses; `python3 tools/check/test_compiler_laws.py`
-enforces the tiers and re-verifies the anchors whenever the toolchain is present.
+enforces the tiers and re-verifies the anchors whenever the toolchain is present, and
+`tools/check/test_compiler_tools.py` smoke-tests every command this handbook documents (both run inside
+`make check`).
 
 This handbook records the behaviour of **`ee-gcc 3.2-ee-040921`** — the compiler that built the
 PlayStation 2 Emotion Engine code in this project — at the flags this project builds with:

@@ -26,6 +26,11 @@ anchor and are `T3`). Run the same check after any toolchain change. Beware one 
 `find_reg` occurs twice — `0x08134570` (`reload1.c:1685`) and `0x081acd64` (`global.c:1329`) — so always
 disambiguate by address, not by name.
 
+**Evidence paths.** Each law's `evidence` list names where its receipt lives. A bare path is inside this
+repository; a `private:` entry points at the project's private research repository (raw evidence dumps,
+which are deliberately not published); a `party:` entry points at one of the project's own research
+reports there. `tools/check/test_compiler_tools.py` enforces that every **bare** path exists.
+
 **Measurement conditions.** Scope lines name the flags a measurement was taken under. Most probes in this
 handbook used `-O2 -G0`. **The project itself builds with `-O2 -falign-functions=4
 -ffunction-sections` and passes no `-G`**, so the MIPS default (`MIPS_DEFAULT_GVALUE`, 8) applies. Laws

@@ -137,6 +137,10 @@ def main(argv: list[str] | None = None) -> int:
     laws = data.get("laws") or []
 
     if args.command == "list":
+        if args.json:
+            print(json.dumps([{"id": law["id"], "tier": law.get("tier"), "title": law.get("title")}
+                              for law in laws], ensure_ascii=False, indent=1))
+            return 0 if laws else 1
         for law in laws:
             print(f"{law['id']}  [{law.get('tier', '?')}]  {law.get('title', '')}")
         return 0 if laws else 1
@@ -147,14 +151,21 @@ def main(argv: list[str] | None = None) -> int:
             for item in law.get("symptom", []) or []:
                 if item not in seen:
                     seen.append(item)
+        if args.json:
+            print(json.dumps(seen, ensure_ascii=False, indent=1))
+            return 0 if seen else 1
         for item in seen:
             print(f"- {item}")
         return 0 if seen else 1
 
     if args.command == "levers":
-        for law in laws:
-            for item in law.get("lever", []) or []:
-                print(f"{law['id']}  {item}")
+        rows = [{"id": law["id"], "lever": item}
+                for law in laws for item in (law.get("lever", []) or [])]
+        if args.json:
+            print(json.dumps(rows, ensure_ascii=False, indent=1))
+            return 0
+        for row in rows:
+            print(f"{row['id']}  {row['lever']}")
         return 0
 
     if args.command == "law":
