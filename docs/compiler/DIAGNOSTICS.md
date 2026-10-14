@@ -1,6 +1,6 @@
 # Diagnostics — from a wrong diff to the pass that owns it
 
-[Handbook index](README.md) · [Laws](LAWS.md) · [Pass map](PASSES.md)
+[Handbook index](README.md) · [简体中文](DIAGNOSTICS.zh-CN.md) · [Laws](LAWS.md) · [Pass map](PASSES.md)
 
 A matching diff tells you *that* the bytes differ. It does not tell you *which decision* produced
 the difference. This page is the workflow that answers that, in order, before any guesswork.

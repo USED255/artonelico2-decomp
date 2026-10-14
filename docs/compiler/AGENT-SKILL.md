@@ -1,6 +1,6 @@
 # Agent skill — attacking a matching diff with this handbook
 
-[Handbook index](README.md) · [Laws](LAWS.md) · [Diagnostics](DIAGNOSTICS.md) · [Field guide](FIELD-GUIDE.md)
+[Handbook index](README.md) · [简体中文](AGENT-SKILL.zh-CN.md) · [Laws](LAWS.md) · [Diagnostics](DIAGNOSTICS.md) · [Field guide](FIELD-GUIDE.md)
 
 This page is the entry point for an automated agent (or a person in a hurry) that has one job: turn a
 wrong matching diff into a source edit that moves it. It is deliberately short. The handbook is the

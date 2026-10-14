@@ -1,6 +1,6 @@
 # Pass map — ee-gcc 3.2 / 2.96
 
-[Handbook index](README.md) · [Laws](LAWS.md)
+[Handbook index](README.md) · [简体中文](PASSES.zh-CN.md) · [Laws](LAWS.md)
 
 `ee-gcc` accepts `-da` and writes one RTL dump per pass, named
 `<file>.<NN>.<pass>`. The numbering differs between the two compilers in this project, so a pass

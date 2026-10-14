@@ -14,11 +14,11 @@ such question with evidence, and each lever names the source spelling that moves
 
 | Page | Contents |
 | --- | --- |
-| [LAWS.md](LAWS.md) | What the compiler does: allocation order, struct widths, frequency accounting, the EE backend. Every entry carries a tier, a source anchor, a binary anchor, a receipt and a scope |
-| [PASSES.md](PASSES.md) | The 26 `-da` dumps of 3.2 (22 for 2.96), which source file owns each one, and how far the shipped source drifts from mainline |
-| [DIAGNOSTICS.md](DIAGNOSTICS.md) | From "the diff looks wrong" to "this pass owns it": the first-divergence workflow, its two false signals, and when the model should not be used at all |
-| [FIELD-GUIDE.md](FIELD-GUIDE.md) | The source spellings that move a measurement, with the measurement each one moves |
-| [AGENT-SKILL.md](AGENT-SKILL.md) | The loop an agent (or a hurried person) runs: measure -> localise the pass -> look up the law -> apply the lever -> re-measure |
+| [LAWS.md](LAWS.md) · [中文](LAWS.zh-CN.md) | What the compiler does: allocation order, struct widths, frequency accounting, the EE backend. Every entry carries a tier, a source anchor, a binary anchor, a receipt and a scope |
+| [PASSES.md](PASSES.md) · [中文](PASSES.zh-CN.md) | The 26 `-da` dumps of 3.2 (22 for 2.96), which source file owns each one, and how far the shipped source drifts from mainline |
+| [DIAGNOSTICS.md](DIAGNOSTICS.md) · [中文](DIAGNOSTICS.zh-CN.md) | From "the diff looks wrong" to "this pass owns it": the first-divergence workflow, its two false signals, and when the model should not be used at all |
+| [FIELD-GUIDE.md](FIELD-GUIDE.md) · [中文](FIELD-GUIDE.zh-CN.md) | The source spellings that move a measurement, with the measurement each one moves |
+| [AGENT-SKILL.md](AGENT-SKILL.md) · [中文](AGENT-SKILL.zh-CN.md) | The loop an agent (or a hurried person) runs: measure -> localise the pass -> look up the law -> apply the lever -> re-measure |
 | [`laws.json`](laws.json) | The same laws as data, for tooling and agents |
 
 ## Evidence tiers

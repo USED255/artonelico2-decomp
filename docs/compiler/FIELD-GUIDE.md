@@ -1,6 +1,6 @@
 # Field guide — source spellings that move a measurement
 
-[Handbook index](README.md) · [Laws](LAWS.md) · [Diagnostics](DIAGNOSTICS.md)
+[Handbook index](README.md) · [简体中文](FIELD-GUIDE.zh-CN.md) · [Laws](LAWS.md) · [Diagnostics](DIAGNOSTICS.md)
 
 Each entry is a **lever**: a source-level edit, the reading it is expected to move, and the measured
 effect. Read [DIAGNOSTICS.md](DIAGNOSTICS.md) first: a lever applied to a structurally different
