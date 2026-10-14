@@ -23,7 +23,7 @@ export JOBS
 
 .DEFAULT_GOAL := help
 
-.PHONY: help configure rom split build build-fast report progress delta check check-tools check-tests check-pr clean
+.PHONY: help configure rom split build build-fast report progress delta check check-tools check-tests check-compiler check-pr clean
 
 help:
 	@echo "Ar tonelico II matching decompilation - available targets"
@@ -84,8 +84,11 @@ progress:
 delta:
 	@$(DRIVER) delta --base "$(BASE)"
 
-check: check-tools check-tests
+check: check-tools check-tests check-compiler
 	@$(PY) tools/check/check_public_repo.py --check
+
+check-compiler:
+	@$(PY) tools/check/test_compiler_laws.py
 
 check-tools:
 	@$(PY) tools/check/test_tool_paths.py

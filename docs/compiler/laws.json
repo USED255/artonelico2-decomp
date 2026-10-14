@@ -1,0 +1,193 @@
+{
+  "schema": 1,
+  "updated": "2026-10-14",
+  "note": "EE GCC 3.2 codegen handbook, machine-readable index. Every law carries source_anchor (mainline file:line) and/or binary_anchor (shipped cc1 symbol/address). tier T1 = source rule + factory-binary anchor + matching behaviour; T2 = source rule OR binary anchor, plus behaviour; T3 = behaviour evidence only. No game content: anchors are compiler-internal symbols, addresses, line numbers and constants.",
+  "toolchain": {
+    "id": "ee-gcc-3.2-ee-040921",
+    "cc1": "lib/gcc-lib/ee/3.2-ee-040921/cc1",
+    "flags": "-O2 -falign-functions=4 -ffunction-sections",
+    "cc1_not_stripped": true,
+    "dwarf": true,
+    "sources_embedded": 135,
+    "mainline_reference": "gcc-3.2.3 (sha256 9229434cfdfb79d3183149ac09e1093be642d4be377cc491e75c23b856243fda)"
+  },
+  "laws": [
+    {
+      "id": "L-EE-001",
+      "title": "Global allocation order is allocno_compare: (floor_log2(n_refs) * freq) / live_length * (10000 / REG_FREQ_MAX) * size",
+      "tier": "T1",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "global.c",
+        "line": 614,
+        "note": "mainline gcc-3.2.3 definition line; EE binary resolves the same function to global.c:789 (delta +175). Cite the EE line, use mainline for semantics."
+      },
+      "binary_anchor": {
+        "symbol": "allocno_compare",
+        "addr": "0x081ab288",
+        "constants": [
+          {"kind": "double", "value": 10.0, "at": "0x0821e360", "means": "10000 / REG_FREQ_MAX with REG_FREQ_MAX == 1000 (regs.h:79)"}
+        ],
+        "struct": {"name": "allocno", "byte_size": 144, "fields": {"size": 4, "n_refs": 12, "freq": 16, "live_length": 20}}
+      },
+      "pass": ["16.life", "23.greg"],
+      "symptom": ["allocation order differs from expectation", "two values with the same reference count allocate in an unexpected order"],
+      "lever": ["cross a power of two in n_refs (floor_log2 step)", "move a use into a hotter block (freq is linear)", "shorten the live range (live_length divides)"],
+      "receipt": "75 functions / 1,079 allocnos / 1,004 adjacent pairs: exact order 33/75, mean Kendall tau 0.873, 26 inversions (2.6%) [R28 §3]; formula constants corrected in R33 §4.3",
+      "falsifies": "dds-decomp's floor_log2(refs) * refs * hard_reg_width shape (all four local controls failed)",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0; not tested on 2.96",
+      "evidence": ["party:R28-ee-gcc-3.2决策模型.md", "private:out/evidence/ee_gcc_allocno_calibration.txt"]
+    },
+    {
+      "id": "L-EE-002",
+      "title": "allocno.size is measured in WORDS, and the dump prints it only when size != 1",
+      "tier": "T1",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "regs.h",
+        "line": 116,
+        "note": "PSEUDO_REGNO_SIZE(N) = (GET_MODE_SIZE + UNITS_PER_WORD - 1) / UNITS_PER_WORD; global.c:1937 is the print condition `size != 1` (EE binary: global.c:2265)"
+      },
+      "binary_anchor": {
+        "symbol": "allocno_compare",
+        "addr": "0x081ab288",
+        "constants": [],
+        "struct": {"name": "allocno", "byte_size": 144, "fields": {"size": 4}}
+      },
+      "pass": ["23.greg"],
+      "symptom": ["no (N) size suffix appears in the `;; N regs to allocate:` line", "a model that feeds bytes into the formula mis-ranks mixed-mode functions"],
+      "lever": ["read the suffix as words: absent == 1 word (SImode), 2 words for DImode / DFmode"],
+      "receipt": "zero `(N)` occurrences across the whole local corpus, including DFmode allocnos that do reach global allocation; SImode -> 1 word, DImode/DFmode -> 2 words",
+      "falsifies": "the reading that allocno.size is a byte count (the R28 tool substituted the lreg `N bytes` field)",
+      "scope": "ee-gcc 3.2-ee-040921; mainline semantics verified in regs.h",
+      "evidence": ["party:R33-EE-GCC-3.2编译器行为手册与社区先例调研.md"]
+    },
+    {
+      "id": "L-EE-003",
+      "title": "The EE register-pressure model is wider: struct allocno is 144 B and HARD_REG_SET is 192 bits",
+      "tier": "T1",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "global.c",
+        "line": 96,
+        "note": "EE declaration line from DWARF; the mainline copy declares struct allocno at line 87. Field names and order match mainline."
+      },
+      "binary_anchor": {
+        "symbol": "allocno_compare",
+        "addr": "0x081ab288",
+        "constants": [],
+        "struct": {
+          "name": "allocno",
+          "byte_size": 144,
+          "members": [
+            {"name": "reg", "offset": 0, "decl_line": 97},
+            {"name": "size", "offset": 4, "decl_line": 100},
+            {"name": "calls_crossed", "offset": 8, "decl_line": 103},
+            {"name": "n_refs", "offset": 12, "decl_line": 106},
+            {"name": "freq", "offset": 16, "decl_line": 109},
+            {"name": "live_length", "offset": 20, "decl_line": 113},
+            {"name": "hard_reg_conflicts", "offset": 24, "decl_line": 117},
+            {"name": "hard_reg_preferences", "offset": 48, "decl_line": 123},
+            {"name": "hard_reg_copy_preferences", "offset": 72, "decl_line": 130}
+          ]
+        }
+      },
+      "pass": ["23.greg", "24.postreload"],
+      "symptom": ["a mainline-calibrated register-pressure model predicts the wrong spill count"],
+      "lever": ["size the pressure model against 192 hard registers, not the mainline MIPS count"],
+      "receipt": "DWARF byte_size 144; member step 24 B = 192 bits; disassembly stride 144 B (lea (%edi,%edi,8) then shl $0x4)",
+      "falsifies": "the assumption that mainline's HARD_REG_SET width applies to EE",
+      "scope": "ee-gcc 3.2-ee-040921",
+      "evidence": ["private:out/evidence/ee_gcc_anchor_db.txt"]
+    },
+    {
+      "id": "L-EE-004",
+      "title": "EE ships its own backend file config/mips/mips5900.c, which mainline 3.2.3 does not have",
+      "tier": "T1",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips5900.c",
+        "line": 0,
+        "note": "absent from mainline gcc-3.2.3 (config/mips/ checked); EE DWARF carries it as a compilation unit"
+      },
+      "binary_anchor": {
+        "symbol": "uns_arith_operand",
+        "addr": "0x0817178c",
+        "constants": [],
+        "struct": {}
+      },
+      "pass": ["backend"],
+      "symptom": ["a rule taken from mainline config/mips/mips.c does not reproduce EE code selection"],
+      "lever": ["treat the EE backend as a separate source of rules; anchor it per symbol in mips5900.c"],
+      "receipt": "cc1 embeds 135 source paths, including config/mips/mips5900.c; 152 functions resolve to that file; mainline 3.2.3 config/mips/ has no mips5900.c",
+      "falsifies": "",
+      "scope": "ee-gcc 3.2-ee-040921",
+      "evidence": ["private:out/evidence/ee_gcc_anchor_db.txt"]
+    },
+    {
+      "id": "L-EE-005",
+      "title": "REG_FREQ is accumulated per register note, one block frequency per occurrence, and REG_FREQ_MAX is 1000",
+      "tier": "T1",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "flow.c",
+        "line": 2733,
+        "note": "propagate_one_insn: REG_N_REFS += 1 and REG_FREQ += REG_FREQ_FROM_BB(bb) per register; also flow.c:3578 and flow.c:3413. regs.h:79 defines REG_FREQ_MAX 1000."
+      },
+      "binary_anchor": {
+        "symbol": "life_analysis",
+        "addr": "0x080ce2d8",
+        "constants": [
+          {"kind": "double", "value": 10.0, "at": "0x0821e360", "means": "the factor 10000 / REG_FREQ_MAX = 10, consumed by allocno_compare"}
+        ],
+        "struct": {}
+      },
+      "pass": ["16.life", "23.greg"],
+      "symptom": ["a frequency proxy built from de-duplicated instructions lands one or two adjacent pairs in the wrong order"],
+      "lever": ["count every register occurrence, including a read-modify-write in one insn"],
+      "receipt": "source lines read; the binary's 10.0 constant confirms the REG_FREQ_MAX = 1000 factor; R28 recorded 6 functions with one inversion each while using a de-duplicated proxy",
+      "falsifies": "the reading that the factor is 1 (a misread of the global.c comment; recorded as P-108)",
+      "scope": "ee-gcc 3.2-ee-040921",
+      "evidence": ["party:R33-EE-GCC-3.2编译器行为手册与社区先例调研.md", "party:R28-ee-gcc-3.2决策模型.md"]
+    },
+    {
+      "id": "L-EE-006",
+      "title": "Line numbers are not portable between trees: the EE snapshot drifts from mainline per function",
+      "tier": "T1",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "global.c",
+        "line": 614,
+        "note": "measured against the EE binary: the same function is at global.c:789"
+      },
+      "binary_anchor": {
+        "symbol": "find_reg",
+        "addr": "0x081acd64",
+        "constants": [],
+        "struct": {}
+      },
+      "pass": ["all"],
+      "symptom": ["a mainline line number is cited for an EE behaviour and the quoted lines do not contain that code"],
+      "lever": ["cite the line number that addr2line reports for the shipped cc1, and keep the mainline line only as a cross-reference with its measured offset"],
+      "receipt": "per-file median drift (EE line minus mainline line, gcc-3.2.3): global.c +341, gcse.c +137, haifa-sched.c +263, regmove.c +1920, reload1.c 0, local-alloc.c -4, cse.c -22, jump.c -47, loop.c -68, function.c -55, ifcvt.c -6; the same comparison against gcc-3.2.2 differs by at most 1 line, so the drift is EE's, not a point-release artefact",
+      "falsifies": "transplanting mainline line numbers into EE citations (the original R28 write-up quoted mainline line numbers only)",
+      "scope": "ee-gcc 3.2-ee-040921 vs gcc-3.2.2 / 3.2.3",
+      "evidence": ["private:out/evidence/ee_gcc_anchor_db.txt"]
+    },
+    {
+      "id": "L-EE-007",
+      "title": "There is no translation-unit level codegen state except the $L label counter",
+      "tier": "T3",
+      "ee_specific": false,
+      "source_anchor": {"file": "", "line": 0, "note": "no source anchor yet; the rule comes from a controlled experiment"},
+      "binary_anchor": {"symbol": "", "addr": "", "constants": [], "struct": {}},
+      "pass": ["all"],
+      "symptom": ["a one-TU-many-functions build is suspected of changing codegen"],
+      "lever": ["merge or split translation units freely; only local label names shift, and they do not change the emitted bytes"],
+      "receipt": "six TU configurations compared with normalised absolute addresses and jump-table deltas: instruction stream, .sdata and jump tables identical; only $L numbering shifts by one per preceding labelled function [R28 §4]",
+      "falsifies": "the fear that adding unrelated functions to a translation unit perturbs the target function",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2; the exact formula for the $L counter is still open",
+      "evidence": ["party:R28-ee-gcc-3.2决策模型.md", "private:out/evidence/ee_gcc_tu_state.txt"]
+    }
+  ]
+}

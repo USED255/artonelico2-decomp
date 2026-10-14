@@ -1,0 +1,148 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Check the compiler handbook data: `docs/compiler/laws.json` and `docs/compiler/LAWS.md`.
+
+What this stops
+---------------
+The handbook claims to be evidence-graded. Three silent failures would break that claim:
+
+* a law written into `LAWS.md` but never indexed in `laws.json` (or the reverse), so the machine
+  index and the prose drift apart;
+* a `T1` law with no binary anchor, i.e. an "I read the source" claim that was never checked
+  against the compiler that actually shipped;
+* an anchor that points at a symbol or address the shipped `cc1` does not have (typo, or a
+  different toolchain build).
+
+The first two are hard failures everywhere. The anchor check needs the EE toolchain, so it is a
+skip when `cc1` is absent (a normal CI runner does not have it).
+
+Usage: `python3 tools/check/test_compiler_laws.py` (`make check` calls this script).
+Exit code 0 = pass, 1 = failure.
+
+本文件检查编译器手册的数据一致性：`laws.json` 与 `LAWS.md` 双向一致、证据分级的前置条件成立、
+（本机有工具链时）锚点指向的符号与地址确实存在于出厂 `cc1`。无工具链时锚点检查跳过。
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import json
+import os
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+LAWS_JSON = ROOT / "docs" / "compiler" / "laws.json"
+LAWS_MD = ROOT / "docs" / "compiler" / "LAWS.md"
+ANCHOR_TOOL = ROOT / "tools" / "compiler" / "ee-gcc-anchor.py"
+
+FAILURES: list[str] = []
+COUNT = 0
+
+
+def check(label: str, ok: bool, detail: str = "") -> None:
+    global COUNT
+    COUNT += 1
+    mark = "ok  " if ok else "FAIL"
+    print(f"[{mark}] {COUNT:>2}. {label}" + (f" — {detail}" if detail else ""))
+    if not ok:
+        FAILURES.append(label)
+
+
+def load_laws() -> dict | None:
+    if not LAWS_JSON.is_file():
+        check("docs/compiler/laws.json exists", False, str(LAWS_JSON))
+        return None
+    try:
+        return json.loads(LAWS_JSON.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        check("docs/compiler/laws.json parses", False, str(exc))
+        return None
+
+
+def check_index(data: dict) -> None:
+    laws = data.get("laws") or []
+    check("laws.json declares schema 1", data.get("schema") == 1)
+    check("laws.json has at least one law", len(laws) > 0, f"{len(laws)} laws")
+
+    ids = [law.get("id", "") for law in laws]
+    check("law ids are unique", len(set(ids)) == len(ids))
+    check("law ids use the L-EE-NNN form",
+          all(len(i) == 8 and i.startswith("L-EE-") and i[5:].isdigit() for i in ids))
+
+    mtime = LAWS_MD.read_text(encoding="utf-8") if LAWS_MD.is_file() else ""
+    check("docs/compiler/LAWS.md exists", bool(mtime), str(LAWS_MD))
+    for law_id in ids:
+        check(f"LAWS.md documents {law_id}", law_id in mtime)
+
+    toolchain = data.get("toolchain") or {}
+    check("laws.json names the toolchain id", bool(toolchain.get("id")), str(toolchain.get("id", "")))
+
+
+def check_tiers(data: dict) -> None:
+    for law in data.get("laws") or []:
+        law_id = law.get("id", "?")
+        tier = law.get("tier")
+        src = (law.get("source_anchor") or {}).get("file") or ""
+        anchor = (law.get("binary_anchor") or {}).get("symbol") or ""
+        check(f"{law_id}: tier is T1/T2/T3", tier in ("T1", "T2", "T3"), str(tier))
+        check(f"{law_id}: scope is stated", bool((law.get("scope") or "").strip()))
+        check(f"{law_id}: receipt is stated", bool((law.get("receipt") or "").strip()))
+        if tier == "T1":
+            check(f"{law_id}: T1 has a source anchor", bool(src))
+            check(f"{law_id}: T1 has a binary anchor", bool(anchor))
+        elif tier == "T2":
+            check(f"{law_id}: T2 has a source or binary anchor", bool(src or anchor))
+
+
+def check_binary_anchors(data: dict) -> None:
+    """Verify anchors against the shipped cc1 when this machine has it (skip otherwise)."""
+    spec = importlib.util.spec_from_file_location("ee_gcc_anchor", ANCHOR_TOOL)
+    if spec is None or spec.loader is None:
+        check("anchor tool importable", False, str(ANCHOR_TOOL))
+        return
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    try:
+        cc1 = module.require_cc1(module.DEFAULT_CC1)
+    except module.ToolError:
+        print(f"[skip] no cc1 at {module.DEFAULT_CC1}: binary anchors are not checked on this machine")
+        return
+    rows = module.nm_symbols(cc1)
+    for law in data.get("laws") or []:
+        anchor = law.get("binary_anchor") or {}
+        symbol, addr = anchor.get("symbol") or "", anchor.get("addr") or ""
+        if not symbol or not addr:
+            continue
+        law_id = law.get("id", "?")
+        hits = [a for _n, _t, a in module.lookup_symbol(rows, symbol)]
+        want = int(addr, 16)
+        check(f"{law_id}: {symbol} @ {addr} exists in cc1", want in hits,
+              f"candidates: {[hex(a) for a in hits]}")
+        if want in hits:
+            loc = module.format_location(module.addr2line(cc1, [want])[0][1])
+            note = (law.get("source_anchor") or {}).get("note", "")
+            file_hint = note.split(".c")[0].split()[-1] if ".c" in note else ""
+            check(f"{law_id}: {symbol} resolves to a source location", ":" in loc, loc)
+            if file_hint.endswith(".c"):
+                check(f"{law_id}: {symbol} resolves inside {file_hint}", file_hint in loc, loc)
+
+
+def main() -> int:
+    data = load_laws()
+    if data is not None:
+        check_index(data)
+        check_tiers(data)
+        check_binary_anchors(data)
+    print()
+    if FAILURES:
+        print(f"FAIL: {len(FAILURES)} of {COUNT} checks failed")
+        for item in FAILURES:
+            print(f"  - {item}")
+        return 1
+    print(f"OK: {COUNT} checks passed")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
