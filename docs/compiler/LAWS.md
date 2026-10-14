@@ -131,5 +131,10 @@ one instruction counts twice. `regs.h:79` defines `REG_FREQ_MAX 1000`, which mak
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).
-* A per-class colouring replay: the recorded 26.1% accuracy predates the EE `find_reg` anchor.
+* **Colouring replay is not modelled yet.** On 527 allocnos, a preference-first heuristic reproduces
+  **34.3%** of the recorded dispositions, and a replay that follows `find_reg`'s two passes plus its
+  preference override reproduces only **9.1%** — implementing more of the source *hurt*. The cause is
+  identified: `reg_class_contents`, `fixed_reg_set` and `call_used_reg_set` are runtime-initialised
+  (`.bss`), so a static read returns zeros and the exclusion sets in the replay are wrong. Reading
+  those tables from a live process is the next step.
 * `freq` accumulation checked against a real multi-block function, not only the source.
