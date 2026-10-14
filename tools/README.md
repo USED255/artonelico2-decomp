@@ -83,6 +83,7 @@ cannot run a Maintainer tool.
 | `tools/maintainer/project/p1a_pseudoc_probe.py` | Tests whether the Ghidra pseudo-C can serve as a match draft. | Maintainer internal |
 | `tools/maintainer/project/screen_flags.py` | Compiles many candidate drafts in one translation unit and scores each symbol. | Maintainer internal |
 | `tools/maintainer/project/shape_lq_sq.py` | Synthesizes the `lq` and `sq` vector shapes for the MMI pool. | Maintainer internal |
+| `tools/maintainer/report/coverage_audit.py` | Audits coverage per candidate and channel: which unmatched candidates with a good draft never entered a channel. | Maintainer internal |
 | `tools/maintainer/report/disasm_stats.py` | Reports the disassembly statistics of the PS2 EE main program. | Maintainer internal |
 | `tools/maintainer/report/match_workqueue.py` | Sorts the main-program functions into a work queue by difficulty. | Maintainer internal |
 | `tools/maintainer/report/r5900_stats.py` | Reports the R5900 instruction statistics from the raw instruction words. | Maintainer internal |

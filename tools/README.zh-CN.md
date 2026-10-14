@@ -79,6 +79,7 @@ make check
 | `tools/maintainer/project/p1a_pseudoc_probe.py` | 实测 Ghidra 伪 C 能否当匹配草稿 | Maintainer internal |
 | `tools/maintainer/project/screen_flags.py` | 把大量候选草稿合进一个编译单元，再逐符号取分 | Maintainer internal |
 | `tools/maintainer/project/shape_lq_sq.py` | 为 MMI 池合成 `lq` / `sq` 向量形状 | Maintainer internal |
+| `tools/maintainer/report/coverage_audit.py` | 按「候选 × 通道」审计覆盖：哪些有不错草稿的未匹配候选从未进入某通道 | Maintainer internal |
 | `tools/maintainer/report/disasm_stats.py` | 统计 PS2 EE 主程序的汇编分布 | Maintainer internal |
 | `tools/maintainer/report/match_workqueue.py` | 按难度把主程序函数排成工作队列 | Maintainer internal |
 | `tools/maintainer/report/r5900_stats.py` | 从原始指令字统计 R5900 指令分布 | Maintainer internal |
