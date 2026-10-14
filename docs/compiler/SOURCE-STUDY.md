@@ -15,6 +15,7 @@ so a reader can tell a verified rule from a measured one.
 | **community EE patches** (`gcc-3.2.2-PS2.patch`, `gcc-3.2.3-PS2.patch`) | available in the history of the community toolchain scripts | a semantic reference for **EE instruction semantics** only (MMI, VU macro mode, R5900 constraints). **Not** the shipped tree — see §4 |
 | **Sony `config/mips/mips5900.c`** | **not available** | the shipped backend has it (152 functions) and it is where the EE register model lives |
 | **Sony 3.2-ee-040921 source tree** | **not available** | — |
+| **Jürgen Urban's R5900 patch (2013)** | available ([gcc-patches attachment](https://gcc.gnu.org/pipermail/gcc-patches/2013-January/356066.html)) | minimal ISA enablement only (`-mno-llsc`, `trunc.w.s`); it does not define register classes |
 
 ## 2. How a rule is anchored without the shipped tree
 
@@ -80,3 +81,20 @@ why the colouring model is still open (see [LAWS.md](LAWS.md) open items).
 * The content of the `global.c`, `regmove.c`, `haifa-sched.c` and `gcse.c` patches.
 * Where the community patches *are* usable: EE instruction semantics in the backend. Any rule taken
   from them stays `T3` until the shipped binary confirms it.
+
+### 5.1 Searches already run (do not repeat them)
+
+| Route | Result |
+| --- | --- |
+| community toolchain git history | found `gcc-3.2.2-PS2.patch` and `gcc-3.2.3-PS2.patch` (see §4) |
+| Wayback `ps2dev.org` toolchain page (2008) | confirms the community toolchain is gcc-3.2.2 + patches |
+| GitHub code search `filename:mips5900.c` | **0 results** |
+| Software Heritage origin search `ee-gcc` | nothing relevant |
+| gcc-patches: Jürgen Urban, *Support for MIPS r5900* (2013) | patch retrieved; ISA enablement only, **no register classes** |
+| Internet Archive (PS2 Linux Kit, `oopo.net` mirrors) | **intermittently offline** during this hunt; the PS2 Linux Kit remains the best untried lead |
+| `mips5900.c` / `ee-gcc 3.2-ee-040921` source, general web | no hit |
+
+**Conclusion so far: no public source contains the EE register model** (192-bit `HARD_REG_SET`, `VU0_*`,
+`COP0_AND_GR_REGS`, `FP_ACC_REG`, `HILO_REGS`). Every public EE patch found so far has a *smaller*,
+different register file. That is why the register-class and colouring laws are `T2`/`T3`, and why the
+direct route is to read the tables from a live process.

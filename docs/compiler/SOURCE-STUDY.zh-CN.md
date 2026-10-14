@@ -14,6 +14,7 @@
 | **社区 EE 补丁**（`gcc-3.2.2-PS2.patch`、`gcc-3.2.3-PS2.patch`） | 有（在社区工具链脚本的 git 历史里） | 仅作 **EE 指令语义**参照（MMI、VU 宏模式、R5900 约束）。**不是**出厂树，见 §4 |
 | **Sony `config/mips/mips5900.c`** | **没有** | 出厂后端有它（152 个函数），EE 寄存器模型就在里面 |
 | **Sony 3.2-ee-040921 源树** | **没有** | — |
+| **Jürgen Urban 的 R5900 补丁（2013）** | 有（[gcc-patches 附件](https://gcc.gnu.org/pipermail/gcc-patches/2013-January/356066.html)） | 只做 ISA 使能（`-mno-llsc`、`trunc.w.s`），**不定义寄存器类** |
 
 ## 2. 没有出厂树时怎么对锚
 
@@ -66,3 +67,17 @@ python3 tools/compiler/ee-gcc-anchor.py --cc1 "$CC1" const 0x821e360 --bytes 8
 * 精确的 `FIRST_PSEUDO_REGISTER` 与类内容。类表（`reg_class_contents`、`reg_class_size`、`fixed_reg_set`、`call_used_reg_set`）是**运行时初始化**（`.bss`），静态读出来是 0。从活进程里读是直接路径；Sony 源码能静态回答。
 * `global.c`、`regmove.c`、`haifa-sched.c`、`gcse.c` 那几处补丁的内容。
 * 社区补丁**可用**的地方：后端的 EE 指令语义。从它得到的规则在出厂二进制确认之前一律是 `T3`。
+
+### 5.1 已经搜过、不要重复的路线
+
+| 路线 | 结果 |
+| --- | --- |
+| 社区工具链 git 历史 | 找到 `gcc-3.2.2-PS2.patch` 与 `gcc-3.2.3-PS2.patch`（见 §4） |
+| Wayback 的 ps2dev 工具链页（2008） | 确认社区工具链 = gcc-3.2.2 + 补丁 |
+| GitHub 代码搜索 `filename:mips5900.c` | **0 结果** |
+| Software Heritage 搜 `ee-gcc` | 无相关命中 |
+| gcc-patches：Jürgen Urban《Support for MIPS r5900》(2013) | 补丁已取到；只做 ISA 使能，**无寄存器类** |
+| Internet Archive（PS2 Linux Kit、`oopo.net` 镜像） | 本次查询期间**多次停机**；PS2 Linux Kit 仍是最值得再试的一条 |
+| `mips5900.c` / `ee-gcc 3.2-ee-040921` 源码（常规检索） | 无命中 |
+
+**阶段性结论：没有任何公开源码包含 EE 寄存器模型**（192 位 `HARD_REG_SET`、`VU0_*`、`COP0_AND_GR_REGS`、`FP_ACC_REG`、`HILO_REGS`）。找到的公开 EE 补丁寄存器文件都**更小且不同**。这就是寄存器类与着色类条目是 `T2`/`T3` 的原因，也是「直接读运行时表」这条路的依据。
