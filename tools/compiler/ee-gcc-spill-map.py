@@ -54,6 +54,40 @@ def compile_asm(cc: str, src: Path, include: str, flags: list[str], out: Path, d
     return out.read_text(encoding="utf-8", errors="replace")
 
 
+def trace_values(asm: str, frame: int, vars_b: int, saves_start: int) -> list[tuple[int, int, int, int | None]]:
+    """For every store into the vars block, find the most recent line that defined the stored
+    register. Returns `(slot_offset, call_site_line, register, defining_line)`.
+
+    Reading: `(8, 80, 14, 65)` means "at the call on line 80, slot 8 holds register 14, last written
+    on line 65" — that value has to survive the call, so line 65 is the thing to restructure.
+    """
+    loc = re.compile(r"^\s*\.loc\s+(\d+)\s+(\d+)")
+    insn = re.compile(r"^\s+([a-z][a-z0-9.]*)\s+([^#\n]*)$")
+    line: int | None = None
+    last_def: dict[int, int] = {}
+    out: list[tuple[int, int, int, int | None]] = []
+    for text in asm.splitlines():
+        text = text.split("#", 1)[0]
+        m = loc.match(text)
+        if m:
+            line = int(m.group(2))
+            continue
+        m = insn.match(text)
+        if not m or line is None:
+            continue
+        mnemonic, operands = m.group(1), m.group(2)
+        if mnemonic in ("sw", "sd", "usw"):
+            mm = re.match(r"^\$(\d+),\s*(-?\d+)\(\$sp\)", operands)
+            if mm and 0 <= int(mm.group(2)) < vars_b:
+                out.append((int(mm.group(2)), line, int(mm.group(1)), last_def.get(int(mm.group(1)))))
+                continue
+        first = operands.split(",")[0].strip()
+        dm = re.match(r"^\$(\d+)", first)
+        if dm:
+            last_def[int(dm.group(1))] = line
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="把栈访问映射回源码行（帧偏大的第一诊断）")
     ap.add_argument("--cc", default=DEFAULT_CC)
@@ -63,6 +97,8 @@ def main() -> int:
     ap.add_argument("--frame", type=int, default=0, help="帧大小；省略则从 .frame 注释读")
     ap.add_argument("--work", type=Path, default=Path(".tmp/spillmap"))
     ap.add_argument("--top", type=int, default=15)
+    ap.add_argument("--trace-values", action="store_true",
+                    help="for every vars-block store, report the line that last defined the stored register")
     args = ap.parse_args()
 
     args.work.mkdir(parents=True, exist_ok=True)
@@ -82,8 +118,11 @@ def main() -> int:
 
     saves_start = vars_b + out_args
     accesses: dict[int, list[tuple[str, int, int]]] = defaultdict(list)
+    var_of: dict[tuple[int, int], str] = {}
     line = None
     for text in asm.splitlines():
+        comment = text.split("#", 1)[1].strip() if "#" in text else ""
+        text = text.split("#", 1)[0]
         loc = LOC_RE.match(text)
         if loc:
             line = int(loc.group(2))
@@ -95,6 +134,8 @@ def main() -> int:
         if off < 0 or off >= frame:
             continue
         accesses[line].append((op, reg, off))
+        if comment and 0 <= off < vars_b:
+            var_of[(line, off)] = comment
 
     def block(off: int) -> str:
         if off < vars_b:
@@ -119,10 +160,25 @@ def main() -> int:
         print("no stack accesses found (is the function using the frame at all?)")
         return 0
     print(f"\nvars 区（0..{vars_b - 1}）访问涉及的源码行：{len(stores) + len(loads) and len({k for k in list(stores) + list(loads)})}")
-    print(f"{'line':>6} {'store':>6} {'load':>5}  offsets")
+    print(f"{'line':>6} {'store':>6} {'load':>5}  offsets / spilled variable names")
     for ln in sorted(set(stores) | set(loads), key=lambda k: -(stores[k] + loads[k]))[:args.top]:
         offs = sorted({off for _op, _r, off in accesses[ln] if block(off) == "vars"})
-        print(f"{ln:>6} {stores[ln]:>6} {loads[ln]:>5}  {offs}")
+        names = sorted({var_of[(ln, o)] for o in offs if (ln, o) in var_of})
+        suffix = f"   {', '.join(names)}" if names else ""
+        print(f"{ln:>6} {stores[ln]:>6} {loads[ln]:>5}  {offs}{suffix}")
+    if args.trace_values:
+        rows = trace_values(asm, frame, vars_b, saves_start)
+        print("\nvars-block stores, traced to the value's defining line")
+        print(f"{'offset':>7} {'call line':>10} {'reg':>4} {'value defined on line':>22}")
+        seen = set()
+        for off, call_line, reg, def_line in rows:
+            key = (off, call_line, reg, def_line)
+            if key in seen:
+                continue
+            seen.add(key)
+            print(f"{off:>7} {call_line:>10} {reg:>4} {str(def_line):>22}")
+        print("\nreading: those defining lines are the values that must survive the call; they are the")
+        print("         candidates for recomputation after it.")
     if slots:
         print("\nper 8 B slot (vars block):")
         for slot, count in sorted(slots.items()):

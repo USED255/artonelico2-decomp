@@ -53,6 +53,17 @@ On `func_001d4b88` the candidate writes **5 slots** at **each of 12 recursive ca
 retail target's `vars` block is only **2 slots** (16 B). That is the target list: those 12 lines are
 where values are kept alive across the recursive call.
 
+`-fverbose-asm` also labels each spill with the variable's name, and `--trace-values` attributes a
+store to the line that last defined the stored register:
+
+```
+    line  store  load  offsets / spilled variable names
+     513      5     0  [8, 16, 24, 32, 40]   param_11
+```
+
+So the tool answers "what is being kept alive, and where was it computed" — which is what you need in
+order to recompute it after the call instead of before.
+
 **Dose-response** (synthetic, k values live across calls): frame 32/48/64/80/96/112/128/144 for
 k = 2/4/6/8/10/14/18/24, with `regs=` 4/6/8/10/10/10/10/10 — **8 B per saved register, and the save
 area caps at 10 registers**. Past that only `vars` grows. The saved set is `$s0`–`$s7`, `$fp` and
