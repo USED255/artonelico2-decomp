@@ -249,6 +249,26 @@ otherwise                                    -> compare chain
   corpus a value that cannot take a register is sometimes **rematerialised** instead of spilled, so
   `vars` does not grow one slot per extra value.
 
+## L-EE-013 · Signedness picks `slt` vs `sltu`; a narrower type adds `andi` or `sll`+`sra`; `xori` marks equality
+
+| expression | `int` / `long long` | `unsigned` | `signed char` / `short` | `unsigned char` / `short` |
+| --- | --- | --- | --- | --- |
+| `x < 100` | `slt` | `sltu` | `sll` `sra` `slt` | `andi` `sltu` |
+| `x == 5` | `xori` `sltu …,1` | same | `sll` `sra` `xori` `sltu` | `andi` `xori` `sltu` |
+| `x != 0` | `sltu` | `sltu` | `sll` `sra` `sltu` | `andi` `sltu` |
+| `(x & 0x10) != 0` | `sra` `andi` | `sra` `andi` | `andi` `srl` `andi` | `andi` `srl` `andi` |
+
+* **Tier T3** (behaviour only; the compare patterns live in the EE backend, which is not on this
+  machine)
+* **Pass** `00.rtl`, `17.combine`
+* **Receipt** 48 synthetic functions (8 types × 5 patterns × 2 contexts) at `-O2 -G0`
+* **Falsifies** the external claim that `slt`/`sltiu` versus `xori` distinguishes narrow unsigned
+  types (dds-decomp, ee-gcc 2.96, no licence). `xori` marks **equality**; narrowness shows up as an
+  `andi` mask (unsigned) or an `sll`+`sra` extension (signed).
+* **Lever** read the extension instruction in front of the compare as the **type's shape**: widening
+  the type, or changing its signedness, moves exactly that instruction.
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`; 48 synthetic functions.
+
 ---
 
 ## Open items

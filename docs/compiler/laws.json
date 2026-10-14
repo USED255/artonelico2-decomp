@@ -512,6 +512,41 @@
       "evidence": [
         "private:out/evidence/ee_gcc_frame_composition.txt"
       ]
+    },
+    {
+      "id": "L-EE-013",
+      "title": "Signedness picks slt vs sltu; a type narrower than the register adds andi (unsigned) or sll+sra (signed); xori marks equality",
+      "tier": "T3",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "",
+        "line": 0,
+        "note": "No source anchor yet. The width/signedness extension is generic (mode versus word size) and the compare patterns live in the EE backend, which is not on this machine. Behaviour evidence only."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl",
+        "17.combine"
+      ],
+      "symptom": [
+        "the candidate and the target differ by one instruction (`andi`, `sll` or `xori`) in front of the compare",
+        "a comparison against a constant produces a different instruction sequence after a type change"
+      ],
+      "lever": [
+        "read the extension instruction as the type's shape: `andi 0xff`/`0xffff` means an unsigned type narrower than the register; `sll`+`sra` means a signed narrow type; `slt`/`sltu` is the signedness",
+        "`xori $r,$r,C` followed by `sltu $r,$r,1` is an equality test, not a narrow-type marker"
+      ],
+      "receipt": "48 synthetic functions (8 types x 5 patterns x 2 contexts) at -O2 -G0. x < 100: int/ll -> slt; uint/ull -> sltu; signed char/short -> sll+sra, slt; unsigned char/short -> andi, sltu. x == 5: xori + sltu ...,1 for every type, with the same width prologue. x != 0: sltu (plus the width prologue). (x & 0x10) != 0: sra+andi for 32-bit types, andi+srl+andi for narrow types, dsrl+andi for 64-bit types.",
+      "falsifies": "the external claim that slt/sltiu versus xori distinguishes narrow unsigned types (dds-decomp, ee-gcc 2.96, no licence): xori marks equality, while narrowness shows up as an andi mask (unsigned) or an sll+sra extension (signed)",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0; 48 synthetic functions, no game code",
+      "evidence": [
+        "private:out/evidence/ee_gcc_int_idioms.txt"
+      ]
     }
   ]
 }

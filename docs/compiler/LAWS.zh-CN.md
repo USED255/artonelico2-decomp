@@ -129,6 +129,18 @@ receipt（真机 `func_001d4b88`）：零售帧 144 = vars 16 + args 48 + 10 个
 falsifies：「候选帧更大 = 保存了更多寄存器」——该函数上 +32 B **全在变量区**。
 **杠杆**：先分解帧（vars / args / 8×regs），再朝差异所在的那一块下手。
 
+## L-EE-013 · 有符号性决定 `slt`/`sltu`；比寄存器窄的类型加 `andi` 或 `sll`+`sra`；`xori` 是**相等**标志
+
+| 表达式 | `int` / `long long` | `unsigned` | `signed char` / `short` | `unsigned char` / `short` |
+| --- | --- | --- | --- | --- |
+| `x < 100` | `slt` | `sltu` | `sll` `sra` `slt` | `andi` `sltu` |
+| `x == 5` | `xori` `sltu …,1` | 同左 | `sll` `sra` `xori` `sltu` | `andi` `xori` `sltu` |
+| `x != 0` | `sltu` | `sltu` | `sll` `sra` `sltu` | `andi` `sltu` |
+
+**T3**（只有行为证据；比较模式在 EE 后端，本机没有该源码）｜receipt：48 个合成函数（8 类型 × 5 模式 × 2 上下文）@ `-O2 -G0`｜
+falsifies：「`slt`/`sltiu` 与 `xori` 可区分窄无符号类型」（dds-decomp，2.96，无许可证）——`xori` 是**相等**判断；窄类型表现为 `andi` 掩码（无符号）或 `sll`+`sra` 扩展（有符号）。
+**杠杆**：把比较前那条扩展指令当作**类型的形状**读；把类型加宽或改有符号性，移动的正是这条指令。
+
 ---
 
 ## 仍未解决
