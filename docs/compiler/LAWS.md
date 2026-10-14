@@ -220,6 +220,33 @@ otherwise                                    -> compare chain
   pattern for doubles; for floats, expect the pool and look elsewhere.
 * **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`; 23 synthetic constants.
 
+## L-EE-012 · Frame composition: `[vars][outgoing args][8 B per saved register]`, saturating at 10 saved registers
+
+* **Tier T2** · **Source anchor** `global.c:991` (`find_reg`; the shipped binary resolves it to
+  `global.c:1329`). The 8-byte slot and the nine `$s` registers come from the ABI.
+* **Binary anchor** `find_reg @ 0x081acd64`
+* **Receipt — synthetic dose-response** (`-O2 -G0`, k values live across calls):
+
+| k | frame | `regs=` | `vars=` |
+| ---: | ---: | ---: | ---: |
+| 2 | 32 | 4 | 0 |
+| 4 | 48 | 6 | 0 |
+| 6 | 64 | 8 | 0 |
+| 8 | 80 | 10 | 0 |
+| 10, 12 | 96 | 10 | 16 |
+
+  The frame grows **8 B per saved register** and `regs=` saturates at **10** (nine `$s` plus `ra`).
+* **Receipt — a real function** (`func_001d4b88`): retail frame 144 = vars 16 + args 48 + ten saves
+  (80 B); candidate frame 176 = vars **48** + args 48 + **the same ten saves**. Both prologues save
+  `s0`–`s8` and `ra`.
+* **Falsifies** the reading that a larger candidate frame means more saved registers. On this function
+  the entire +32 B is the variable block, so the lever is to stop spilling two more values, not to
+  reduce saved registers.
+* **Lever** decompose the frame first: `vars / args / 8 B × regs`. Then aim at the block that differs.
+* **Scope** `ee-gcc 3.2-ee-040921`; 6 synthetic functions plus one real function. In the synthetic
+  corpus a value that cannot take a register is sometimes **rematerialised** instead of spilled, so
+  `vars` does not grow one slot per extra value.
+
 ---
 
 ## Open items

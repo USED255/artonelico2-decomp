@@ -33,6 +33,16 @@ call in registers.
 | global allocnos | 64 | — |
 | spill points | 280 | — |
 | allocnos that got no register | 3 | — |
+| saved registers | 10 (s0–s8, ra) = 80 B | **10 (s0–s8, ra) = 80 B** |
+| outgoing args | 48 B | 48 B |
+| **vars (the spilled block)** | **48 B** | **16 B** |
+
+Both prologues save exactly the same ten registers, so **the entire +32 B is the variable block**
+([L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers)).
+Two extra 8-byte slots are held by values that could not take one of the nine `$s` registers.
+
+**Dose-response** (synthetic, k values live across calls): frame 32/48/64/80/96 for k = 2/4/6/8/10,
+with `regs=` 4/6/8/10/10 — **8 B per saved register, saturating at 10**.
 
 A variable-level cross-check on the same function found **12** user variables live across 20 or more
 calls against 8 usable callee-saved registers, so at least four must go to the stack — which is
