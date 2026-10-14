@@ -73,6 +73,14 @@ falsifies：「往同一 TU 加无关函数会扰动目标函数」。
 receipt：166 个函数里冲突行列出 **10,450** 个 allocno，而 `regs to allocate` 只有 **1,079** 个；两者在 **166/166** 个函数里都不同（`fx_arith`：8 vs 0）｜
 falsifies：「冲突行只列等寄存器的 allocno」。把多出来的号当成硬寄存器是**实测过的失败模式**（我第一次着色重放的候选集就是这么错的）。
 
+## L-EE-009 · 延迟槽基本都被填上；剩下的 `nop` 是函数末尾的 `jr ra`
+
+**T2**｜源码锚点 `reorg.c:3582`（`dbr_schedule`；出厂二进制解析到 `reorg.c:3571`），填充函数是 `fill_simple_delay_slots` / `fill_slots_from_thread`｜
+二进制锚点 `dbr_schedule @ 0x081cd510`｜
+receipt：10 个合成函数 / 29 个分支 @ `-O2 -G0`：**填 24 条（82.8%）**、编译器**没有主动发一条 nop**、5 条后面是标签或函数结尾。对象级复核 `f_dowhile`：`bgtz` 槽是 `addiu`，函数末尾 `jr ra` 槽是 `nop`。槽内指令统计：`addu` 9、`li` 6、`move` 5，`lw`/`sll`/`lui`/`ld` 各 1｜
+falsifies：「延迟槽是 nop = 调度器没得可移」——这一层编译器根本不发 nop，剩下的是汇编器补的。
+**杠杆**：把延迟槽差异当**调度**问题处理——先重组语句、看分支后继能提供什么，再去改表达式。
+
 ---
 
 ## 仍未解决

@@ -361,6 +361,41 @@
         "party:R33-EE-GCC-3.2编译器行为手册与社区先例调研.md",
         "private:out/evidence/ee_gcc_anchor_db.txt"
       ]
+    },
+    {
+      "id": "L-EE-009",
+      "title": "Delay slots are almost always filled with a real instruction; the leftover `nop` is the function-ending `jr ra`",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "reorg.c",
+        "line": 3582,
+        "note": "dbr_schedule (mainline definition line; the shipped binary resolves it to reorg.c:3571, delta -11). The fillers are fill_simple_delay_slots and fill_slots_from_thread."
+      },
+      "binary_anchor": {
+        "symbol": "dbr_schedule",
+        "addr": "0x081cd510",
+        "constants": [],
+        "struct": {}
+      },
+      "pass": [
+        "20.sched",
+        "29.sched2",
+        "33.dbr"
+      ],
+      "symptom": [
+        "the target has a nop in a delay slot where the candidate has a real instruction",
+        "a basic block diffs by exactly one instruction"
+      ],
+      "lever": [
+        "treat a delay-slot difference as a scheduling decision, not an expression difference: regroup statements and check what the branch successors provide before editing the C"
+      ],
+      "receipt": "10 synthetic functions / 29 branches at -O2 -G0: 24 filled (82.8%), 0 nops emitted by the compiler, 5 branches followed by a label or the function end. Object-level check on f_dowhile: the `bgtz` slot holds `addiu`, the function-ending `jr ra` slot holds `nop`. Observed slot contents: addu 9, li 6, move 5, lw / sll / lui / ld 1 each.",
+      "falsifies": "the assumption that a nop delay slot means the scheduler found nothing to move; at this level the compiler emits none — the leftovers are filled by the assembler",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0; 10 synthetic functions, no game code",
+      "evidence": [
+        "private:out/evidence/ee_gcc_delay_slots.txt"
+      ]
     }
   ]
 }

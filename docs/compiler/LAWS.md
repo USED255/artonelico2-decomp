@@ -148,6 +148,23 @@ placed it.
   numbers are the `;; N conflicts:` keys and the `[N]` brackets in the RTL).
 * **Scope** `ee-gcc 3.2-ee-040921`.
 
+## L-EE-009 · The delay slot is filled; the leftover `nop` is the function-ending `jr ra`
+
+* **Tier T2** · **Source anchor** `reorg.c:3582` (`dbr_schedule`; the shipped binary resolves it to
+  `reorg.c:3571`). The fillers are `fill_simple_delay_slots` and `fill_slots_from_thread`.
+* **Binary anchor** `dbr_schedule @ 0x081cd510`
+* **Pass** `20.sched`, `29.sched2`, `33.dbr`
+* **Receipt** 10 synthetic functions / 29 branches at `-O2 -G0`: **24 filled (82.8%)**, **0 nops**
+  emitted by the compiler, 5 branches followed by a label or the function end. Object-level check on
+  `f_dowhile`: the `bgtz` slot holds `addiu`, the function-ending `jr ra` slot holds `nop`. Slot
+  contents observed: `addu` 9, `li` 6, `move` 5, `lw`/`sll`/`lui`/`ld` 1 each.
+* **Falsifies** the assumption that a `nop` delay slot means the scheduler found nothing to move: at
+  this level the compiler emits none, and the leftovers are filled by the assembler.
+* **Lever** treat a delay-slot difference as a **scheduling** decision. Regroup statements and check
+  what the branch successors provide before editing the expression.
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`; 10 synthetic functions. A rule read from
+  `reorg.c` was not verified instruction-by-instruction in the binary, which is why this is T2.
+
 ---
 
 ## Open items
