@@ -77,7 +77,7 @@ python3 tools/compiler/ee-gcc-anchor.py --cc1 "$CC1" const 0x821e360 --bytes 8
 | GitHub 代码搜索 `filename:mips5900.c` | **0 结果** |
 | Software Heritage 搜 `ee-gcc` | 无相关命中 |
 | gcc-patches：Jürgen Urban《Support for MIPS r5900》(2013) | 补丁已取到；只做 ISA 使能，**无寄存器类** |
-| Internet Archive（PS2 Linux Kit、`oopo.net` 镜像） | 本次查询期间**多次停机**；PS2 Linux Kit 仍是最值得再试的一条 |
+| Internet Archive：**PS2 Linux Kit 两张 DVD** | 已定位并**远读**（用 ISO9660 目录表 + HTTP Range，不下载整盘）。Disc 1 = 安装盘；Disc 2 = 软件树。`/SCEI/RPMS` 里是 **EE 工具链二进制**（`GCC-29`、`GCC-C++`、`GCC-G77`、`GCC-OBJ`、`BINUTILS`）；`/SCEI` 下**没有 SRPMS**，根级 `/SRPMS`、`/SOURCES` 属发行版。**套件盘不含 EE 编译器源码。**（`SOURCES/EE-031_1.GZ` 是 `ee` 文本编辑器，不是 Emotion Engine。） |
 | `mips5900.c` / `ee-gcc 3.2-ee-040921` 源码（常规检索） | 无命中 |
 
 **阶段性结论：没有任何公开源码包含 EE 寄存器模型**（192 位 `HARD_REG_SET`、`VU0_*`、`COP0_AND_GR_REGS`、`FP_ACC_REG`、`HILO_REGS`）。找到的公开 EE 补丁寄存器文件都**更小且不同**。这就是寄存器类与着色类条目是 `T2`/`T3` 的原因，也是「直接读运行时表」这条路的依据。

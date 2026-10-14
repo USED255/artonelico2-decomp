@@ -36,6 +36,17 @@
 （[L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers)）：
 两个 8 B 槽被「没拿到 9 个 `$s` 之一」的值占着。
 
+**先找靶点**：`tools/compiler/ee-gcc-spill-map.py` 用 `-gdwarf-2 -fverbose-asm` 编译，把每一处栈访问
+映射回源码行，并按区块（vars / args / 保存寄存器）分类：
+
+```sh
+python3 tools/compiler/ee-gcc-spill-map.py --cc "$EE_GCC" --src candidate.c \
+    --include include --flags=-Os
+```
+
+在 `func_001d4b88` 上，候选在 **12 个递归调用点各写 5 个槽**，而零售目标的 `vars` 只有 **2 个槽**（16 B）。
+这 12 行就是靶点清单：值在那里被跨递归调用保活。
+
 **剂量-响应**（合成，k 个跨调用活跃值）：k = 2/4/6/8/10 对应帧 32/48/64/80/96，`regs=` 4/6/8/10/10 —— **每保存一个寄存器 8 B，在 10 处饱和**。
 
 **实测：机制成立、路线被否证。** 去掉一个跨调用携带的值（一个只为了后面递归调用而留着的 `struct` 拷贝，改成直接传形参）：

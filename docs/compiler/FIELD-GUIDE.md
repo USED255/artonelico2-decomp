@@ -41,6 +41,18 @@ Both prologues save exactly the same ten registers, so **the entire +32 B is the
 ([L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers)).
 Two extra 8-byte slots are held by values that could not take one of the nine `$s` registers.
 
+**Find the targets first.** `tools/compiler/ee-gcc-spill-map.py` compiles with `-gdwarf-2 -fverbose-asm`
+and maps every stack access back to a source line, split by block:
+
+```sh
+python3 tools/compiler/ee-gcc-spill-map.py --cc "$EE_GCC" --src candidate.c \
+    --include include --flags=-Os
+```
+
+On `func_001d4b88` the candidate writes **5 slots** at **each of 12 recursive call sites**, while the
+retail target's `vars` block is only **2 slots** (16 B). That is the target list: those 12 lines are
+where values are kept alive across the recursive call.
+
 **Dose-response** (synthetic, k values live across calls): frame 32/48/64/80/96/112/128/144 for
 k = 2/4/6/8/10/14/18/24, with `regs=` 4/6/8/10/10/10/10/10 — **8 B per saved register, and the save
 area caps at 10 registers**. Past that only `vars` grows. The saved set is `$s0`–`$s7`, `$fp` and

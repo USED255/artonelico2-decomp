@@ -91,7 +91,7 @@ why the colouring model is still open (see [LAWS.md](LAWS.md) open items).
 | GitHub code search `filename:mips5900.c` | **0 results** |
 | Software Heritage origin search `ee-gcc` | nothing relevant |
 | gcc-patches: Jürgen Urban, *Support for MIPS r5900* (2013) | patch retrieved; ISA enablement only, **no register classes** |
-| Internet Archive (PS2 Linux Kit, `oopo.net` mirrors) | **intermittently offline** during this hunt; the PS2 Linux Kit remains the best untried lead |
+| Internet Archive: **PS2 Linux Kit DVDs** | discs located and read **remotely** (ISO9660 directory tables over HTTP Range, no full download). Disc 1 = installer; disc 2 = the software tree. `/SCEI/RPMS` holds the **EE toolchain binaries** (`GCC-29`, `GCC-C++`, `GCC-G77`, `GCC-OBJ`, `BINUTILS`); `/SCEI` has **no SRPMS** and the root-level `/SRPMS` + `/SOURCES` are the i386 distribution's. **The kit ships no EE compiler source.** (`SOURCES/EE-031_1.GZ` is the `ee` text editor, not the Emotion Engine.) |
 | `mips5900.c` / `ee-gcc 3.2-ee-040921` source, general web | no hit |
 
 **Conclusion so far: no public source contains the EE register model** (192-bit `HARD_REG_SET`, `VU0_*`,
