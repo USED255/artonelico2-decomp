@@ -2,6 +2,10 @@
 
 [简体中文](README.zh-CN.md) · [Laws](LAWS.md) · [Source study](SOURCE-STUDY.md) · [Agent skill](AGENT-SKILL.md) · [Pass map](PASSES.md) · [Diagnostics](DIAGNOSTICS.md) · [Field guide](FIELD-GUIDE.md) · machine-readable index: [`laws.json`](laws.json)
 
+**Verified against the shipped compiler.** All **13** binary anchors cited here have been resolved
+against the shipped `cc1` and match their addresses; `python3 tools/check/test_compiler_laws.py`
+enforces the tiers and re-verifies the anchors whenever the toolchain is present.
+
 This handbook records the behaviour of **`ee-gcc 3.2-ee-040921`** — the compiler that built the
 PlayStation 2 Emotion Engine code in this project — at the flags this project builds with:
 `-O2 -falign-functions=4 -ffunction-sections`.

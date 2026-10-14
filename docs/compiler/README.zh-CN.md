@@ -2,6 +2,9 @@
 
 [English](README.md) · [laws](LAWS.zh-CN.md) · [源码研究](SOURCE-STUDY.zh-CN.md) · [agent 技能](AGENT-SKILL.zh-CN.md) · [pass 地图](PASSES.zh-CN.md) · [诊断流程](DIAGNOSTICS.zh-CN.md) · [杠杆表](FIELD-GUIDE.zh-CN.md) · 机器可读索引：[`laws.json`](laws.json)
 
+**对出厂编译器核验过**：本手册引用的 **13 个**二进制锚点已全部对出厂 `cc1` 复核、地址一致；
+`python3 tools/check/test_compiler_laws.py` 会强制分级前置条件，并在本机有工具链时逐条复核锚点。
+
 本手册记录 **`ee-gcc 3.2-ee-040921`** 的行为——本项目 PS2 Emotion Engine 代码所用的编译器，
 构建参数为 `-O2 -falign-functions=4 -ffunction-sections`。
 
