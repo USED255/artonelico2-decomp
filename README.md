@@ -50,6 +50,7 @@ New to the project? Start with:
 | [docs/BUILD.md](docs/BUILD.md) | how to configure and build |
 | **[docs/compiler/README.md](docs/compiler/README.md)** | **the EE GCC 3.2 code generation handbook** — every law is source-anchored, anchored to the shipped `cc1`, and verified by behaviour |
 | [docs/compiler/LAWS.md](docs/compiler/LAWS.md) | the laws themselves, with tiers and receipts |
+| [docs/compiler/CASE-STUDY.md](docs/compiler/CASE-STUDY.md) | one function end to end, including a rejected edit |
 | [docs/compiler/DIAGNOSTICS.md](docs/compiler/DIAGNOSTICS.md) | from "the diff is wrong" to "which pass is responsible" |
 | [docs/compiler/FIELD-GUIDE.md](docs/compiler/FIELD-GUIDE.md) | source-level changes that move the numbers |
 | [docs/compiler/SOURCE-STUDY.md](docs/compiler/SOURCE-STUDY.md) | what compiler source exists, what does not, and how a rule is anchored |

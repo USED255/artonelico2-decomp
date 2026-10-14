@@ -1,6 +1,6 @@
 # EE GCC 3.2 代码生成手册
 
-[English](README.md) · [laws](LAWS.zh-CN.md) · [源码研究](SOURCE-STUDY.zh-CN.md) · [agent 技能](AGENT-SKILL.zh-CN.md) · [pass 地图](PASSES.zh-CN.md) · [诊断流程](DIAGNOSTICS.zh-CN.md) · [杠杆表](FIELD-GUIDE.zh-CN.md) · 机器可读索引：[`laws.json`](laws.json)
+[English](README.md) · [laws](LAWS.zh-CN.md) · [实战案例](CASE-STUDY.zh-CN.md) · [源码研究](SOURCE-STUDY.zh-CN.md) · [agent 技能](AGENT-SKILL.zh-CN.md) · [pass 地图](PASSES.zh-CN.md) · [诊断流程](DIAGNOSTICS.zh-CN.md) · [杠杆表](FIELD-GUIDE.zh-CN.md) · 机器可读索引：[`laws.json`](laws.json)
 
 **对出厂编译器核验过**：本手册引用的 **13 个**二进制锚点已全部对出厂 `cc1` 复核、地址一致；
 `python3 tools/check/test_compiler_laws.py` 会强制分级前置条件，并在本机有工具链时逐条复核锚点。
@@ -19,6 +19,7 @@
 | [PASSES.md](PASSES.zh-CN.md) | 3.2 的 26 份 `-da` dump（2.96 是 22 份）、各自归哪个源文件、出厂源码与 mainline 的位移 |
 | [DIAGNOSTICS.md](DIAGNOSTICS.zh-CN.md) | 从「diff 不对」走到「这个 pass 负责」：第一分叉流程、两个假信号、什么时候别用模型 |
 | [FIELD-GUIDE.md](FIELD-GUIDE.zh-CN.md) | 能移动读数的源写法，以及每种写法移动哪个读数 |
+| [CASE-STUDY.zh-CN.md](CASE-STUDY.zh-CN.md) | 一个函数从头走到尾：工具、查过的 law、试过的改动，以及为什么否掉它 |
 | [SOURCE-STUDY.zh-CN.md](SOURCE-STUDY.zh-CN.md) | 有哪些源码、没有哪些、规则怎么对锚，以及为什么社区 EE 补丁是另一棵树 |
 | [AGENT-SKILL.md](AGENT-SKILL.zh-CN.md) | agent（或赶时间的人）跑的循环：测量 → 定位 pass → 查 law → 用杠杆 → 复测 |
 | [`laws.json`](laws.json) | 同一批 law 的机器可读版本，供工具与 agent 查询 |

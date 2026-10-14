@@ -1,6 +1,6 @@
 # EE GCC 3.2 codegen handbook
 
-[简体中文](README.zh-CN.md) · [Laws](LAWS.md) · [Source study](SOURCE-STUDY.md) · [Agent skill](AGENT-SKILL.md) · [Pass map](PASSES.md) · [Diagnostics](DIAGNOSTICS.md) · [Field guide](FIELD-GUIDE.md) · machine-readable index: [`laws.json`](laws.json)
+[简体中文](README.zh-CN.md) · [Laws](LAWS.md) · [Case study](CASE-STUDY.md) · [Source study](SOURCE-STUDY.md) · [Agent skill](AGENT-SKILL.md) · [Pass map](PASSES.md) · [Diagnostics](DIAGNOSTICS.md) · [Field guide](FIELD-GUIDE.md) · machine-readable index: [`laws.json`](laws.json)
 
 **Verified against the shipped compiler.** All **13** binary anchors cited here have been resolved
 against the shipped `cc1` and match their addresses; `python3 tools/check/test_compiler_laws.py`
@@ -22,6 +22,7 @@ such question with evidence, and each lever names the source spelling that moves
 | [PASSES.md](PASSES.md) · [中文](PASSES.zh-CN.md) | The 26 `-da` dumps of 3.2 (22 for 2.96), which source file owns each one, and how far the shipped source drifts from mainline |
 | [DIAGNOSTICS.md](DIAGNOSTICS.md) · [中文](DIAGNOSTICS.zh-CN.md) | From "the diff looks wrong" to "this pass owns it": the first-divergence workflow, its two false signals, and when the model should not be used at all |
 | [FIELD-GUIDE.md](FIELD-GUIDE.md) · [中文](FIELD-GUIDE.zh-CN.md) | The source spellings that move a measurement, with the measurement each one moves |
+| [CASE-STUDY.md](CASE-STUDY.md) · [中文](CASE-STUDY.zh-CN.md) | One function end to end: the tools, the laws consulted, the edit tried, and why it was rejected |
 | [SOURCE-STUDY.md](SOURCE-STUDY.md) · [中文](SOURCE-STUDY.zh-CN.md) | What source exists, what does not, how a rule is anchored, and why the community EE patches are a different tree |
 | [AGENT-SKILL.md](AGENT-SKILL.md) · [中文](AGENT-SKILL.zh-CN.md) | The loop an agent (or a hurried person) runs: measure -> localise the pass -> look up the law -> apply the lever -> re-measure |
 | [`laws.json`](laws.json) | The same laws as data, for tooling and agents |

@@ -45,6 +45,7 @@ make report     # 生成进度报告
 | [docs/BUILD.zh-CN.md](docs/BUILD.zh-CN.md) | 如何配置与构建 |
 | **[docs/compiler/README.zh-CN.md](docs/compiler/README.zh-CN.md)** | **EE GCC 3.2 代码生成手册**——每条 law 都以源码为骨、对锚出厂 `cc1`、并用行为复核 |
 | [docs/compiler/LAWS.md](docs/compiler/LAWS.zh-CN.md) | law 本体，含分级与 receipt |
+| [docs/compiler/CASE-STUDY.zh-CN.md](docs/compiler/CASE-STUDY.zh-CN.md) | 一个函数从头走到尾，含一个被否掉的改动 |
 | [docs/compiler/DIAGNOSTICS.zh-CN.md](docs/compiler/DIAGNOSTICS.zh-CN.md) | 从「diff 不对」走到「哪个 pass 负责」 |
 | [docs/compiler/FIELD-GUIDE.zh-CN.md](docs/compiler/FIELD-GUIDE.zh-CN.md) | 能移动读数的源级改动 |
 | [docs/compiler/SOURCE-STUDY.zh-CN.md](docs/compiler/SOURCE-STUDY.zh-CN.md) | 有哪些源码、没有哪些、规则怎么对锚 |
