@@ -3078,7 +3078,6 @@ func_001d8704    # m2c_draft
 func_001de6e0    # m2c_draft
 func_001de94c    # m2c_draft
 func_001deec4    # m2c_draft
-func_001df944    # m2c_draft
 func_001e136c    # m2c_draft
 func_001e1840    # m2c_draft
 func_001e29a0    # m2c_draft
