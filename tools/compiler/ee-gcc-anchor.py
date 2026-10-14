@@ -6,14 +6,18 @@
 
 The shipped `ee-gcc 3.2-ee-040921` `cc1` is **not stripped and carries DWARF**. That makes the
 factory binary a first-class source of evidence: a line number, a struct layout, or a floating
-constant can be read straight out of it. Reading only mainline gcc-3.2.3 gets three things wrong
-(measured 2026-10-14):
+constant can be read straight out of it. Two things are true of the factory binary and are **not**
+visible in a naive reading of mainline gcc-3.2.3 (measured 2026-10-14):
 
-* `allocno_compare` multiplies by the double **10.0**, not by the `(10000 / REG_FREQ_MAX) == 1`
-  that mainline source spells;
 * `struct allocno` is **144 B** and its `HARD_REG_SET` member step is **24 B (192 bits)**, because
-  the EE register file is wider (VU0 / ACC classes);
-* the binary embeds `config/mips/mips5900.c`, which mainline 3.2.3 does not have.
+  the EE register file is wider (VU0 / ACC classes) than the mainline MIPS one;
+* the binary embeds `config/mips/mips5900.c`, which mainline 3.2.3 does not have at all.
+
+The same method also **corrects wrong beliefs about mainline itself**. Worked example: the shipped
+`allocno_compare` multiplies by the double **10.0**, while a reading of the comment in
+`global.c` ("Multiplying this by `10000/REG_FREQ_MAX`") suggests the factor is 1. Reading
+`regs.h:79` settles it — mainline says `#define REG_FREQ_MAX 1000`, so `10000 / REG_FREQ_MAX == 10`
+and the binary matches mainline exactly. **Read the `#define`, not the comment.**
 
 So every rule in the handbook carries two anchors: `source_anchor` (mainline file and line) and
 `binary_anchor` (symbol, address, constants). This tool produces the second one.
@@ -47,10 +51,13 @@ No game content is read or printed: this tool only touches the compiler binary.
 # 中文摘要
 # ---------------------------------------------------------------------------
 # 出厂 `ee-gcc 3.2-ee-040921` 的 `cc1` **未 strip 且带 DWARF**，因此可以直接读出行号、
-# 结构布局与常量。只读 mainline gcc-3.2.3 会把三件事读错（2026-10-14 实测）：
-#   ① `allocno_compare` 乘的是 double **10.0**，不是 mainline 写的 `(10000 / REG_FREQ_MAX) == 1`；
-#   ② `struct allocno` 是 **144 B**，`HARD_REG_SET` 成员步长 **24 B（192 位）**（EE 寄存器类更宽）；
-#   ③ 二进制内嵌 `config/mips/mips5900.c`，mainline 3.2.3 没有这个文件。
+# 结构布局与常量。出厂二进制有两件事与「朴素的 mainline 读法」不同（2026-10-14 实测）：
+#   ① `struct allocno` 是 **144 B**，`HARD_REG_SET` 成员步长 **24 B（192 位）**（EE 寄存器类更宽）；
+#   ② 二进制内嵌 `config/mips/mips5900.c`，mainline 3.2.3 没有这个文件。
+# 同一套方法也能**纠正对 mainline 本身的错误印象**。实例：出厂 `allocno_compare` 乘的是
+# double **10.0**，而读 `global.c` 注释（「Multiplying this by 10000/REG_FREQ_MAX」）会以为因子是 1。
+# 读 `regs.h:79` 结清：mainline 就是 `#define REG_FREQ_MAX 1000` ⇒ `10000 / REG_FREQ_MAX == 10`，
+# 二进制与 mainline **完全一致**。=> **读 `#define`，不要读注释**。
 # 本工具只读编译器二进制，不碰游戏内容。
 
 from __future__ import annotations
@@ -85,6 +92,8 @@ KNOWN_ANCHORS = [
      "delay-slot scheduling"),
 ]
 KNOWN_STRUCT = ("allocno", 144)
+# `allocno_compare` loads this double and multiplies by it: mainline's `10000 / REG_FREQ_MAX`
+# with `REG_FREQ_MAX == 1000` (regs.h:79). Change the tool if a future toolchain changes it.
 KNOWN_CONST = (0x0821E360, "double", 10.0)
 
 _DIE_RE = re.compile(r"^\s*<(\d+)><([0-9a-f]+)>:\s+Abbrev Number:\s+\d+\s+\((\w+)\)")
