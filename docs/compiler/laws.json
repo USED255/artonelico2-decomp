@@ -479,7 +479,7 @@
     },
     {
       "id": "L-EE-012",
-      "title": "The frame is [vars][outgoing args][8 B per saved register], and the callee-saved sweep saturates at 10 saved registers",
+      "title": "The frame is [vars][outgoing args][8 B per saved register]; the save area caps at 10 registers",
       "tier": "T2",
       "ee_specific": false,
       "source_anchor": {
@@ -506,8 +506,8 @@
         "decompose the frame before editing: vars / outgoing args / 8 B per saved register",
         "each saved register costs 8 B; beyond 10 saved registers more values can only spill into vars"
       ],
-      "receipt": "Synthetic dose-response (-O2 -G0, k values live across calls): k=2 -> frame 32, regs 4, vars 0; k=4 -> 48/6/0; k=6 -> 64/8/0; k=8 -> 80/10/0; k=10 and k=12 -> 96/10/16. The frame grows 8 B per saved register and the register sweep saturates at regs=10 (nine $s plus ra). Real function: func_001d4b88 retail frame 144 = vars 16 + args 48 + 10 saves (80); candidate frame 176 = vars 48 + args 48 + the same 10 saves. Both save the same registers, so the +32 B is entirely the vars block.",
-      "falsifies": "the reading that a larger candidate frame means more saved registers: on func_001d4b88 both sides save exactly s0-s8 plus ra, and the whole +32 B is the variable block",
+      "receipt": "Synthetic dose-response (-O2 -G0, k values live across calls): k=2/4/6/8/10/12/14/18/24 -> frame 32/48/64/80/96/96/112/128/144 with regs= 4/6/8/10/10/10/10/10/10. The frame grows 8 B per saved register and the save area caps at 10 registers (80 B); beyond that only vars grows. The saved registers observed are $s0-$s7 (16-23), $fp (30) and $ra (31). Naming trap: the objdump in this toolchain prints register 30 as `s8` while the compiler's own assembly prints `$fp`, so counting names in a disassembly can mislead. Real function: func_001d4b88 retail frame 144 = vars 16 + args 48 + 10 saves (80); candidate frame 176 = vars 48 + args 48 + the same 10 saves, so the whole +32 B is the vars block.",
+      "falsifies": "the reading that a larger candidate frame means more saved registers, and the reading that the save area grows without bound with the number of live values",
       "scope": "ee-gcc 3.2-ee-040921 at -O2/-Os; 6 synthetic functions plus one real function. In the synthetic corpus, values that cannot take a register are partly rematerialised rather than spilled, so vars does not grow one slot per value",
       "evidence": [
         "private:out/evidence/ee_gcc_frame_composition.txt"

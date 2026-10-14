@@ -41,8 +41,11 @@ Both prologues save exactly the same ten registers, so **the entire +32 B is the
 ([L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers)).
 Two extra 8-byte slots are held by values that could not take one of the nine `$s` registers.
 
-**Dose-response** (synthetic, k values live across calls): frame 32/48/64/80/96 for k = 2/4/6/8/10,
-with `regs=` 4/6/8/10/10 — **8 B per saved register, saturating at 10**.
+**Dose-response** (synthetic, k values live across calls): frame 32/48/64/80/96/112/128/144 for
+k = 2/4/6/8/10/14/18/24, with `regs=` 4/6/8/10/10/10/10/10 — **8 B per saved register, and the save
+area caps at 10 registers**. Past that only `vars` grows. The saved set is `$s0`–`$s7`, `$fp` and
+`$ra`; note that this toolchain's objdump prints register 30 as `s8` (the compiler's assembly prints
+`$fp`), so do not infer numbers from disassembly names.
 
 A variable-level cross-check on the same function found **12** user variables live across 20 or more
 calls against 8 usable callee-saved registers, so at least four must go to the stack — which is

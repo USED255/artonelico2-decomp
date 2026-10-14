@@ -227,15 +227,17 @@ otherwise                                    -> compare chain
 * **Binary anchor** `find_reg @ 0x081acd64`
 * **Receipt — synthetic dose-response** (`-O2 -G0`, k values live across calls):
 
-| k | frame | `regs=` | `vars=` |
-| ---: | ---: | ---: | ---: |
-| 2 | 32 | 4 | 0 |
-| 4 | 48 | 6 | 0 |
-| 6 | 64 | 8 | 0 |
-| 8 | 80 | 10 | 0 |
-| 10, 12 | 96 | 10 | 16 |
+| k | 2 | 4 | 6 | 8 | 10 | 12 | 14 | 18 | 24 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| frame | 32 | 48 | 64 | 80 | 96 | 96 | 112 | 128 | 144 |
+| `regs=` | 4 | 6 | 8 | 10 | 10 | 10 | 10 | 10 | 10 |
+| `vars=` | 0 | 0 | 0 | 0 | 16 | 16 | 32 | 48 | 64 |
 
-  The frame grows **8 B per saved register** and `regs=` saturates at **10** (nine `$s` plus `ra`).
+  The frame grows **8 B per saved register**, and the save area **caps at 10 registers (80 B)**; past
+  that only `vars` grows. The saved registers observed are `$s0`–`$s7` (16–23), `$fp` (30) and
+  `$ra` (31).
+  **Naming trap**: the objdump in this toolchain prints register 30 as `s8`, while the compiler's own
+  assembly prints `$fp` for it. Do not infer register numbers from disassembly names.
 * **Receipt — a real function** (`func_001d4b88`): retail frame 144 = vars 16 + args 48 + ten saves
   (80 B); candidate frame 176 = vars **48** + args 48 + **the same ten saves**. Both prologues save
   `s0`–`s8` and `ra`.
