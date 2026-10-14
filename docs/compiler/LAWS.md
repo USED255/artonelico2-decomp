@@ -301,6 +301,24 @@ otherwise                                    -> compare chain
   constants) become `gp_rel`; larger objects and every constant stay absolute.
 * **Scope** `ee-gcc 3.2-ee-040921`; one fixture per setting.
 
+## L-EE-015 · The outgoing argument area doubles as storage for a value used after the call
+
+| what is passed | after the call | frame cost |
+| --- | --- | --- |
+| a 4-byte **aggregate** (stack argument) | re-read from the outgoing slot (`lh $15,48($sp)`) | **none** |
+| a **scalar** (stack argument) | kept in a callee-saved register (`sd $16,64($sp)`) | **8 B** |
+
+* **Tier T2** · **Source anchor** `calls.c:4284` (`store_one_arg`) · **Binary anchors**
+  `store_one_arg @ 0x08087038`, `load_register_parameters @ 0x08083d64`, `emit_push_insn @ 0x080bf178`
+* **Receipt** two fixtures at `-Os -G0` with more than eight parameters (so the ninth goes to the
+  outgoing area). The aggregate case ends with `vars = 0`; the scalar case pays one save slot. A real
+  function shows the same shape as the aggregate case.
+* **Falsifies** the assumption that any value used after a call it was passed to must be spilled or
+  pinned in a callee-saved register.
+* **Lever** pass the *same* aggregate expression to the call and use it again afterwards. Introducing a
+  local copy of that aggregate creates a second live object and costs a slot.
+* **Scope** `ee-gcc 3.2-ee-040921` at `-Os -G0`; a 4-byte aggregate and a scalar.
+
 ---
 
 ## Open items

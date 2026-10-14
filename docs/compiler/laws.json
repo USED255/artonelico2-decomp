@@ -596,6 +596,50 @@
       "evidence": [
         "private:out/evidence/ee_gcc_small_data.txt"
       ]
+    },
+    {
+      "id": "L-EE-015",
+      "title": "A value passed in the outgoing argument area is re-read from that slot after the call when it is an aggregate; a scalar gets a callee-saved register instead",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "calls.c",
+        "line": 4284,
+        "note": "store_one_arg (the shipped binary resolves it to calls.c:4284) writes the outgoing argument area; reusing that slot afterwards is the generic argument-store behaviour, not an EE addition. Promoting this to T1 needs the reuse logic read out of the shipped cc1's store_one_arg."
+      },
+      "binary_anchor": {
+        "symbol": "store_one_arg",
+        "addr": "0x08087038",
+        "related": [
+          {
+            "symbol": "load_register_parameters",
+            "addr": "0x08083d64"
+          },
+          {
+            "symbol": "emit_push_insn",
+            "addr": "0x080bf178"
+          }
+        ],
+        "constants": [],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "the frame grows by one 8 B slot for a value that is also passed to a call",
+        "the candidate spills an aggregate into the vars block while the target re-reads it from the outgoing argument area"
+      ],
+      "lever": [
+        "read the post-call use of an aggregate as a re-read of the outgoing slot: pass the same expression to the call and use it again afterwards",
+        "do not introduce a local copy of an aggregate that is passed to a call and used afterwards — the copy is a separate live object and costs a slot"
+      ],
+      "receipt": "Two fixtures at -Os -G0 with more than eight parameters, so the ninth lands in the outgoing argument area. (A) a 4-byte struct is written to the outgoing slot, the call runs, and the post-call use re-reads the struct from that same slot (`lh $15,48($sp)`) with vars=0 and no extra frame. (B) a scalar is kept in a callee-saved register across the call (`addu $16,...` + `sd $16,64($sp)`), costing one 8 B save slot. A real function shows the same shape as (A): the retail target re-reads a 4-byte aggregate from its own outgoing slot after a recursive call.",
+      "falsifies": "the assumption that any value used after a call it was passed to must be spilled into the vars block or pinned in a callee-saved register",
+      "scope": "ee-gcc 3.2-ee-040921 at -Os -G0; two synthetic fixtures plus one observation in a real function. Verified for a 4-byte aggregate and a scalar; other aggregate sizes are not measured.",
+      "evidence": [
+        "private:out/evidence/ee_gcc_outgoing_reuse.txt"
+      ]
     }
   ]
 }

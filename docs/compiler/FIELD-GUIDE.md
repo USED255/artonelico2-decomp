@@ -166,6 +166,24 @@ become `gp_rel`, larger objects and all constants stay absolute.
 a whole family of rows at once, not one row. If a diff looks like a systematic addressing mismatch,
 check `-G` before rewriting anything.
 
+## Lever 8 — Reuse the outgoing argument area instead of adding a copy
+
+**When**: a value is passed to a call *and* used after it, and the frame is too large.
+
+**Why**: an aggregate written into the outgoing argument area is **re-read from that slot** after the
+call, at no extra frame cost; a scalar instead gets a callee-saved register (8 B)
+([L-EE-015](LAWS.md#l-ee-015--the-outgoing-argument-area-doubles-as-storage-for-a-value-used-after-the-call)).
+So a local copy of an aggregate that is passed to a call and used afterwards is a **second live object**
+that costs a slot.
+
+**Expected movement**: removing such a copy shrinks the `vars` block in 8-byte steps (measured: one
+removal moved the frame 176 B → 160 B, exactly two 8-byte slots). Check the ratio with
+`ee-gcc-spill-map.py` before and after.
+
+**Caution**: on the function measured here the edit shrank the frame but *lowered* objdiff
+(80.1846 → 78.95184), i.e. the target really does keep that copy. Confirm against the target's
+disassembly (it will show the re-read) before committing to the rewrite.
+
 ---
 
 ## Recorded but not yet measured locally
