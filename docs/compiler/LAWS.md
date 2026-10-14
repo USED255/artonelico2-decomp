@@ -20,6 +20,12 @@ each law live in [FIELD-GUIDE.md](FIELD-GUIDE.md); the workflow that finds the o
 **The rule that matters most:** cite the line number `addr2line` reports for the **shipped** `cc1`,
 and keep the mainline line only as a cross-reference with its measured offset.
 
+**Verification status.** All **13** binary anchors cited in this handbook have been resolved against the
+shipped `cc1` with `tools/compiler/ee-gcc-anchor.py` and match their addresses (two laws cite no binary
+anchor and are `T3`). Run the same check after any toolchain change. Beware one **ambiguous name**:
+`find_reg` occurs twice — `0x08134570` (`reload1.c:1685`) and `0x081acd64` (`global.c:1329`) — so always
+disambiguate by address, not by name.
+
 **Measurement conditions.** Scope lines name the flags a measurement was taken under. Most probes in this
 handbook used `-O2 -G0`. **The project itself builds with `-O2 -falign-functions=4
 -ffunction-sections` and passes no `-G`**, so the MIPS default (`MIPS_DEFAULT_GVALUE`, 8) applies. Laws

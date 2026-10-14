@@ -5,6 +5,9 @@
 本页记录**编译器怎么做**；由此推出的源写法杠杆在 [FIELD-GUIDE.md](FIELD-GUIDE.md)，定位流程在 [DIAGNOSTICS.md](DIAGNOSTICS.md)。
 英文版每条含完整模板（tier / 源码锚点 / 二进制锚点 / receipt / falsifies / scope）；本中文版按增量维护，先给条目与结论。
 
+**核验状态**：本手册引用的 **13 个二进制锚点**已全部用 `tools/compiler/ee-gcc-anchor.py` 对出厂 `cc1` 复核，地址全部一致（另两条 law 无二进制锚点，属 `T3`）。工具链变动后请重跑此检查。
+注意一个**重名陷阱**：`find_reg` 在出厂 cc1 里有两个——`0x08134570`（`reload1.c:1685`）与 `0x081acd64`（`global.c:1329`）——**一律按地址消歧，不要按名字**。
+
 **量测条件**：`scope` 写明该次测量用的旗标。本手册多数探针用 `-O2 -G0`；但**项目本身不带 `-G`**
 （`MATCHED_CFLAGS` = `-O2 -falign-functions=4 -ffunction-sections`），因此走 MIPS 默认值 8。
 与**寻址物化**有关的条目（L-EE-011、L-EE-014）对 `-G` 敏感，分配与调度类不敏感。

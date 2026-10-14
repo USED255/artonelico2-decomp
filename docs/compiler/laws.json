@@ -277,7 +277,8 @@
         "symbol": "find_reg",
         "addr": "0x081acd64",
         "constants": [],
-        "struct": {}
+        "struct": {},
+        "note": "`find_reg` occurs twice in the shipped cc1: 0x08134570 (reload1.c:1685) and 0x081acd64 (global.c:1329). This law means the global.c one; always disambiguate by address, not by name."
       },
       "pass": [
         "all"
@@ -493,7 +494,8 @@
         "symbol": "find_reg",
         "addr": "0x081acd64",
         "constants": [],
-        "struct": {}
+        "struct": {},
+        "note": "`find_reg` occurs twice in the shipped cc1: 0x08134570 (reload1.c:1685) and 0x081acd64 (global.c:1329). This law means the global.c one; always disambiguate by address, not by name."
       },
       "pass": [
         "22.lreg",
@@ -641,5 +643,14 @@
         "private:out/evidence/ee_gcc_outgoing_reuse.txt"
       ]
     }
-  ]
+  ],
+  "verification": {
+    "anchors_checked": 13,
+    "anchors_ok": 13,
+    "ambiguous_names": [
+      "find_reg"
+    ],
+    "method": "tools/compiler/ee-gcc-anchor.py symbol <name> against the shipped cc1; a law verifies when any candidate's address equals the cited one",
+    "note": "re-run after any toolchain change; two laws cite no binary anchor (T3)"
+  }
 }
