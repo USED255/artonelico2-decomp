@@ -14,6 +14,7 @@ Where to start depends on what you are doing.
 | work one function end to end, including a rejected edit | [compiler/CASE-STUDY.md](compiler/CASE-STUDY.md) |
 | know what compiler source exists and how rules are anchored | [compiler/SOURCE-STUDY.md](compiler/SOURCE-STUDY.md) |
 | name the law behind a shape I am looking at | [compiler/QUICK-REFERENCE.md](compiler/QUICK-REFERENCE.md) |
+| work out a target function's signature | [compiler/ABI.md](compiler/ABI.md) |
 | know whether these rules apply to the CRI middleware | [compiler/CROSS-2.96.md](compiler/CROSS-2.96.md) |
 | drive the handbook from an agent | [compiler/AGENT-SKILL.md](compiler/AGENT-SKILL.md) |
 
