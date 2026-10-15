@@ -13,6 +13,7 @@
 | 看手册的规则及其证据 | [compiler/LAWS.zh-CN.md](compiler/LAWS.zh-CN.md) |
 | 看一个函数从头到尾（含被否掉的改动） | [compiler/CASE-STUDY.zh-CN.md](compiler/CASE-STUDY.zh-CN.md) |
 | 知道有哪些编译器源码、规则怎么对锚 | [compiler/SOURCE-STUDY.zh-CN.md](compiler/SOURCE-STUDY.zh-CN.md) |
+| 认出手上这个形状对应哪条 law | [compiler/QUICK-REFERENCE.zh-CN.md](compiler/QUICK-REFERENCE.zh-CN.md) |
 | 知道这些规则是否适用于 CRI 中间件 | [compiler/CROSS-2.96.zh-CN.md](compiler/CROSS-2.96.zh-CN.md) |
 | 让 agent 使用手册 | [compiler/AGENT-SKILL.zh-CN.md](compiler/AGENT-SKILL.zh-CN.md) |
 

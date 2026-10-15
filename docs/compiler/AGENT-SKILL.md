@@ -6,6 +6,9 @@ This page is the entry point for an automated agent (or a person in a hurry) tha
 wrong matching diff into a source edit that moves it. It is deliberately short. The handbook is the
 reference; this is the loop.
 
+> **Starting from a shape rather than a symptom?** Use [QUICK-REFERENCE.md](QUICK-REFERENCE.md): it maps
+> what you see in a frame, an instruction stream or a data section to the law that explains it.
+
 ## Ground rules
 
 1. **Never edit the build.** The model is read-only. No new compiler flags, no changed

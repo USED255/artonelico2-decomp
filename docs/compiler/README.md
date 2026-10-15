@@ -28,6 +28,7 @@ such question with evidence, and each lever names the source spelling that moves
 | [SOURCE-STUDY.md](SOURCE-STUDY.md) · [中文](SOURCE-STUDY.zh-CN.md) | What source exists, what does not, how a rule is anchored, and why the community EE patches are a different tree |
 | [AGENT-SKILL.md](AGENT-SKILL.md) · [中文](AGENT-SKILL.zh-CN.md) | The loop an agent (or a hurried person) runs: measure -> localise the pass -> look up the law -> apply the lever -> re-measure |
 | [CROSS-2.96.md](CROSS-2.96.md) · [中文](CROSS-2.96.zh-CN.md) | Which of these rules transfer to the 2.96 compiler that builds the CRI middleware, and which does not |
+| [QUICK-REFERENCE.md](QUICK-REFERENCE.md) · [中文](QUICK-REFERENCE.zh-CN.md) | Start from the shape in front of you: what you see in a frame, an instruction stream or a data section, and the law that explains it |
 | [`laws.json`](laws.json) | The same laws as data, for tooling and agents |
 
 ## Tools
