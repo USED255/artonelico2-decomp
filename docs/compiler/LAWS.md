@@ -1567,6 +1567,50 @@ Two smaller items in the same pass:
 
 ---
 
+## L-EE-051 · Zero comparisons, float branches and an inlined `sqrtf`
+
+**A comparison against zero branches only in control-flow position.**
+
+| source | code |
+| --- | --- |
+| `return a < 0;` (a **value**) | materialised with `slti` — no branch ([L-EE-040](LAWS.md#l-ee-040--comparison-idioms-materialised-as-values-branched-as-conditions)) |
+| `if (a < 0) return 1; return 0;` | **branchless** — if-conversion ([L-EE-040](LAWS.md#l-ee-040--comparison-idioms-materialised-as-values-branched-as-conditions)) |
+| **`while (n > 0) { … }`** | **`blez`** (the inverted exit test) + a back edge |
+| **`while (n >= 0) { … }`** | **`bltz`** + a back edge |
+
+The **inverted exit test is level-independent** (`blez`/`bltz` at `-O1`, `-O2` and `-Os` alike), but the
+**back edge is not**: at `-O2`/`-O3` it is the likely form `bgtzl`/`bgezl` carrying the loop's own work in its
+delay slot, while at `-Os` it is a plain `b` with the body restructured.
+
+So a loop condition appears as the **inverted zero test**: `while (n > 0)` exits on `blez`. Likely forms appear
+on the back edge, as [L-EE-045](LAWS.md#l-ee-045--loop-back-edges-are-branch-likely-forward-branches-are-not) says.
+
+On floats the form carries information about the source:
+
+| source | code |
+| --- | --- |
+| `if (a >= b) …` | `c.le.s` with **operands swapped** + `bc1t` |
+| **`if (!(a < b)) …`** | **`bc1f`** — the source negated the condition |
+| `a < 0.0f ? -a : a` | `c.lt.s` + **`bc1tl`** + `neg.s` |
+
+And **`sqrtf` is recognised by name and inlined**:
+
+```c
+extern float sqrtf(float);
+float f(float a){ return sqrtf(a); }   /* → sqrt.s $f0,$f12, no call */
+```
+
+* **Tier T2** · **Source anchor** the backend's branch and `sqrtf` patterns (no line read from the shipped
+  tree) · **Constants** `blez`, `bc1f`, `sqrt.s`
+* **Falsifies** the expectation that a zero comparison always materialises or always branches the same way,
+  and that `sqrtf` is a libm call
+* **Lever** `bc1f` in the target ⇒ the source **negated** the float condition; a REGIMM branch ⇒ a
+  control-flow zero test, not a value; `sqrt.s` ⇒ a `sqrtf` call in the source
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`, synthetic comparisons, loops and float conditions plus
+  `sqrtf`; other libm names were not tested for inlining
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).

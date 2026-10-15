@@ -2450,6 +2450,62 @@
       "evidence": [
         "private:out/evidence/ee_gcc_fp_accumulator.txt"
       ]
+    },
+    {
+      "id": "L-EE-051",
+      "title": "A zero comparison in control flow becomes an inverted REGIMM branch (bltz/bgez/bgtz/blez with likely forms on the back edge), a negated float condition is bc1f, and sqrtf is inlined as sqrt.s",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips.md",
+        "line": 0,
+        "note": "The branch patterns and the sqrtf pattern are backend-specific; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "blez",
+            "at": "loop guard",
+            "means": "a while (n > 0) loop exits on a blez test"
+          },
+          {
+            "kind": "string",
+            "value": "bc1f",
+            "at": "negated float condition",
+            "means": "the source wrote !(comparison)"
+          },
+          {
+            "kind": "string",
+            "value": "sqrt.s",
+            "at": "sqrtf inline",
+            "means": "sqrtf is recognised by name and becomes a COP1 instruction"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "17.combine"
+      ],
+      "symptom": [
+        "the target branches with bltz/bgez/bgtz/blez where your reconstruction has no branch",
+        "the target uses bc1f and your reconstruction does not negate the condition",
+        "the target has sqrt.s instead of a call"
+      ],
+      "lever": [
+        "a comparison against zero becomes a REGIMM branch only in control-flow position; as a value it is materialised (L-EE-040) and a simple if with constant arms becomes branchless",
+        "loop conditions are emitted inverted as the exit test and that is level-independent: while (n > 0) produces blez and while (n >= 0) produces bltz at -O1, -O2 and -Os alike; the back edge itself is level-dependent - bgtzl/bgezl at -O2/-O3 but a plain b at -O1/-Os",
+        "on floats the source's condition is used as written for bc1t, so bc1f means the source negated the condition (if (!(a < b))), and bc1tl/bc1fl are the likely forms",
+        "sqrtf is recognised by name and inlined as sqrt.s rather than calling libm"
+      ],
+      "receipt": "At -O2 -G0 on this machine. return a<0 and if (a<0) return 1; return 0; produce no branch at all (the first is materialised with slti, the second is converted to a branchless select), but while (n > 0) { s += n; n--; } emits blez as the exit test at -O1, -O2 and -Os alike (level-independent), while the back edge differs by level: at -O2 it is bgtzl with the loop's own addu in its delay slot, and at -Os it is a plain b with the loop restructured; while (n >= 0) emits bltz. On floats, if (a >= b) emits c.le.s with the operands swapped plus bc1t, while if (!(a < b)) emits bc1f, and a < 0.0f ? -a : a emits c.lt.s plus bc1tl plus neg.s. An extern float sqrtf(float) called with one argument compiles to sqrt.s $f0,$f12 with no call.",
+      "falsifies": "the expectation that a zero comparison always materialises or always branches the same way, and that sqrtf is a libm call",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0, synthetic comparison, loop and float-condition functions plus sqrtf; other libm names were not tested for inlining",
+      "evidence": [
+        "private:out/evidence/ee_gcc_branches_zero_cop1.txt"
+      ]
     }
   ],
   "verification": {

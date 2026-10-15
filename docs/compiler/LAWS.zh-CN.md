@@ -1170,6 +1170,43 @@ falsifies：「`madd.s` 无法由 C 生成」与「浮点乘加一定用累加�
 
 ---
 
+## L-EE-051 · 零比较、浮点分支与被内联的 `sqrtf`
+
+**与零比较只有在「控制流位置」才分支。**
+
+| 源码 | 生成 |
+| --- | --- |
+| `return a < 0;`（**值**） | 用 `slti` 物化——无分支（[L-EE-040](LAWS.md#l-ee-040--comparison-idioms-materialised-as-values-branched-as-conditions)） |
+| `if (a < 0) return 1; return 0;` | **无分支**——if-conversion（[L-EE-040](LAWS.md#l-ee-040--comparison-idioms-materialised-as-values-branched-as-conditions)） |
+| **`while (n > 0) { … }`** | **`blez`**（取反的出口测试）+ 回边 |
+| **`while (n >= 0) { … }`** | **`bltz`** + 回边 |
+
+**取反的出口测试是档位无关的**（`-O1`/`-O2`/`-Os` 都是 `blez`/`bltz`），但**回边不是**：`-O2`/`-O3` 用 likely 形式
+`bgtzl`/`bgezl`（延迟槽里放循环自身的活），`-Os` 则是普通 `b` 且循环体被重构。
+
+⇒ 循环条件表现为**取反的零测试**：`while (n > 0)` 以 `blez` 退出；回边用 likely 形式（与 [L-EE-045](LAWS.md#l-ee-045--loop-back-edges-are-branch-likely-forward-branches-are-not) 一致）。
+
+浮点上，形式本身携带源码信息：
+
+| 源码 | 生成 |
+| --- | --- |
+| `if (a >= b) …` | `c.le.s`（**交换操作数**）+ `bc1t` |
+| **`if (!(a < b)) …`** | **`bc1f`** —— 源码**取反**了条件 |
+| `a < 0.0f ? -a : a` | `c.lt.s` + **`bc1tl`** + `neg.s` |
+
+并且 **`sqrtf` 按名字被识别并内联**：
+
+```c
+extern float sqrtf(float);
+float f(float a){ return sqrtf(a); }   /* → sqrt.s $f0,$f12，没有调用 */
+```
+
+**T2**｜源码锚点：后端的分支与 `sqrtf` 模式（未从出厂树读到行号）｜常量：`blez`、`bc1f`、`sqrt.s`｜
+falsifies：「零比较总是物化或总是同一种分支」与「`sqrtf` 是 libm 调用」。
+**杠杆**：目标里 `bc1f` ⇒ 源码**取反**了浮点条件；REGIMM 分支 ⇒ 是控制流的零测试而不是值；`sqrt.s` ⇒ 源码里有 `sqrtf`。
+
+---
+
 ## 仍未解决
 
 * `$L` 计数器精确公式（多标签函数）。
