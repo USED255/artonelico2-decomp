@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -45,6 +46,7 @@ COVERAGE = ROOT / "tools" / "compiler" / "ee-gcc-coverage.py"
 
 DEFAULT_CC1 = Path.home() / "eecc" / "ee-gcc3.2-040921" / "lib" / "gcc-lib" / "ee" / "3.2-ee-040921" / "cc1"
 DEFAULT_EE_GCC = Path.home() / "eecc" / "ee-gcc3.2-040921" / "bin" / "ee-gcc"
+DEFAULT_EE_GCC_296 = Path.home() / "eecc" / "ee-gcc2.96" / "bin" / "ee-gcc"
 
 passed = failed = skipped = 0
 failures: list[str] = []
@@ -117,6 +119,50 @@ def tier_laws_query() -> None:
     check("every public evidence path exists", not missing_ev, f"{missing_ev[:3]}")
 
 
+
+def tier_cross296(tmp: Path) -> None:
+    """交叉校验：手册在 CROSS-2.96 里断言的三条 2.96 差异，必须是可复现的。"""
+    if not DEFAULT_EE_GCC_296.exists():
+        skip("cross-check 2.96", f"no 2.96 compiler at {DEFAULT_EE_GCC_296}")
+        return
+    if not DEFAULT_EE_GCC.exists():
+        skip("cross-check 2.96", "no 3.2 compiler")
+        return
+    fixtures = {
+        # name: (source, pattern that 3.2 must show, pattern 2.96 must show)
+        "COP1 accumulator is 3.2-only": (
+            "float f(float a,float b,float c,float d){ return a*b + c*d; }\n",
+            r"mula\.s", r"mul\.s"),
+        "a 16-byte copy is ldl/ldr only on 2.96": (
+            "struct S{int a,b,c,d;};\nvoid f(struct S *d, struct S *s){ *d = *s; }\n",
+            r"\blw\b", r"\bldl\b"),
+    }
+    for name, (src, pat32, pat296) in fixtures.items():
+        seen = {}
+        for label, cc in (("3.2", DEFAULT_EE_GCC), ("2.96", DEFAULT_EE_GCC_296)):
+            c = tmp / f"{name.split()[0]}-{label.replace('.', '')}.c"
+            c.write_text(src, encoding="utf-8")
+            asm = c.with_suffix(".s")
+            made = subprocess.run([str(cc), "-O2", "-G0", "-S", "-o", str(asm), str(c)],
+                                  capture_output=True, cwd=tmp, check=False)
+            seen[label] = asm.read_text(encoding="utf-8") if made.returncode == 0 else ""
+        check(f"cross-check: {name}",
+              bool(re.search(pat32, seen["3.2"])) and not re.search(pat32, seen["2.96"])
+              and bool(re.search(pat296, seen["2.96"])),
+              f"3.2 has {pat32}: {bool(re.search(pat32, seen['3.2']))}; "
+              f"2.96 has {pat32}: {bool(re.search(pat32, seen['2.96']))}")
+    # 向量类型在 2.96 上不存在
+    c = tmp / "vec.c"
+    c.write_text("typedef float v4sf __attribute__((mode(V4SF)));\nv4sf g; v4sf f(void){ return g; }\n",
+                 encoding="utf-8")
+    ok32 = subprocess.run([str(DEFAULT_EE_GCC), "-O2", "-G0", "-c", "-o", str(tmp / "v32.o"), str(c)],
+                          capture_output=True, cwd=tmp, check=False).returncode == 0
+    bad296 = subprocess.run([str(DEFAULT_EE_GCC_296), "-O2", "-G0", "-c", "-o", str(tmp / "v296.o"), str(c)],
+                            capture_output=True, cwd=tmp, check=False).returncode != 0
+    check("cross-check: vector types do not exist on 2.96", ok32 and bad296,
+          f"3.2 compiled: {ok32}; 2.96 failed: {bad296}")
+
+
 def tier_no_toolchain(tmp: Path) -> None:
     """覆盖率工具只需一份合成反汇编：它把分类变成可执行断言。"""
     if not COVERAGE.exists():
@@ -178,6 +224,7 @@ def main() -> int:
     tier_laws_query()
     with tempfile.TemporaryDirectory(prefix="compiler-tools-") as td:
         tier_toolchain(Path(td))
+        tier_cross296(Path(td))
     print(f"\ncompiler tools: {passed} passed / {failed} failed / {skipped} skipped")
     if failed:
         for line in failures:

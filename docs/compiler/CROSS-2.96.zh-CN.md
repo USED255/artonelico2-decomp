@@ -15,6 +15,14 @@
 | `-G0` 下全局用 `lui %hi` / `%lo` 绝对寻址（[L-EE-014](LAWS.md#l-ee-014--small-data-addressing-follows--g)） | ✅ 一致 |
 | 双精度常量：`0.0` 用 `move`；低位 32 位为 0 用 `li`+`dsll32`；否则走池（[L-EE-011](LAWS.md#l-ee-011--float-constants-come-from-the-pool-a-double-is-inline-when-its-low-32-bits-are-zero)） | ✅ 一致 |
 | 帧构成与保存槽计数（[L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers)） | ✅ **逐值一致**：k = 2/4/6/8/10/12/16/20 对应帧 32/48/64/80/96/96/112/128，`regs=` 4/6/8/10/10/10/10/10 |
+| 64 位整数运算内联：`daddu`/`dsubu`/`dsll`/`dsra`；64 位乘除走 libgcc（[L-EE-043](LAWS.md#l-ee-043--64-bit-integers-are-native-only-multiply-divide-and-modulo-call-out)） | ✅ 相同 |
+| `float` 在 COP1、`double` 在通用寄存器（[L-EE-042](LAWS.md#l-ee-042--float-lives-in-cop1-double-lives-in-general-registers)） | ✅ 相同 |
+| 循环回边用 likely 形式（[L-EE-045](LAWS.md#l-ee-045--loop-back-edges-are-branch-likely-forward-branches-are-not)） | ✅ 相同 |
+| 尾调用是指向目标的 `j`（[L-EE-036](LAWS.md#l-ee-036--tail-calls-are-jumps--but-not-below--o2)） | ✅ 相同 |
+| 相等习语 `xor` + `sltu …,1`（[L-EE-040](LAWS.md#l-ee-040--comparison-idioms-materialised-as-values-branched-as-conditions)） | ✅ 相同 |
+| `sqrtf` 内联为 `sqrt.s`（[L-EE-051](LAWS.md#l-ee-051--zero-comparisons-float-branches-and-an-inlined-sqrtf)） | ✅ 相同 |
+| 128 位容器用 `lq`/`sq` 搬（[L-EE-041](LAWS.md#l-ee-041--128-bit-containers-lqsq-a-register-pair-and-no-by-value-return)） | ✅ 形状相同；2.96 选的寄存器不同 |
+| 默认函数对齐 8 字节（[L-EE-022](LAWS.md#l-ee-022--function-alignment-8-bytes-by-default-4-with--falign-functions4)） | ✅ 同为 `2**3` |
 
 ## **不能**迁移的
 
@@ -29,6 +37,33 @@
 
 ⇒ 在 2.96 上浮点**一律内联**，低位 16 位只决定要不要补一条 `ori` —— 见 [L-EE-019](LAWS.md#l-ee-019--the-float-rule-is-version-specific-296-inlines-32-uses-the-pool)。
 改浮点常量写法之前，先确认那段源码由哪个编译器构建。
+
+**COP1 累加器。** 3.2 上「一个表达式求和 ≥2 个乘积」会用 COP1 累加器（[L-EE-050](LAWS.md#l-ee-050--the-cop1-accumulator-a-sum-of-products-uses-mulasmadds)）；
+2.96 上同一表达式就是普通的乘法加法：
+
+| `float f(float a,float b,float c,float d){ return a*b + c*d; }` | 生成 |
+| --- | --- |
+| 3.2 | `mula.s $f12,$f13` + `madd.s $f0,$f14,$f15` |
+| 2.96 | `mul.s` + `mul.s` + `add.s` —— **没有累加器** |
+
+**16 字节结构体拷贝。** 3.2 展开成 32 位对；2.96 用非对齐对搬 64 位半：
+
+| `struct S{int a,b,c,d;}; void f(struct S *d, struct S *s){ *d = *s; }` | 生成 |
+| --- | --- |
+| 3.2 | `lw`/`sw` 序列（[L-EE-038](LAWS.md#l-ee-038--aggregate-copies-unrolled-to-32-bytes-then-an-inline-ldlldr-loop--never-memcpy)） |
+| 2.96 | **`ldl`/`ldr` + `sdl`/`sdr`** 对 |
+
+**2.96 上根本不存在向量类型。** `mode(V4SI)` 与 `mode(V4SF)` 直接被拒（`no data type`），
+所以所有 128 位规则（[L-EE-041](LAWS.md#l-ee-041--128-bit-containers-lqsq-a-register-pair-and-no-by-value-return)）以及整个 COP2/VU0 的论证（[L-EE-048](LAWS.md#l-ee-048--cop2vu0-instructions-cannot-come-from-c)）
+都是**只属于 3.2** 的事。
+
+### 两个值得记住的指纹
+
+本项目**两个编译器都在用**——3.2 编游戏、2.96 编 CRI 中间件——所以这两个形状能告诉你某函数是谁编的：
+
+* 指令流里出现 `mula.s`/`madd.s`/`msub.s` ⇒ **3.2**（2.96 从不发出累加器）；
+* 16 字节拷贝是 `ldl`/`ldr` 对 ⇒ **2.96**（该尺寸下 3.2 用 `lw`/`sw`）；
+* `mode(V4SI)`/`mode(V4SF)` 的源码能编过 ⇒ **3.2**。
 
 ## 复现
 
