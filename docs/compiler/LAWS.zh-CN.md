@@ -418,7 +418,7 @@ falsifies：「序言里保存了 `$fp` 就说明用了帧指针」。
 
 ---
 
-## L-EE-025 · 循环是倒计数、且不被展开
+## L-EE-025 · `-O2`/`-Os` 下循环是倒计数（`-O1` 保留 `slt`）、且不被展开
 
 `for (i = 0; i < N; i++) s += a * i;`（`-O2 -G0`）：
 
@@ -444,6 +444,9 @@ $L6:
 | `-O2 -funroll-loops` | **12** |
 
 ⇒ **本机 `-O2` 与 `-O3` 都不展开**；要展开必须显式给 `-funroll-loops`，或源码手工展开。
+
+**随档位变化**：`-O1` 下同一个循环保留**递增**比较——`addu $14,$14,1` / `slt $15,$14,8` / `bnel`——且乘法留在循环内；
+所以「循环是不是倒计数」同时也是**档位判据**。`-O2`、`-Os`、`-O3` 才倒计数。
 
 **T2**｜源码锚点：循环/强度削减 pass（`loop.c`；未从出厂树读到行号）｜常量：三个定次数都是 8 条指令、`-funroll-loops` 时 12 条｜
 falsifies：「`-O3` 会展开循环」与「定次上界会保留递增比较」。
@@ -638,6 +641,28 @@ falsifies：「常量除法会变成乘魔法数」与「64 位乘法是内联�
 falsifies：「32 位指针的目标必然有 32 位 `long`」（常见 ILP32 直觉）。
 **杠杆**：目标里字段用 `ld`/`sd` ⇒ 该字段是 `long`/`long long`/`double`，不是 `int`；
 结构体尺寸对不上，通常是 `long` vs `int` 或 8 字节对齐的问题。
+
+---
+
+## L-EE-034 · 本项目**最多**的档位是 `-Os`，且规则在它下面成立
+
+`config/source_flags.tsv` 统计：**`-Os` 687 个文件**、`-O1` 542、`-O2` 264、`-O3` 98 ⇒ 参考档位是 `-Os`，不是 `-O2`。
+拿手册自己的夹具在该档跑：
+
+```sh
+python3 tools/compiler/ee-gcc-observe.py --selftest --flags="-Os -G0"   # 34 passed / 0 failed
+```
+
+⇒ 帧规则、switch 阈值（4 路链、5/6 路表）、内联门槛、浮点/双精度常量形态、除法习语，在 `-Os` 下都与文档一致。
+同一套夹具在 `-O1` 与 `-O3` 各失败 1 组，且两次失败**都是手册已经预测的行为**：`-O1` 保留递增比较
+（[L-EE-025](LAWS.md#l-ee-025--loops-count-down-at--o2-os-at--o1-they-keep-slt-and-are-not-unrolled)）、`-O3` 会内联普通 `static`（[L-EE-023](LAWS.md#l-ee-023--at-these-flags-only-an-inline-declaration-is-inlined)）。
+
+有一处确实不同：**`-Os` 把函数对齐到 4 字节**，而 `-O2` 发出 `.p2align 3,,7`（8 字节）
+（[L-EE-022](LAWS.md#l-ee-022--function-alignment-8-bytes-by-default-4-with--falign-functions4)）。项目的 `-falign-functions=4` 掩盖了这一点，但不带该旗标的单元会不匹配。
+
+**T2**｜源码锚点 `toplev.c:3316`（档位决定流水线，[L-EE-020](LAWS.md#l-ee-020--the-pass-pipeline-is--o-sensitive)）｜常量：`-Os` 687 个文件、4 字节对齐｜
+falsifies：「本项目的参考档位是 `-O2`」与「`-Os` 的填充与 `-O2` 相同」。
+**杠杆**：断定某条规则不成立前，先用**该单元真实的档位**跑夹具；大小/偏移不符时记得 `-Os` 隐含 4 字节对齐。
 
 ---
 

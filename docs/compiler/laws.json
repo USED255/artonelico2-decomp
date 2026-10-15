@@ -1140,7 +1140,7 @@
     },
     {
       "id": "L-EE-025",
-      "title": "Loops become countdown loops and are not unrolled at -O2 or -O3; a constant trip count shows up as li $r,N-1 with bgez",
+      "title": "Loops become countdown loops at -O2/-Os/-O3 (at -O1 they keep an upward slt comparison) and are not unrolled at any of those levels",
       "tier": "T2",
       "ee_specific": false,
       "source_anchor": {
@@ -1178,9 +1178,9 @@
         "expect a countdown, not an upward compare: a constant-trip for loop becomes li $r,N-1 then addu $r,$r,-1 then bgez, and a variable-trip loop becomes a blez guard then addu $r,$r,-1 then bne $r,$0",
         "do not unroll by hand to imitate a repeated body before checking for -funroll-loops: -O2 and -O3 here do not unroll, and -O2 -funroll-loops does"
       ],
-      "receipt": "At -O2 -G0 on this machine. for(i=0;i<N;i++) s += a*i; compiles to move/move/li $15,N-1 then a three-instruction body with addu $15,$15,-1 and bgez $15,$L6, eight instructions in total for N=4, 8 and 20 - only the immediate changes, so the loop stays rolled and counts down. for(i=0;i<n;i++) compiles to a blez guard, addu $5,$5,-1 and bne $5,$0 - also a countdown, with a runtime counter. Instruction counts for the constant-trip case: 9 at -O1, 8 at -O2, 8 at -O3 and 12 with -funroll-loops, so neither -O2 nor -O3 unrolls.",
+      "receipt": "At -O2 -G0 on this machine. for(i=0;i<N;i++) s += a*i; compiles to move/move/li $15,N-1 then a three-instruction body with addu $15,$15,-1 and bgez $15,$L6, eight instructions in total for N=4, 8 and 20 - only the immediate changes, so the loop stays rolled and counts down. for(i=0;i<n;i++) compiles to a blez guard, addu $5,$5,-1 and bne $5,$0 - also a countdown, with a runtime counter. Instruction counts for the constant-trip case: 9 at -O1, 8 at -O2, 8 at -O3 and 12 with -funroll-loops, so neither -O2 nor -O3 unrolls. The countdown form is the -O2/-Os/-O3 form, not a universal one: at -O1 the same loop keeps an upward induction with slt and a branch (addu $14,$14,1 / slt $15,$14,8 / bnel) and the multiply stays inside the loop, so 'is the loop a countdown?' is also a read on the optimisation level. -Os behaves like -O2 here.",
       "falsifies": "the expectation that -O3 unrolls loops, and the expectation that a for loop over a constant bound keeps an upward comparison",
-      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0 (plus -O1/-O3/-funroll-loops for the size comparison), synthetic single-loop functions",
+      "scope": "ee-gcc 3.2-ee-040921 at -O1/-O2/-Os/-O3 with -G0 for the loop shapes, and -O2 -G0 for the unrolling comparison; synthetic single-loop functions",
       "evidence": [
         "private:out/evidence/ee_gcc_loops.txt"
       ]
@@ -1577,6 +1577,54 @@
       "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0 (plus -mlong32/-mlong64 for the switch), synthetic types and structs; bitfields and packed attributes were not measured",
       "evidence": [
         "private:out/evidence/ee_gcc_data_model.txt"
+      ]
+    },
+    {
+      "id": "L-EE-034",
+      "title": "The most common optimisation level in this project is -Os, and every measured rule holds there; -Os also implies 4-byte function alignment",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "toplev.c",
+        "line": 3316,
+        "note": "The level decides the pass pipeline (see L-EE-020); which rules survive -Os was measured rather than read."
+      },
+      "binary_anchor": {
+        "symbol": "global_alloc",
+        "addr": "0x081aa2c4",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 687,
+            "at": "config/source_flags.tsv",
+            "means": "files built with -Os in this project - the largest group"
+          },
+          {
+            "kind": "int",
+            "value": 4,
+            "at": "-Os function alignment",
+            "means": "-Os aligns functions to 4 bytes, not 8"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "you assume -O2 behaviour for a translation unit that is actually built with -Os",
+        "function padding differs from what -O2 would produce"
+      ],
+      "lever": [
+        "run the handbook's fixtures at the unit's real level: every rule asserted here still passes with -Os, so -O2 reasoning carries over",
+        "remember that -Os aligns functions to 4 bytes where -O2 uses 8 - the project's -falign-functions=4 hides this, but a unit built without it will not match",
+        "two rules are level-dependent in the other direction: -O3 inlines plain static functions (L-EE-023) and -O1 keeps an upward loop comparison instead of a countdown (L-EE-025)"
+      ],
+      "receipt": "Counting config/source_flags.tsv, this project builds 687 files with -Os, 542 with -O1, 264 with -O2 and 98 with -O3 - so -Os is the most common level. Running tools/compiler/ee-gcc-observe.py --selftest --flags='-Os -G0' passes all 34 fixtures, i.e. the frame rule (80 bytes with regs 10 for the eight-value fixture), the switch threshold (4 cases chain, 5 and 6 table), the inlining gate (a plain static helper keeps its call), the float/double constant forms and the division idioms all behave as documented at -Os. The same run at -O1 fails one fixture and -O3 fails one: at -O1 the constant-trip loop keeps an upward induction (addu $14,$14,1 / slt $15,$14,8 / bnel) instead of a countdown, and at -O3 the plain static helper is inlined - both are what L-EE-025 and L-EE-023 already say. Separately, -Os emits only .align 2 between functions where -O2 emits .p2align 3,,7.",
+      "falsifies": "the assumption that -O2 is the reference level for this project, and that -Os behaves like -O2 for function alignment",
+      "scope": "ee-gcc 3.2-ee-040921 at -O1/-O2/-Os/-O3 with -G0; the fixture suite covers the laws it asserts, not every rule in the handbook",
+      "evidence": [
+        "private:out/evidence/ee_gcc_os_and_levels.txt"
       ]
     }
   ],

@@ -241,7 +241,7 @@ really is expanded in the target before respelling, since an extra `inline` also
 **Why**: this compiler turns loops into **countdown** loops — a constant trip becomes `li $r,N-1` …
 `addu $r,$r,-1` … `bgez`, a variable trip becomes a `blez` guard … `bne $r,$0` — and **neither `-O2` nor
 `-O3` unrolls**; unrolling needs `-funroll-loops` or a hand-unrolled source
-([L-EE-025](LAWS.md#l-ee-025--loops-count-down-and-are-not-unrolled)).
+([L-EE-025](LAWS.md#l-ee-025--loops-count-down-at--o2-os-at--o1-they-keep-slt-and-are-not-unrolled)).
 
 **Expected movement**: `-O2 -funroll-loops` turns the eight-trip fixture from 8 into 12 instructions; hand
 unrolling produces a visibly repeated body.

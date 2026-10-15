@@ -645,7 +645,7 @@ with it, the function inlines even at `-O0`.
 
 ---
 
-## L-EE-025 · Loops count down and are not unrolled
+## L-EE-025 · Loops count down at -O2/-Os (at -O1 they keep `slt`) and are not unrolled
 
 `for (i = 0; i < N; i++) s += a * i;` at `-O2 -G0`:
 
@@ -673,7 +673,11 @@ $5,$5,-1`, `bne $5,$0`.
 
 So **neither `-O2` nor `-O3` unrolls here** — unrolling needs `-funroll-loops` or a hand-unrolled source.
 
-* **Tier T2** · **Source anchor** the loop/strength-reduction passes (`loop.c`; no line read from the shipped
+* **Level-dependent.** At `-O1` the same loop keeps an **upward** induction — `addu $14,$14,1` / `slt
+$15,$14,8` / `bnel` — and the multiply stays inside the loop, so "is the loop a countdown?" is also a read on
+the optimisation level. `-O2`, `-Os` and `-O3` count down.
+
+**Tier T2** · **Source anchor** the loop/strength-reduction passes (`loop.c`; no line read from the shipped
   tree) · **Constants** 8 instructions at three trip counts, 12 with `-funroll-loops`
 * **Falsifies** the expectation that `-O3` unrolls, and that a constant bound keeps an upward comparison
 * **Lever** if the target body is repeated, check for `-funroll-loops` (or a manually unrolled source)
@@ -920,6 +924,36 @@ Alignment equals the type's size, so an 8-byte member is 8-aligned:
   mistake
 * **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`, synthetic types and structs; bitfields and
   `__attribute__((packed))` were not measured
+
+---
+
+## L-EE-034 · `-Os` is this project's most common level, and the rules hold there
+
+`config/source_flags.tsv` counts **687 files at `-Os`**, 542 at `-O1`, 264 at `-O2` and 98 at `-O3` — so
+`-Os`, not `-O2`, is the reference level here. Running the handbook's own fixtures at that level:
+
+```sh
+python3 tools/compiler/ee-gcc-observe.py --selftest --flags="-Os -G0"   # 34 passed / 0 failed
+```
+
+So the frame rule, the switch threshold (4 cases chain, 5 and 6 table), the inlining gate, the float/double
+constant forms and the division idioms all behave as documented at `-Os`. The same suite at `-O1` and `-O3`
+fails exactly one fixture each, and both failures are behaviour the handbook already predicts: `-O1` keeps an
+upward loop comparison ([L-EE-025](LAWS.md#l-ee-025--loops-count-down-at--o2-os-at--o1-they-keep-slt-and-are-not-unrolled)) and `-O3` inlines a plain `static` helper
+([L-EE-023](LAWS.md#l-ee-023--at-these-flags-only-an-inline-declaration-is-inlined)).
+
+One thing does differ: **`-Os` aligns functions to 4 bytes** where `-O2` emits `.p2align 3,,7` (8 bytes)
+([L-EE-022](LAWS.md#l-ee-022--function-alignment-8-bytes-by-default-4-with--falign-functions4)). The project's `-falign-functions=4` masks this, but a unit built without
+that flag will not match.
+
+* **Tier T2** · **Source anchor** `toplev.c:3316` (the level chooses the pipeline, [L-EE-020](LAWS.md#l-ee-020--the-pass-pipeline-is--o-sensitive)) ·
+  **Constants** 687 files at `-Os`, 4-byte alignment
+* **Falsifies** the assumption that `-O2` is the reference level for this project, and that `-Os` pads
+  functions like `-O2`
+* **Lever** run the fixtures at the unit's real level before concluding a rule does not hold; and when a size
+  or offset mismatches, remember `-Os` implies 4-byte alignment
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O1`/`-O2`/`-Os`/`-O3` with `-G0`; the fixture suite covers the laws
+  it asserts, not every rule in the handbook
 
 ---
 

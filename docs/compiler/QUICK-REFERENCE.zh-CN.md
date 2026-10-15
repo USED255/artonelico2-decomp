@@ -20,9 +20,9 @@
 
 | 你看到的 | 对应 |
 | --- | --- |
-| `li $r,N-1` … `addu $r,$r,-1` … `bgez` | [L-EE-025](LAWS.md#l-ee-025--loops-count-down-and-are-not-unrolled) —— 定次循环被倒计数 |
-| `blez` 守卫 … `addu $r,$r,-1` … `bne $r,$0` | [L-EE-025](LAWS.md#l-ee-025--loops-count-down-and-are-not-unrolled) —— 变次循环同样倒计数 |
-| 循环体被重复 | [L-EE-025](LAWS.md#l-ee-025--loops-count-down-and-are-not-unrolled) —— `-funroll-loops` 或手工展开；`-O2`/`-O3` **不**展开 |
+| `li $r,N-1` … `addu $r,$r,-1` … `bgez` | [L-EE-025](LAWS.md#l-ee-025--loops-count-down-at--o2-os-at--o1-they-keep-slt-and-are-not-unrolled) —— 定次循环被倒计数 |
+| `blez` 守卫 … `addu $r,$r,-1` … `bne $r,$0` | [L-EE-025](LAWS.md#l-ee-025--loops-count-down-at--o2-os-at--o1-they-keep-slt-and-are-not-unrolled) —— 变次循环同样倒计数 |
+| 循环体被重复 | [L-EE-025](LAWS.md#l-ee-025--loops-count-down-at--o2-os-at--o1-they-keep-slt-and-are-not-unrolled) —— `-funroll-loops` 或手工展开；`-O2`/`-O3` **不**展开 |
 | 目标把助手展开了、你在发 `jal` | [L-EE-023](LAWS.md#l-ee-023--at-these-flags-only-an-inline-declaration-is-inlined) —— 这些旗标下只有 `inline` 会被内联 |
 | 比较前有 `andi` | [L-EE-013](LAWS.md#l-ee-013--signedness-picks-slt-vs-sltu-a-narrower-type-adds-andi-or-sllsra-xori-marks-equality) —— 窄**无符号**类型 |
 | 比较前有 `sll` + `sra` | [L-EE-013](LAWS.md#l-ee-013--signedness-picks-slt-vs-sltu-a-narrower-type-adds-andi-or-sllsra-xori-marks-equality) —— 窄**有符号**类型 |

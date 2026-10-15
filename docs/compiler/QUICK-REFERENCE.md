@@ -20,9 +20,9 @@ Start from the shape in front of you, not from the law list.
 
 | You see | Law |
 | --- | --- |
-| `li $r,N-1` … `addu $r,$r,-1` … `bgez` | [L-EE-025](LAWS.md#l-ee-025--loops-count-down-and-are-not-unrolled) — a constant-trip loop, counted down |
-| `blez` guard … `addu $r,$r,-1` … `bne $r,$0` | [L-EE-025](LAWS.md#l-ee-025--loops-count-down-and-are-not-unrolled) — a variable-trip loop, also counted down |
-| the loop body is repeated | [L-EE-025](LAWS.md#l-ee-025--loops-count-down-and-are-not-unrolled) — `-funroll-loops` or a hand-unrolled source; `-O2`/`-O3` never unroll |
+| `li $r,N-1` … `addu $r,$r,-1` … `bgez` | [L-EE-025](LAWS.md#l-ee-025--loops-count-down-at--o2-os-at--o1-they-keep-slt-and-are-not-unrolled) — a constant-trip loop, counted down |
+| `blez` guard … `addu $r,$r,-1` … `bne $r,$0` | [L-EE-025](LAWS.md#l-ee-025--loops-count-down-at--o2-os-at--o1-they-keep-slt-and-are-not-unrolled) — a variable-trip loop, also counted down |
+| the loop body is repeated | [L-EE-025](LAWS.md#l-ee-025--loops-count-down-at--o2-os-at--o1-they-keep-slt-and-are-not-unrolled) — `-funroll-loops` or a hand-unrolled source; `-O2`/`-O3` never unroll |
 | the target has a helper expanded, yours emits `jal` | [L-EE-023](LAWS.md#l-ee-023--at-these-flags-only-an-inline-declaration-is-inlined) — only `inline` is inlined at these flags |
 | `andi` before the compare | [L-EE-013](LAWS.md#l-ee-013--signedness-picks-slt-vs-sltu-a-narrower-type-adds-andi-or-sllsra-xori-marks-equality) — a narrow **unsigned** type |
 | `sll` + `sra` before the compare | [L-EE-013](LAWS.md#l-ee-013--signedness-picks-slt-vs-sltu-a-narrower-type-adds-andi-or-sllsra-xori-marks-equality) — a narrow **signed** type |

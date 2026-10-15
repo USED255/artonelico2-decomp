@@ -17,6 +17,11 @@ python3 tools/compiler/ee-gcc-observe.py --src func.c --flags="-O2 -G0" # observ
 
 No game content is needed or produced: every fixture is generated here.
 
+Level note: the fixtures assert the `-O2` rules. `--flags="-Os -G0"` passes all of them (that level is the
+most common in this project). `-O1` and `-O3` each fail one fixture, and both failures are documented
+behaviour: at `-O1` a constant-trip loop keeps an upward `slt` comparison instead of counting down, and at
+`-O3` a plain `static` helper is inlined.
+
 用法：把手册里的规则变成**可执行的观测**——用真编译器编译合成夹具，断言手册说必须出现的东西；
 `--selftest` 跑全部夹具，`--src` 观测你自己的文件。
 """

@@ -171,7 +171,7 @@ python3 tools/compiler/ee-gcc-spill-map.py --cc "$EE_GCC" --src candidate.c \
 
 **为什么**：本编译器把循环变成**倒计数**——定次是 `li $r,N-1` … `addu $r,$r,-1` … `bgez`，变次是 `blez` 守卫 … `bne $r,$0`——
 而且 **`-O2` 与 `-O3` 都不展开**；要展开需 `-funroll-loops` 或源码手工展开
-（[L-EE-025](LAWS.md#l-ee-025--loops-count-down-and-are-not-unrolled)）。
+（[L-EE-025](LAWS.md#l-ee-025--loops-count-down-at--o2-os-at--o1-they-keep-slt-and-are-not-unrolled)）。
 
 **预期移动**：`-O2 -funroll-loops` 把 8 次循环夹具从 8 条指令变成 12 条；手工展开会看到循环体明显重复。
 
