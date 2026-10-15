@@ -44,6 +44,7 @@
 | 照 mainline 写的分配循环复现不出 dump 里的 disposition | [L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--a-two-step-ladder-whose-decision-is-a-side-effect) —— 出厂 `find_reg` 是两级 `alt_regs` 阶梯，决定通过**副作用**落地 |
 | 字段读用 `lh`/`lbu` 而非 `lw`，或写之前出现负数 `li` 后接 `and`/`or` | [L-EE-035](LAWS.md#l-ee-035--bitfields-lsb-first-no-32-bit-straddling-narrowed-reads-and-masked-writes) —— 有符号位域读、或位域写 |
 | 目标对同一地址读了两次、你只读一次 | [L-EE-037](LAWS.md#l-ee-037--volatile-is-visible-as-unmerged-accesses) —— 源码用了 `volatile` 指针（或两次读之间隔着调用） |
+| 循环回边是 `bnel`/`beql`/`bgtzl` | [L-EE-045](LAWS.md#l-ee-045--loop-back-edges-are-branch-likely-forward-branches-are-not) —— likely 形式标记循环；前向分支保持普通形式 |
 | 出现 `lwl`+`lwr`（或 `swl`+`swr`）对，或偏移非 4 倍数的 `lw` | [L-EE-044](LAWS.md#l-ee-044--unaligned-access-three-sources-and-ulwusw-do-not-exist-in-the-object) —— 非对齐访问；来自常量 `memcpy`、packed 成员或指针转换 |
 | 目标用 `daddu`/`dsubu`/`dsll`/`dsra`/`dsrl`/`slt` | [L-EE-043](LAWS.md#l-ee-043--64-bit-integers-are-native-only-multiply-divide-and-modulo-call-out) —— 64 位整数类型（`long long` 或 8 字节 `long`）；只有乘/除/取模走调用 |
 | 目标用 `l.s`/`s.s` 装载，或用 `ld`/`sd` 后接 `jal dp*` | [L-EE-042](LAWS.md#l-ee-042--float-lives-in-cop1-double-lives-in-general-registers) —— `float`（COP1）对 `double`（通用寄存器） |

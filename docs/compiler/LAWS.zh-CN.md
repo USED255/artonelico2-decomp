@@ -969,6 +969,41 @@ falsifies：「非对齐的指针转换会被编译器处理」与「对象里�
 
 ---
 
+## L-EE-045 · 循环回边用 likely 分支，前向分支不用
+
+| 源码 | 分支形态 |
+| --- | --- |
+| `if (p == 0) return -1;` | **`beq`** —— 普通 |
+| `if (x) …`、`if (a && b) …`、if/else 链 | `beq` / `bne` —— 普通 |
+| `while (n--) …` | `beq` 守卫 + **`bnel`** 回边 |
+| `for (i=0;i<n;i++)` | `blez` 守卫 + **`bnel`** 回边 |
+| `do { … } while (n > 0);` | **`bgtzl`** |
+| `while (*p == 0) p++;` | `bne` + **`beql`** |
+
+likely 形式的**延迟槽只在分支被采用时执行**，所以循环底部的 `bnel` 能承载循环自身的活——
+`-O1` 下同一个循环就把 `mult` 放进那个槽里。
+
+两个实用点：
+
+* **函数体末尾出现 `bnel`/`beql`/`bgtzl` ⇒ 那是循环**。候选若在那里生成 `bne`+`nop`，说明循环形状不同
+  （或是 `-Os` 的重构：把某个循环变成 `bne` + 无条件 `b` 回边）。
+* 汇编写 **`beql`/`bnel`**，而 **objdump 在与 `$0` 比较时印 `beqzl`/`bnezl`** —— 两种拼法都要 grep。
+
+**这个代码库的指令分布**（170 个随机匹配源，各按自己的档位）：
+
+```
+addiu 384  move 322  ld 267  sd 235  jal 185  li 131  jr 123  lw 87  lui 84  nop 64
+j 60  sw 56  addu 54  sh 30  lh 28  sll 27  sb 27  beqz 26  mult 22  slti 21 …
+```
+
+`ld`/`sd` 排第 3/4 ⇒ 这个代码库搬运的是 **64 位数据**（[L-EE-033](LAWS.md#l-ee-033--the-data-model-4-byte-pointers-8-byte-long)），而 `move` 排第 2。
+
+**T2**｜源码锚点：EE/MIPS 的 likely 分支模式（未从出厂树读到行号）｜常量：`bnel` 与 objdump 的 `beqzl` 拼法｜
+falsifies：「循环回边与 if 用同样的分支形式」与「`beql` 在反汇编里总是写成 `beql`」。
+**杠杆**：函数体末尾的 likely 分支 ⇒ 循环；候选的循环差两条指令时，先看目标回边是不是 likely。
+
+---
+
 ## 仍未解决
 
 * `$L` 计数器精确公式（多标签函数）。

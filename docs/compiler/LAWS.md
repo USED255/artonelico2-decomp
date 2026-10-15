@@ -1324,6 +1324,47 @@ Constant-size `memcpy` forms a ladder: 1 → `lbu`/`sb`; 2 → `lb`/`sb` twice; 
 
 ---
 
+## L-EE-045 · Loop back edges are branch-likely; forward branches are not
+
+| source | branch form |
+| --- | --- |
+| `if (p == 0) return -1;` | **`beq`** — plain |
+| `if (x) …`, `if (a && b) …`, if/else chains | `beq` / `bne` — plain |
+| `while (n--) …` | `beq` guard + **`bnel`** back edge |
+| `for (i=0;i<n;i++)` | `blez` guard + **`bnel`** back edge |
+| `do { … } while (n > 0);` | **`bgtzl`** |
+| `while (*p == 0) p++;` | `bne` + **`beql`** |
+
+The likely form's **delay slot runs only when the branch is taken**, which is why a `bnel` at the bottom of a
+loop can carry the loop's own work — at `-O1` the same loop puts its `mult` in that slot.
+
+Two practical points:
+
+* **`bnel`/`beql`/`bgtzl` at the end of a body ⇒ a loop.** A candidate that produces `bne`+`nop` there has a
+  different loop shape (or the `-Os` restructure, which turns one loop into `bne` plus an unconditional `b`).
+* The assembly writes **`beql`/`bnel`** while **objdump prints `beqzl`/`bnezl`** against `$0` — grep for both.
+
+**Instruction mix of this codebase** (170 random matched sources, each at its own level):
+
+```
+addiu 384  move 322  ld 267  sd 235  jal 185  li 131  jr 123  lw 87  lui 84  nop 64
+j 60  sw 56  addu 54  sh 30  lh 28  sll 27  sb 27  beqz 26  mult 22  slti 21 …
+```
+
+`ld`/`sd` rank third and fourth — this codebase moves **64-bit data** more than 32-bit
+([L-EE-033](LAWS.md#l-ee-033--the-data-model-4-byte-pointers-8-byte-long)), and `move` is second.
+
+* **Tier T2** · **Source anchor** the EE/MIPS branch-likely patterns (no line read from the shipped tree) ·
+  **Constants** `bnel` and the objdump spelling `beqzl`
+* **Falsifies** the expectation that a loop back edge uses the same branch form as an `if`, and that `beql`
+  always appears as `beql` in a disassembly
+* **Lever** a likely branch at the bottom of a body ⇒ a loop; and when a candidate's loop differs by two
+  instructions, look at whether the back edge is likely in the target
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O1`/`-O2`/`-Os` with `-G0`, synthetic loops plus a 170-file sample;
+  branch-prediction annotations were not measured
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).

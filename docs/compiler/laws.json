@@ -2130,6 +2130,55 @@
       "evidence": [
         "private:out/evidence/ee_gcc_unaligned.txt"
       ]
+    },
+    {
+      "id": "L-EE-045",
+      "title": "Forward branches use the plain forms while loop back edges use the branch-likely forms (bnel, beql, bgtzl), whose delay slot runs only when the branch is taken",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips.md",
+        "line": 0,
+        "note": "The branch-likely patterns are EE/MIPS-specific; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "bnel",
+            "at": "loop back edge",
+            "means": "the loop back edge is a branch-likely"
+          },
+          {
+            "kind": "string",
+            "value": "beqzl",
+            "at": "objdump rendering",
+            "means": "beql against $0 is printed beqzl"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "20.sched"
+      ],
+      "symptom": [
+        "a loop back edge is written bnel/beql/bgtzl instead of bne/beq, or the reverse",
+        "you are grepping for beql and only find beqzl"
+      ],
+      "lever": [
+        "the loop back edge uses the branch-likely form, so bnel/beql/bgtzl at the end of a body means a loop and its delay slot holds an instruction that must only run when the branch is taken",
+        "forward branches - if/else, guards, && and || - use the plain forms beq/bne/blez/bltz",
+        "the assembly writes beql/bnel while objdump prints beqzl/bnezl when the comparison is against $0, so grep for both spellings",
+        "at -Os an individual loop may be restructured into a plain branch plus an unconditional b back edge"
+      ],
+      "receipt": "At -O2 -G0 on this machine: if (p == 0) return -1; uses a plain beq, if (x) return 1; uses beq/bne, if (a && b) uses beq/bne, and an if/else chain uses beq. Loops differ: while (n--) ends in bnel, for (i=0;i<n;i++) has a blez guard and a bnel back edge, do { } while (n > 0) ends in bgtzl, and while (*p == 0) p++ ends in beql. The likely form's delay slot runs only when the branch is taken, which is why a bnel at the bottom of a loop can carry the loop's own work (at -O1 the same loop puts its mult in that slot). -O1 and -O2 agree; at -Os the while (*p == 0) p++ loop is restructured to a bne plus an unconditional b. The assembly spells these beql/bnel while objdump prints beqzl/bnezl against $0. A 170-file sample of this project's matched sources shows bnezl 11 times and beqzl 7 times, alongside addiu 384, move 322, ld 267, sd 235 and jal 185.",
+      "falsifies": "the expectation that a loop back edge uses the same branch form as an if, and that beql always appears as beql in a disassembly",
+      "scope": "ee-gcc 3.2-ee-040921 at -O1/-O2/-Os with -G0, synthetic loop and branch shapes plus a 170-file instruction-mix sample of the project's matched sources; branch prediction annotations were not measured",
+      "evidence": [
+        "private:out/evidence/ee_gcc_branch_likely.txt"
+      ]
     }
   ],
   "verification": {
