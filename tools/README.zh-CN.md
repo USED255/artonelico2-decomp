@@ -35,7 +35,7 @@ make check
 | 路径 | 用途 | 受众 |
 | --- | --- | --- |
 | `tools/compiler/laws-query.py` | 按 id / pass / 症状 / 杠杆或自由文本查询编译器手册的 law；`--json` 供工具使用。 | 贡献者需要 |
-| `tools/compiler/ee-gcc-observe.py` | 编译 29 组合成夹具并断言「手册说必须出现的东西」（`--selftest`），或对你自己的文件打印帧/常量池/助记符观测。 | 贡献者需要 |
+| `tools/compiler/ee-gcc-observe.py` | 编译 32 组合成夹具并断言「手册说必须出现的东西」（`--selftest`），或对你自己的文件打印帧/常量池/助记符观测。 | 贡献者需要 |
 | `tools/compiler/ee-gcc-anchor.py` | 在出厂 `cc1` 里解析符号、地址、结构体或常量，使规则锚定到**出厂编译器**而不是 mainline；`selftest` 复核本机能验证的锚点。 | 贡献者需要 |
 | `tools/compiler/ee-gcc-passdiff.py` | 编译同一函数的两种写法，报出第一个分叉的 pass。 | 贡献者需要 |
 | `tools/compiler/ee-gcc-spill-map.py` | 把过大的帧映射到区块与源码行，并把每次溢出溯源到定义该值的那一行。 | 贡献者需要 |

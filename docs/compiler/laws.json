@@ -1470,6 +1470,60 @@
       "evidence": [
         "private:out/evidence/ee_gcc_varargs.txt"
       ]
+    },
+    {
+      "id": "L-EE-032",
+      "title": "32-bit division is a hardware div/divu with a beqzl+break zero check, only power-of-two constant divisors become shifts, and every 64-bit division, modulo and multiply is a libgcc call",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "config/mips/mips.md",
+        "line": 0,
+        "note": "The division patterns and the libgcc fallbacks live in the MIPS backend; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "__divdi3",
+            "at": "R_MIPS_26 relocation",
+            "means": "64-bit division is out of line"
+          },
+          {
+            "kind": "string",
+            "value": "__muldi3",
+            "at": "R_MIPS_26 relocation",
+            "means": "even 64-bit multiplication is out of line"
+          },
+          {
+            "kind": "string",
+            "value": "break",
+            "at": "after beqzl",
+            "means": "the divide-by-zero trap"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "17.combine"
+      ],
+      "symptom": [
+        "you are looking for a magic-number multiply for a constant division",
+        "a division in the target does not have the beqzl+break pair, or a 64-bit operation is inline"
+      ],
+      "lever": [
+        "a runtime division is div/divu followed by beqzl + break (the zero check) and mflo (or mfhi for a remainder) - the three instructions belong to one operation",
+        "only a power-of-two constant divisor becomes a shift with sign correction (slti/movn/sra for signed, srl for unsigned); a divisor like 3 stays li + div, so li+div in the target means the source divided by a non-power-of-two constant",
+        "every 64-bit division, modulo and multiplication is a libgcc call: __divdi3, __moddi3, __udivdi3, __umoddi3 and __muldi3 - so a call to one of them means the source used long long, just as dpadd means double"
+      ],
+      "receipt": "At -O2 -G0 on this machine. int/int compiles to div, beql $r,$0 (printed beqzl by objdump), break 7, mflo; unsigned to divu and the same check; a%b to div/divu plus mfhi; and 32-bit a*b to mult + mflo. Constant divisors: a/8 (signed) becomes slti + movn + sra with no div, unsigned a/8 becomes srl, signed a%8 becomes slti + movz + sra + sll + subu and unsigned a%8 becomes andi - but a/3 and a/-7 stay li + div, so there is no reciprocal-multiplication transformation for MIPS in this build. Everything 64-bit is out of line: long long / and % call __divdi3 and __moddi3, unsigned long long call __udivdi3 and __umoddi3, and long long * long long calls __muldi3 even though the 32-bit multiply is the hardware mult instruction. Two naming details: the compiler's own assembly writes the zero check as beql (objdump prints it as beqzl, the same instruction), and the constant-divisor case carries break 7 but no branch at all, because the divisor is known to be non-zero - so the branch is what marks a divisor the compiler cannot prove non-zero.",
+      "falsifies": "the expectation that a constant division becomes a multiply by a magic number, and that 64-bit multiplication is inline",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0, synthetic one-operation functions covering signed/unsigned division, modulo, multiplications and constant divisors (2, 3, 8 and -7)",
+      "evidence": [
+        "private:out/evidence/ee_gcc_divmod.txt"
+      ]
     }
   ],
   "verification": {

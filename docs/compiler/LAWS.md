@@ -853,6 +853,41 @@ and its caller passes a variadic `1.5f` or `1.5` **as a double in `a1`** (`li a1
 
 ---
 
+## L-EE-032 · Division: hardware `div`, no magic-number constants, 64-bit is libgcc
+
+| expression | code |
+| --- | --- |
+| `a/b` signed / unsigned | `div` / `divu`, then **`beql $r,$0` + `break 7`** (the zero check), then `mflo` |
+Two naming details: the compiler's assembly writes the check as `beql` while objdump prints `beqzl` (same
+instruction), and a **constant** divisor carries `break 7` but **no branch** — the divisor is known non-zero,
+so the branch is what marks a divisor the compiler cannot prove non-zero.
+
+| `a%b` | the same, ending in **`mfhi`** |
+| `a*b` (32-bit) | `mult` + `mflo` — hardware |
+| `a/8` signed | `slti` + `movn` + `sra` — no `div` |
+| `a/8` unsigned | `srl` |
+| `a%8` signed / unsigned | `slti`+`movz`+`sra`+`sll`+`subu` / `andi` |
+| **`a/3`, `a/-7`** | **`li $r,3` + `div`** — **no reciprocal multiplication** |
+| `long long` `/`, `%`, `*` | `jal __divdi3`, `__moddi3`, **`__muldi3`** |
+| `unsigned long long` `/`, `%` | `jal __udivdi3`, `__umoddi3` |
+
+Two things worth knowing: a runtime division is a **three-instruction unit** (`div`/`divu` + `beqzl`+`break` +
+`mflo`/`mfhi`), so the trap is not separate logic; and this build has **no magic-number transformation** — a
+non-power-of-two constant divisor stays `li` + `div`, which is a direct read on what the source divided by.
+Every 64-bit operation is a libgcc call, **including multiplication**, unlike the 32-bit `mult`.
+
+* **Tier T2** · **Source anchor** the MIPS division patterns and libgcc fallbacks (`config/mips/mips.md`; no
+  line read from the shipped tree) · **Constants** the relocation names and `break`
+* **Falsifies** the expectation that constant division becomes a multiply by a magic number, and that 64-bit
+  multiplication is inline
+* **Lever** `li`+`div` in the target ⇒ the source divided by a non-power-of-two constant; `slti`/`movn`/`sra`
+  ⇒ by a power of two; `jal __divdi3`/`__muldi3` ⇒ the source used `long long` (the same kind of signal as
+  `jal dpadd` for `double`)
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`, synthetic one-operation functions with signed and unsigned
+  operands and constant divisors 2, 3, 8 and −7
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).
