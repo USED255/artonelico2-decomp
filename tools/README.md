@@ -10,7 +10,9 @@ contributor needs.
 The `tools/` directory has two parts.
 
 - The directories `tools/build/`, `tools/project/`, `tools/report/`, `tools/check/`,
-  and `tools/ci/` hold the contributor chain. An external clone can run these tools.
+  `tools/ci/`, and `tools/compiler/` hold the contributor chain. An external clone can run these
+  tools; `tools/compiler/` holds the compiler-behaviour handbook's tools and needs the original
+  toolchain to do anything useful.
 - The directory `tools/maintainer/` holds the maintainer tools. A maintainer tool
   needs the private retail ELF, the Ghidra output, or the evidence directory. An
   external clone cannot run a maintainer tool.
@@ -38,6 +40,12 @@ cannot run a Maintainer tool.
 
 | Path | Purpose | Audience |
 | --- | --- | --- |
+| `tools/compiler/laws-query.py` | Queries the compiler handbook's laws by id, pass, symptom, lever or free text; `--json` for tooling. | Contributor needed |
+| `tools/compiler/ee-gcc-anchor.py` | Resolves a symbol, address, struct or constant in the shipped `cc1`, so a rule can be anchored to the shipped compiler instead of to mainline. `selftest` checks the anchors this machine can verify. | Contributor needed |
+| `tools/compiler/ee-gcc-passdiff.py` | Compiles two spellings of one function and reports the first pass where they diverge. | Contributor needed |
+| `tools/compiler/ee-gcc-spill-map.py` | Maps a too-large frame onto its blocks and source lines, and traces each spill back to the line that defined the value. | Contributor needed |
+| `tools/check/test_compiler_laws.py` | Checks the handbook's data (`laws.json` against `LAWS.md`), enforces the evidence tiers, verifies every binary anchor against the `cc1` on this machine, and checks that in-page anchors resolve. | Contributor needed |
+| `tools/check/test_compiler_tools.py` | Smoke-tests every command the handbook documents; skips cleanly when the toolchain is absent. | Contributor needed |
 | `Makefile` | The build entry point that calls the build driver and the report tool. | Contributor needed |
 | `configure.py` | Checks the retail executable and writes the build configuration. | Contributor needed |
 | `tools/build/decomp_build.py` | The build driver that splits the payload, assembles, links, and verifies the result. | Contributor needed |

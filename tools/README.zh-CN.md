@@ -8,8 +8,8 @@
 
 `tools/` 分成两部分。
 
-- `tools/build/`、`tools/project/`、`tools/report/`、`tools/check/`、`tools/ci/`
-  属于**贡献者链**，外部克隆可以运行。
+- `tools/build/`、`tools/project/`、`tools/report/`、`tools/check/`、`tools/ci/` 与 `tools/compiler/`
+  属于**贡献者链**，外部克隆可以运行；其中 `tools/compiler/` 是编译器行为手册的工具，要有原版工具链才有用。
 - `tools/maintainer/` 属于**维护者内部**。这类工具需要私有侧的原版 ELF、Ghidra
   产物或证据目录。外部克隆跑不通。
 
@@ -34,6 +34,12 @@ make check
 
 | 路径 | 用途 | 受众 |
 | --- | --- | --- |
+| `tools/compiler/laws-query.py` | 按 id / pass / 症状 / 杠杆或自由文本查询编译器手册的 law；`--json` 供工具使用。 | 贡献者需要 |
+| `tools/compiler/ee-gcc-anchor.py` | 在出厂 `cc1` 里解析符号、地址、结构体或常量，使规则锚定到**出厂编译器**而不是 mainline；`selftest` 复核本机能验证的锚点。 | 贡献者需要 |
+| `tools/compiler/ee-gcc-passdiff.py` | 编译同一函数的两种写法，报出第一个分叉的 pass。 | 贡献者需要 |
+| `tools/compiler/ee-gcc-spill-map.py` | 把过大的帧映射到区块与源码行，并把每次溢出溯源到定义该值的那一行。 | 贡献者需要 |
+| `tools/check/test_compiler_laws.py` | 校验手册数据（`laws.json` 对 `LAWS.md`）、强制证据分级、对**本机** `cc1` 复核每个二进制锚点，并校验页内锚点可解析。 | 贡献者需要 |
+| `tools/check/test_compiler_tools.py` | 对手册里文档化的每条命令做冒烟测试；无工具链时干净跳过。 | 贡献者需要 |
 | `Makefile` | 构建入口，调用构建驱动与报告工具 | Contributor 需要 |
 | `configure.py` | 检查原版可执行文件并写出构建配置 | Contributor 需要 |
 | `tools/build/decomp_build.py` | 构建驱动：切分载荷、汇编、链接并校验结果 | Contributor 需要 |

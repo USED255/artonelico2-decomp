@@ -44,7 +44,7 @@ make report     # write the progress report
 
 ## Documentation
 
-New to the project? Start with:
+Full index: [docs/README.md](docs/README.md). New to the project? Start with:
 
 | | |
 | --- | --- |

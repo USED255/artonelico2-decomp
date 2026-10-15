@@ -39,7 +39,7 @@ make report     # 生成进度报告
 
 ## 文档
 
-刚接触本项目，从这里开始：
+全部文档索引见 [docs/README.zh-CN.md](docs/README.zh-CN.md)。刚接触本项目，从这里开始：
 
 | | |
 | --- | --- |
