@@ -583,6 +583,12 @@ Four 12-byte functions, `-O2 -G0`:
 | `-ffunction-sections` | one `.text.N` per function, still `.p2align 3` | 0 in each | 0x10 each |
 | **`-falign-functions=4 -ffunction-sections`** (what this project uses) | `.text.N` + `.align 2` only | 0 in each | **0xc each — no padding** |
 
+**Where to read it**: the `.align` directives inside an assembly listing are *not* function alignment (they
+belong to local labels and tables). Function alignment is visible only in the **object**: the `.text` section
+reports alignment `2**3` by default and `2**2` with `-falign-functions=4`, and the section comes out 8 bytes
+shorter because the padding between two small functions is gone. Same family of trap as
+[L-EE-046](LAWS.md#l-ee-046--every-move-is-a-64-bit-daddu) — the assembly listing is a hint, the object is the evidence.
+
 So the default is **8-byte** alignment, which pads a 12-byte function to 16; `-falign-functions=4` drops it to
 4 and the functions pack tightly. `-ffunction-sections` alone does **not** remove the 8-byte alignment.
 

@@ -259,7 +259,7 @@ def check_quick_reference(data: dict) -> None:
     if observe.exists():
         body = observe.read_text(encoding="utf-8")
         actual = len(re.findall(r'^    \("', body, re.M))
-        words = {52: "fifty-two", 74: "seventy-four", 77: "seventy-seven", 79: "seventy-nine"}
+        words = {52: "fifty-two", 74: "seventy-four", 77: "seventy-seven", 79: "seventy-nine", 80: "eighty"}
         for page, pat in ((Path(__file__).resolve().parents[2] / "docs" / "compiler" / "README.md", "synthetic fixtures"),
                           (Path(__file__).resolve().parents[2] / "tools" / "README.md", "synthetic fixtures")):
             if page.exists():
@@ -283,6 +283,37 @@ def check_quick_reference(data: dict) -> None:
         text = skill.read_text(encoding="utf-8")
         missing = [t for t in tools if t not in text]
         check("every tool is named in AGENT-SKILL", not missing, f"missing: {missing}")
+
+    # L-EE-022：函数对齐只在**对象**里可见（.s 里的 .align 是别的东西）
+    if objdump.exists() and gcc.exists():
+        with tempfile.TemporaryDirectory(prefix="align-") as td:
+            work = Path(td)
+            (work / "t.c").write_text("int a1(int x){ return x + 1; }\nint a2(int x){ return x + 2; }\n",
+                                      encoding="utf-8")
+            align = {}
+            for label, extra in (("default", []), ("four", ["-falign-functions=4"])):
+                out = work / f"{label}.o"
+                made = subprocess.run([str(gcc), "-O2", "-G0", *extra, "-c", "-o", str(out), str(work / "t.c")],
+                                      capture_output=True, cwd=work, check=False)
+                if made.returncode != 0:
+                    continue
+                hdr = subprocess.run([str(objdump), "-h", str(out)], capture_output=True, text=True).stdout
+                m = re.search(r"\.text\s+([0-9a-f]+)\s+[0-9a-f]+\s+[0-9a-f]+\s+[0-9a-f]+\s+2\*\*(\d+)", hdr)
+                if m:
+                    align[label] = (int(m.group(2)), int(m.group(1), 16))
+            check("function alignment is 8 bytes by default and 4 with -falign-functions=4",
+                  align.get("default", (0, 0))[0] == 3 and align.get("four", (0, 0))[0] == 2
+                  and align.get("four", (0, 0))[1] < align.get("default", (0, 0))[1],
+                  f"measured {align}")
+
+    # 夹具覆盖下限：至少这么多条 law 有可执行验证（夹具或字节级校验）
+    observe = Path(__file__).resolve().parents[2] / "tools" / "compiler" / "ee-gcc-observe.py"
+    checker = Path(__file__)
+    if observe.exists():
+        ids = {law["id"] for law in data["laws"]}
+        stated = ids & set(re.findall(r"L-EE-\d{3}", observe.read_text(encoding="utf-8") + checker.read_text(encoding="utf-8")))
+        check("executable law coverage floor", len(stated) >= 35,
+              f"{len(stated)} laws have a fixture or a byte-level check (floor 35)")
 
 
 def _gh_slug(heading: str) -> str:

@@ -38,7 +38,7 @@
 | `tools/compiler/ee-gcc-passdiff.py` | 编译同一函数的两种写法，报出第一个分叉的 pass |
 | `tools/compiler/ee-gcc-spill-map.py` | 把过大的帧映射到区块与源码行，并把每次溢出溯源到定义该值的那一行 |
 | `tools/compiler/ee-gcc-coverage.py` | 测量手册解释了一份反汇编的多少，并把剩下的分成「只能来自汇编」与「尚未解释」 |
-| `tools/compiler/ee-gcc-observe.py` | 编译 79 组合成夹具并断言「本手册说必须出现的东西」（`--selftest`），或对你自己的文件打印帧/常量池/助记符观测 |
+| `tools/compiler/ee-gcc-observe.py` | 编译 80 组合成夹具并断言「本手册说必须出现的东西」（`--selftest`），或对你自己的文件打印帧/常量池/助记符观测 |
 
 `make check` 会跑 law 数据校验、二进制锚点复核，以及上述每条命令的冒烟测试。
 

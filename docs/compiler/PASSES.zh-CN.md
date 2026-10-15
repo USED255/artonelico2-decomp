@@ -23,11 +23,11 @@ python3 tools/compiler/ee-gcc-observe.py --matrix
 
 | 档 | 通过夹具 | 说明 |
 | --- | ---: | --- |
-| `-O0` | 46/79 | 无优化：用帧指针、常量不合并也不去重、窄类型比较不掩码、循环不强度削减 |
-| `-O1` | 75/79 | **没有尾调用**（[L-EE-036](LAWS.md#l-ee-036--tail-calls-are-jumps--but-not-below--o2)），且定次循环保留**递增 `slt`**（[L-EE-025](LAWS.md#l-ee-025--loops-count-down-at--o2-os-at--o1-they-keep-slt-and-are-not-unrolled)） |
-| **`-O2`** | **79/79** | receipt 的基准档 |
-| **`-Os`** | **78/79** | 除第二乘法器外全部成立（[L-EE-049](LAWS.md#l-ee-049--variable-shifts-negation-float-compare--and-the-second-multiplier)）； 本项目**大多数文件**用的档（[L-EE-034](LAWS.md#l-ee-034---os-is-this-projects-most-common-level-and-the-rules-hold-there)） |
-| `-O3` | 78/79 | 普通 `static` 助手会被内联（[L-EE-023](LAWS.md#l-ee-023--at-these-flags-only-an-inline-declaration-is-inlined)） |
+| `-O0` | 46/80 | 无优化：用帧指针、常量不合并也不去重、窄类型比较不掩码、循环不强度削减 |
+| `-O1` | 76/80 | **没有尾调用**（[L-EE-036](LAWS.md#l-ee-036--tail-calls-are-jumps--but-not-below--o2)），且定次循环保留**递增 `slt`**（[L-EE-025](LAWS.md#l-ee-025--loops-count-down-at--o2-os-at--o1-they-keep-slt-and-are-not-unrolled)） |
+| **`-O2`** | **80/80** | receipt 的基准档 |
+| **`-Os`** | **79/80** | 除第二乘法器外全部成立（[L-EE-049](LAWS.md#l-ee-049--variable-shifts-negation-float-compare--and-the-second-multiplier)）； 本项目**大多数文件**用的档（[L-EE-034](LAWS.md#l-ee-034---os-is-this-projects-most-common-level-and-the-rules-hold-there)） |
+| `-O3` | 79/80 | 普通 `static` 助手会被内联（[L-EE-023](LAWS.md#l-ee-023--at-these-flags-only-an-inline-declaration-is-inlined)） |
 
 本项目只涉及后四档——源按 `-Os`（687）、`-O1`（542）、`-O2`（264）、`-O3`（98）构建，**没有 `-O0`**。
 ⇒ **`-O2` 与 `-Os` 可照搬全部规则；`-O1` 的差别在循环形态；`-O3` 的差别在内联门槛。**
