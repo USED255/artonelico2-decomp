@@ -234,6 +234,26 @@ def check_quick_reference(data: dict) -> None:
             check("move is encoded as daddu (funct 0x2d)", functs == {0x2D},
                   f"functs seen: {sorted(hex(f) for f in functs)}")
 
+    # L-EE-047：`li` 的基编码（小值 ADDIU，0xffff ORI）
+    if objdump.exists() and gcc.exists():
+        with tempfile.TemporaryDirectory(prefix="lienc-") as td:
+            work = Path(td)
+            seen = {}
+            for label, src in (("small", "int f(void){ return 5; }\n"),
+                               ("u16", "int f(void){ return 0xffff; }\n")):
+                (work / "t.c").write_text(src, encoding="utf-8")
+                made = subprocess.run([str(gcc), "-O2", "-G0", "-c", "-o", str(work / "t.o"), str(work / "t.c")],
+                                      capture_output=True, cwd=work, check=False)
+                ops = set()
+                if made.returncode == 0:
+                    dis = subprocess.run([str(objdump), "-d", str(work / "t.o")], capture_output=True, text=True).stdout
+                    for m in re.finditer(r"^\s+[0-9a-f]+:\s+([0-9a-f]{8})\s+li\b", dis, re.M):
+                        ops.add(int(m.group(1), 16) >> 26)
+                seen[label] = ops
+            check("li expands to ADDIU or ORI (opcodes 0x09 / 0x0d)",
+                  seen.get("small") == {0x09} and seen.get("u16") == {0x0D},
+                  f"small={sorted(hex(o) for o in seen.get('small', set()))} u16={sorted(hex(o) for o in seen.get('u16', set()))}")
+
 
 def _gh_slug(heading: str) -> str:
     """GitHub 的标题锚点算法：小写、去标点（保留空格）、每个空格→连字符（**不折叠**）。"""

@@ -1030,6 +1030,48 @@ falsifies：「`move` 展开为 `addu`」与「助记符能告诉你拷贝是 32
 
 ---
 
+## L-EE-047 · 打印出来的助记符是**别名**——要比编码，不要比拼写
+
+对对象字解码（`-O2 -G0`）：
+
+| 源码 | 打印 | **实际编码** |
+| --- | --- | --- |
+| `return 5;` | `li v0,5` | **`ADDIU $2,$0,5`** |
+| `return -5;` | `li v0,-5` | `ADDIU $2,$0,0xfffb` |
+| `return 0xffff;` | `li v0,0xffff` | **`ORI $2,$0,0xffff`**（零扩展） |
+| `return 0x12345;` | `lui v0,0x1` + `ori v0,v0,0x2345` | 两条真指令——**没有 `li` 别名** |
+
+**`li` 是伪指令**：有符号 16 位内 → `ADDIU`，到 `0xffff` → `ORI`，更大 → `lui`+`ori` 两条（objdump 直接印两条）。
+
+对 **60 个真实匹配源**的普查显示映射是**多对一**：
+
+| 编码 | 打印出的助记符 |
+| --- | --- |
+| `op=0x09`（ADDIU） | `addiu` ×110 / **`li` ×35** |
+| `SPECIAL fn=0x00`（SLL） | **`nop` ×23** / `sll` ×3 |
+| `op=0x04`（BEQ） | **`beqz` ×7** / `b` ×2 |
+| `op=0x05`（BNE） | **`bnez` ×3** / `bne` ×1 |
+
+而样本里**没有任何助记符对应两种基编码**。手册现在收集到的别名全表：
+
+| 显示为 | 基指令 | 出处 |
+| --- | --- | --- |
+| `li $r,imm`（小 / ≤0xffff） | `ADDIU` / `ORI` | 本条 |
+| `li`（更大） | `LUI` + `ORI` | 本条 |
+| `move $d,$s` | **`DADDU $d,$s,$0`** | [L-EE-046](LAWS.md#l-ee-046--every-move-is-a-64-bit-daddu) |
+| `nop` | `SLL $0,$0,0` | 本条 |
+| `beqz` / `bnez` / `b` | `BEQ $r,$0` / `BNE $r,$0` / `BEQ $0,$0` | 本条 |
+| `ulw` / `usw` | `LWR`+`LWL` / `SWR`+`SWL` | [L-EE-044](LAWS.md#l-ee-044--unaligned-access-three-sources-and-ulwusw-do-not-exist-in-the-object) |
+| 对 `$0` 的 `beql`/`bnel` | 印成 `beqzl`/`bnezl` | [L-EE-045](LAWS.md#l-ee-045--loop-back-edges-are-branch-likely-forward-branches-are-not) |
+| `jal $31,$reg` | `jalr` | [L-EE-039](LAWS.md#l-ee-039--indirect-calls-are-jalr-and-never-become-tail-jumps) |
+| `li.s`（2.96） | 汇编期展开为装载序列 | [L-EE-019](LAWS.md#l-ee-019--the-float-rule-is-version-specific-296-inlines-32-uses-the-pool) |
+
+**T2**｜源码锚点：汇编器的伪指令集（未从出厂树读到行号；表格来自对象字解码）｜常量：opcode `0x09` 与 `0x0d`｜
+falsifies：「助记符能唯一确定编码」与「`li` 是一条真指令」。
+**杠杆**：两段文本看起来一样但字节不同时，比**编码**；手写汇编对目标前，先弄清伪指令**展开成几条**（`li` 可能 1 或 2 条，`ulw` 是 2 条）。
+
+---
+
 ## 仍未解决
 
 * `$L` 计数器精确公式（多标签函数）。

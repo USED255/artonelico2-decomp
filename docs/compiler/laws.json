@@ -2228,6 +2228,54 @@
       "evidence": [
         "private:out/evidence/ee_gcc_move_encoding.txt"
       ]
+    },
+    {
+      "id": "L-EE-047",
+      "title": "The printed mnemonic is an alias: li is ADDIU or ORI or a lui+ori pair, nop is sll $0,$0,0, beqz/bnez/b are beq/bne against $0, and move is daddu - so compare encodings, not spellings",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips.md",
+        "line": 0,
+        "note": "The pseudo-instruction set is the assembler's, not the compiler's; no line was read from the shipped tree, so the table is measured by decoding object words."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 9,
+            "at": "opcode 0x09",
+            "means": "ADDIU, printed as addiu or as li for a small immediate"
+          },
+          {
+            "kind": "int",
+            "value": 13,
+            "at": "opcode 0x0d",
+            "means": "ORI, printed as li for an immediate up to 0xffff"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "your assembly says li and the target has addiu, or the reverse",
+        "two instruction streams look identical as text but differ in bytes"
+      ],
+      "lever": [
+        "li is a pseudo-instruction: an immediate within signed 16 bits becomes ADDIU, up to 0xffff becomes ORI (zero-extending), and anything larger becomes a lui plus ori pair which objdump prints as two instructions",
+        "nop is SLL $0,$0,0; beqz/bnez/b are BEQ/BNE against $0; move is DADDU $d,$s,$0 (L-EE-046); ulw/usw are LWR+LWL and SWR+SWL pairs (L-EE-044)",
+        "in a 60-file sample of this project's sources every encoding maps to one or more mnemonics but no mnemonic maps to two base encodings, so comparing encodings is always safe while comparing mnemonics is not"
+      ],
+      "receipt": "Decoding object words at -O2 -G0. return 5 is ADDIU $2,$0,5 and return -5 is ADDIU $2,$0,0xfffb, both printed li; return 0xffff is ORI $2,$0,0xffff (also printed li); return 0x12345 is printed as lui v0,0x1 plus ori v0,v0,0x2345, two real instructions with no li alias. Over 60 files of this project's matched sources the encoding op=0x09 is printed addiu 110 times and li 35 times, SPECIAL funct 0x00 is printed nop 23 times and sll 3 times, op=0x04 is printed beqz 7 times and b twice, and op=0x05 is printed bnez 3 times and bne once - while no mnemonic in the sample maps to two different base encodings.",
+      "falsifies": "the expectation that a mnemonic identifies an encoding, and that li is a real instruction",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0, object-word decoding of synthetic immediates plus a 60-file mnemonic-to-encoding census; floating-point and vector pseudo-instructions are covered by L-EE-019, L-EE-041 and L-EE-044",
+      "evidence": [
+        "private:out/evidence/ee_gcc_aliases.txt"
+      ]
     }
   ],
   "verification": {

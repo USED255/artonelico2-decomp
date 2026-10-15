@@ -1398,6 +1398,55 @@ so most copies are **argument shuffling**.
 
 ---
 
+## L-EE-047 · The printed mnemonic is an alias — compare encodings, not spellings
+
+Decoding object words at `-O2 -G0`:
+
+| source | printed | **actual encoding** |
+| --- | --- | --- |
+| `return 5;` | `li v0,5` | **`ADDIU $2,$0,5`** |
+| `return -5;` | `li v0,-5` | `ADDIU $2,$0,0xfffb` |
+| `return 0xffff;` | `li v0,0xffff` | **`ORI $2,$0,0xffff`** (zero-extending) |
+| `return 0x12345;` | `lui v0,0x1` + `ori v0,v0,0x2345` | two real instructions — **no `li` alias** |
+
+**`li` is a pseudo-instruction**: signed-16-bit values become `ADDIU`, up to `0xffff` becomes `ORI`, larger
+values become a `lui`+`ori` pair that objdump prints as two instructions.
+
+A census over **60 real matched sources** shows the mapping is many-to-one:
+
+| encoding | mnemonics printed |
+| --- | --- |
+| `op=0x09` (ADDIU) | `addiu` ×110 / **`li` ×35** |
+| `SPECIAL fn=0x00` (SLL) | **`nop` ×23** / `sll` ×3 |
+| `op=0x04` (BEQ) | **`beqz` ×7** / `b` ×2 |
+| `op=0x05` (BNE) | **`bnez` ×3** / `bne` ×1 |
+
+…while **no mnemonic maps to two base encodings** in the sample. The verified alias table now collected by this
+handbook:
+
+| shown as | base instruction | law |
+| --- | --- | --- |
+| `li $r,imm` (small / ≤0xffff) | `ADDIU` / `ORI` | this one |
+| `li` (larger) | `LUI` + `ORI` | this one |
+| `move $d,$s` | **`DADDU $d,$s,$0`** | [L-EE-046](LAWS.md#l-ee-046--every-move-is-a-64-bit-daddu) |
+| `nop` | `SLL $0,$0,0` | this one |
+| `beqz` / `bnez` / `b` | `BEQ $r,$0` / `BNE $r,$0` / `BEQ $0,$0` | this one |
+| `ulw` / `usw` | `LWR`+`LWL` / `SWR`+`SWL` | [L-EE-044](LAWS.md#l-ee-044--unaligned-access-three-sources-and-ulwusw-do-not-exist-in-the-object) |
+| `beql`/`bnel` against `$0` | printed `beqzl`/`bnezl` | [L-EE-045](LAWS.md#l-ee-045--loop-back-edges-are-branch-likely-forward-branches-are-not) |
+| `jal $31,$reg` | `jalr` | [L-EE-039](LAWS.md#l-ee-039--indirect-calls-are-jalr-and-never-become-tail-jumps) |
+| `li.s` (2.96) | an explicit load sequence | [L-EE-019](LAWS.md#l-ee-019--the-float-rule-is-version-specific-296-inlines-32-uses-the-pool) |
+
+* **Tier T2** · **Source anchor** the assembler's pseudo set (no line read from the shipped tree; the table
+  comes from decoding object words) · **Constants** opcodes `0x09` and `0x0d`
+* **Falsifies** the expectation that a mnemonic identifies an encoding, and that `li` is a real instruction
+* **Lever** when two streams look identical as text but differ in bytes, compare encodings; and before writing
+  assembly to match a target, work out how many real instructions your pseudo expands into (`li` may be one or
+  two, `ulw` is two)
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`, object-word decoding plus a 60-file census; floating-point and
+  vector pseudo-instructions are covered by L-EE-019, L-EE-041 and L-EE-044
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).
