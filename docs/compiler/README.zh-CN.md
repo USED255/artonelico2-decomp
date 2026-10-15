@@ -22,6 +22,7 @@
 | [CASE-STUDY.zh-CN.md](CASE-STUDY.zh-CN.md) | 一个函数从头走到尾：工具、查过的 law、试过的改动，以及为什么否掉它 |
 | [SOURCE-STUDY.zh-CN.md](SOURCE-STUDY.zh-CN.md) | 有哪些源码、没有哪些、规则怎么对锚，以及为什么社区 EE 补丁是另一棵树 |
 | [AGENT-SKILL.md](AGENT-SKILL.zh-CN.md) | agent（或赶时间的人）跑的循环：测量 → 定位 pass → 查 law → 用杠杆 → 复测 |
+| [CROSS-2.96.zh-CN.md](CROSS-2.96.zh-CN.md) | 哪些规则能迁移到编译 CRI 中间件的 2.96，哪些不能 |
 | [`laws.json`](laws.json) | 同一批 law 的机器可读版本，供工具与 agent 查询 |
 
 ## 工具

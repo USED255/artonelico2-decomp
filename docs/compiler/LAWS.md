@@ -472,6 +472,38 @@ ascending 42.0%, against 38.9% for the printed order) changes the error pattern 
 
 ---
 
+## L-EE-019 · The float rule is version-specific: 2.96 inlines, 3.2 uses the pool
+
+This project uses **two** compilers: `3.2-ee-040921` for the game code and `2.96-ee-001003-1` for the CRI
+middleware. Most rules transfer; the float-constant rule does not.
+
+`float f(void) { return V; }`, object code, `-O2 -G0`:
+
+| V | 3.2 | 2.96 |
+| --- | --- | --- |
+| `0.0f` | `mtc1` (zero register) | `mtc1` |
+| `0.5f`, `1.0f`, `2.5f`, `-1.0f`, `100.0f` | `lui addiu lwc1` — **pool** | `lui mtc1` — **inline** (low 16 bits zero) |
+| `0.01f`, `3.14f`, `123.456f`, `1e30f` | **pool** | `lui ori mtc1` — **inline** |
+
+Doubles **do** agree: `move` for `0.0`, `li` + `dsll32` when the low 32 bits are zero, otherwise the pool
+(`lui` + `ld`) — [L-EE-011](LAWS.md#l-ee-011--float-constants-come-from-the-pool-a-double-is-inline-when-its-low-32-bits-are-zero).
+
+Re-run on 2.96 and agreeing: the narrow-compare idioms
+([L-EE-013](LAWS.md#l-ee-013--signedness-picks-slt-vs-sltu-a-narrower-type-adds-andi-or-sllsra-xori-marks-equality)),
+the switch threshold
+([L-EE-010](LAWS.md#l-ee-010--a-switch-becomes-a-jump-table-only-when-count--5-and-range--10--count)) and
+`-G0` absolute addressing
+([L-EE-014](LAWS.md#l-ee-014--small-data-addressing-follows--g)).
+
+* **Tier T3** (behaviour only; no source and no binary anchor for either backend)
+* **Receipt** the two tables above, read from the **object code** — 2.96 prints `li.s` in the assembly,
+  which is a pseudo-instruction and misleads
+* **Falsifies** the assumption that one compiler's constant rule transfers to the other
+* **Lever** before changing a float constant's spelling, check which compiler builds that source
+* **Scope** both compilers at `-O2 -G0`, synthetic fixtures
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).

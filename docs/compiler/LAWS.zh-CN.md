@@ -284,6 +284,28 @@ falsifies：「把所有已分配的寄存器都禁掉是安全的」（掉约 6
 
 ---
 
+## L-EE-019 · 浮点规则**随版本不同**：2.96 内联，3.2 走池
+
+本项目用**两个**编译器：游戏代码用 `3.2-ee-040921`，CRI 中间件用 `2.96-ee-001003-1`。多数规则可迁移，**浮点常量规则不能**。
+
+`float f(void) { return V; }` 的对象码（`-O2 -G0`）：
+
+| V | 3.2 | 2.96 |
+| --- | --- | --- |
+| `0.0f` | `mtc1`（零寄存器） | `mtc1` |
+| `0.5f`、`1.0f`、`2.5f`、`-1.0f`、`100.0f` | `lui addiu lwc1` —— **池** | `lui mtc1` —— **内联**（低位 16 位为 0） |
+| `0.01f`、`3.14f`、`123.456f`、`1e30f` | **池** | `lui ori mtc1` —— **内联** |
+
+双精度**两版一致**：`0.0` 用 `move`；低位 32 位为 0 时 `li`+`dsll32`；否则走池（`lui`+`ld`）（[L-EE-011](LAWS.md#l-ee-011--float-constants-come-from-the-pool-a-double-is-inline-when-its-low-32-bits-are-zero)）。
+
+在 2.96 上回测**一致**的规则：窄类型比较习语（[L-EE-013](LAWS.md#l-ee-013--signedness-picks-slt-vs-sltu-a-narrower-type-adds-andi-or-sllsra-xori-marks-equality)）、
+switch 阈值（[L-EE-010](LAWS.md#l-ee-010--a-switch-becomes-a-jump-table-only-when-count--5-and-range--10--count)）、`-G0` 绝对寻址（[L-EE-014](LAWS.md#l-ee-014--small-data-addressing-follows--g)）。
+
+**T3**（只有行为证据；两个后端都没有源码与二进制锚点）｜receipt：上两张表，取自**对象码**——2.96 的 `.s` 里写的是 `li.s` 伪指令，会被误导｜
+falsifies：「一个编译器的常量规则可以迁移到另一个」｜**杠杆**：改浮点常量写法前，先确认那段源码由哪个编译器构建。
+
+---
+
 ## 仍未解决
 
 * `$L` 计数器精确公式（多标签函数）。

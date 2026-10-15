@@ -845,6 +845,47 @@
       "evidence": [
         "private:out/evidence/ee_gcc_coloring_v5.txt"
       ]
+    },
+    {
+      "id": "L-EE-019",
+      "title": "The float-constant rule is version-specific: 2.96 always materialises a float inline, 3.2 always loads non-zero floats from the pool",
+      "tier": "T3",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "",
+        "line": 0,
+        "note": "No source anchor: this is a measured difference between two shipped compilers. Full source for neither backend is available."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "2.96-ee-001003-1",
+            "at": "ee-gcc 2.96 --version",
+            "means": "the compiler this half of the law is measured on"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "a float constant loads from the pool in a 3.2 object but is materialised with lui/mtc1 in the same source compiled with 2.96",
+        "you applied L-EE-011 to CRI middleware code"
+      ],
+      "lever": [
+        "for 2.96 do not expect a constant pool for floats: expect lui (plus ori when the low 16 bits of the bit pattern are non-zero) followed by mtc1",
+        "for 3.2 expect lui/addiu/lwc1 from the pool for every non-zero float (L-EE-011)"
+      ],
+      "receipt": "Same fixtures, both compilers, flags -O2 -G0, reading the OBJECT code (2.96 writes li.s in the assembly, which is misleading). 3.2: every non-zero float is lui + addiu + lwc1 from the pool; 0.0f is mtc1 from the zero register. 2.96: every float is materialised inline - lui + mtc1 when the low 16 bits of the pattern are zero (0.5f, 1.0f, 2.5f, -1.0f, 100.0f), lui + ori + mtc1 when they are not (0.01f, 3.14f, 123.456f, 1e30f), and plain mtc1 for 0.0f. Doubles agree between the two compilers: move for 0.0, li + dsll32 when the low 32 bits are zero, pool (lui + ld) otherwise. The narrow-compare idioms (L-EE-013), the switch threshold (L-EE-010) and -G0 absolute addressing (L-EE-014) were also re-run on 2.96 and agree.",
+      "falsifies": "the assumption that the float rule of L-EE-011 transfers to the other compiler this project uses (2.96 builds the CRI middleware)",
+      "scope": "ee-gcc 3.2-ee-040921 and ee-gcc 2.96-ee-001003-1 at -O2 -G0, synthetic fixtures only; the object code was read with the MIPS objdump",
+      "evidence": [
+        "private:out/evidence/ee_gcc_cross_296.txt"
+      ]
     }
   ],
   "verification": {

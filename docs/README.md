@@ -13,6 +13,7 @@ Where to start depends on what you are doing.
 | see the handbook's rules and their evidence | [compiler/LAWS.md](compiler/LAWS.md) |
 | work one function end to end, including a rejected edit | [compiler/CASE-STUDY.md](compiler/CASE-STUDY.md) |
 | know what compiler source exists and how rules are anchored | [compiler/SOURCE-STUDY.md](compiler/SOURCE-STUDY.md) |
+| know whether these rules apply to the CRI middleware | [compiler/CROSS-2.96.md](compiler/CROSS-2.96.md) |
 | drive the handbook from an agent | [compiler/AGENT-SKILL.md](compiler/AGENT-SKILL.md) |
 
 Every handbook page has a Chinese edition next to it (`*.zh-CN.md`). The handbook is data-backed:
