@@ -1422,6 +1422,54 @@
       "evidence": [
         "private:out/evidence/ee_gcc_struct_abi.txt"
       ]
+    },
+    {
+      "id": "L-EE-031",
+      "title": "A variadic function saves the argument registers after its last named parameter into 8-byte slots and calls __builtin_va_start; there is no floating-point save area",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips.c",
+        "line": 0,
+        "note": "The varargs save area is set up by the backend's function prologue; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "__builtin_va_start",
+            "at": "R_MIPS_26 relocation",
+            "means": "every variadic function calls this helper"
+          },
+          {
+            "kind": "int",
+            "value": 7,
+            "at": "saved argument registers for one named parameter",
+            "means": "8 minus the named parameter count"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "22.lreg"
+      ],
+      "symptom": [
+        "a prologue stores a1 through t3 to consecutive stack slots",
+        "you are looking for an sdc1-based floating-point save area in a variadic function"
+      ],
+      "lever": [
+        "a cluster of sd from a1..t3 into 8-byte slots means the function is variadic, and the count is 8 minus the number of named parameters",
+        "jal __builtin_va_start is the hardest evidence: the call appears as a relocation in the object",
+        "there is no floating-point save area - a variadic float or double is promoted to double and travels in the integer register sequence, so compare variadic call sites against $4-$11 and not against $f12"
+      ],
+      "receipt": "At -O2 -G0 on this machine. v1(const char *a, ...) saves a1,a2,a3,t0,t1,t2,t3 - seven registers, 8 bytes each - in an 80-byte frame; v2(const char *a, int b, ...) saves six (a2..t3) in a 64-byte frame; v5 with five named parameters saves three (t1,t2,t3) in a 48-byte frame; so the count is 8 minus the named parameter count. Every one of them calls __builtin_va_start (the relocation names it). A variadic function returning a double saves only the integer registers - there is no sdc1 or swc1 save area - and its caller passes 1.5f or 1.5 as a double in a1 (li a1,2047 then dsll32 a1,a1,0x13), i.e. in the integer register sequence rather than in an FP register.",
+      "falsifies": "the expectation that a variadic function has a floating-point register save area, and that its floating-point arguments travel in $f12",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0, synthetic variadic functions with one, two and five named parameters plus a variadic double and float call; the va_list layout itself was not decoded",
+      "evidence": [
+        "private:out/evidence/ee_gcc_varargs.txt"
+      ]
     }
   ],
   "verification": {

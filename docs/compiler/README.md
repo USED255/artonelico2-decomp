@@ -27,6 +27,7 @@ such question with evidence, and each lever names the source spelling that moves
 | [CASE-STUDY.md](CASE-STUDY.md) · [中文](CASE-STUDY.zh-CN.md) | One function end to end: the tools, the laws consulted, the edit tried, and why it was rejected |
 | [SOURCE-STUDY.md](SOURCE-STUDY.md) · [中文](SOURCE-STUDY.zh-CN.md) | What source exists, what does not, how a rule is anchored, and why the community EE patches are a different tree |
 | [AGENT-SKILL.md](AGENT-SKILL.md) · [中文](AGENT-SKILL.zh-CN.md) | The loop an agent (or a hurried person) runs: measure -> localise the pass -> look up the law -> apply the lever -> re-measure |
+| [ABI.md](ABI.md) · [中文](ABI.zh-CN.md) | The calling convention on one page: where every argument and return value travels, the frame, and how to read a target signature |
 | [CROSS-2.96.md](CROSS-2.96.md) · [中文](CROSS-2.96.zh-CN.md) | Which of these rules transfer to the 2.96 compiler that builds the CRI middleware, and which does not |
 | [QUICK-REFERENCE.md](QUICK-REFERENCE.md) · [中文](QUICK-REFERENCE.zh-CN.md) | Start from the shape in front of you: what you see in a frame, an instruction stream or a data section, and the law that explains it |
 | [`laws.json`](laws.json) | The same laws as data, for tooling and agents |
@@ -39,7 +40,7 @@ such question with evidence, and each lever names the source spelling that moves
 | `tools/compiler/ee-gcc-anchor.py` | resolve a symbol, address, struct or constant in the shipped `cc1`; `selftest` re-checks the anchors this machine can verify |
 | `tools/compiler/ee-gcc-passdiff.py` | compile two spellings of one function and report the first pass that diverges |
 | `tools/compiler/ee-gcc-spill-map.py` | map a too-large frame onto its blocks and source lines, and trace each spill to the line that defined the value |
-| `tools/compiler/ee-gcc-observe.py` | compile twenty-eight synthetic fixtures and assert what this handbook says must appear (`--selftest`), or print frame/pool/mnemonic observations for your own file |
+| `tools/compiler/ee-gcc-observe.py` | compile twenty-nine synthetic fixtures and assert what this handbook says must appear (`--selftest`), or print frame/pool/mnemonic observations for your own file |
 
 `make check` runs the law data check, the binary-anchor re-verification and a smoke test of every command
 above.

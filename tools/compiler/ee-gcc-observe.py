@@ -66,6 +66,10 @@ FIXTURES: list[tuple[str, str, str, str]] = [
      "return s+v0+v1+v2+v3+v4+v5+v6+v7;}\n",
      r"#\s*vars=\s*0,\s*regs=\s*10/0",
      "L-EE-012: eight call-crossing values fill the save area to its cap of 10 registers"),
+    ("variadic-prologue",
+     "int f(const char *a, ...){\n  __builtin_va_list ap; __builtin_va_start(ap, a);\n"
+     "  return (int)(long)ap;\n}\n",
+     r"__builtin_va_start", "L-EE-031: a variadic function calls __builtin_va_start"),
     ("struct-8-bytes-by-value",
      "typedef struct { int a, b; } S8;\nint read8(S8 s){ return s.a + s.b; }\n",
      r"sd\s+\$4,0\(\$sp\)", "L-EE-030: an 8-byte aggregate arrives by value in $4"),

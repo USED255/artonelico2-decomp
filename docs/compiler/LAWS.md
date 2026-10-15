@@ -825,6 +825,34 @@ make8(int x):                 ; S8 make8(int x)
 
 ---
 
+## L-EE-031 · A variadic function saves the argument registers and calls `__builtin_va_start`
+
+| function | named | saved argument registers | count |
+| --- | ---: | --- | ---: |
+| `v1(const char *a, ...)` | 1 | `a1 a2 a3 t0 t1 t2 t3` (`$5`–`$11`) | **7** |
+| `v2(const char *a, int b, ...)` | 2 | `a2 a3 t0 t1 t2 t3` | **6** |
+| `v5(a,b,c,d,e, ...)` | 5 | `t1 t2 t3` | **3** |
+
+The count is **8 − (named parameters)**, each in an **8-byte slot**, placed after the callee-save area (so the
+offsets move from function to function). Every variadic function also calls **`__builtin_va_start`**, which
+shows up as a relocation — the hardest evidence that a function is variadic.
+
+There is **no floating-point save area**: a `double`-returning variadic function saves only integer registers,
+and its caller passes a variadic `1.5f` or `1.5` **as a double in `a1`** (`li a1,2047` then `dsll32 a1,a1,0x13`)
+— in the integer register sequence, not in `$f12`
+([L-EE-028](LAWS.md#l-ee-028--eight-integer-arguments-travel-in-4-11-and-eight-float-arguments-in-f12-f19-a-long-long-or-double-takes-one-64-bit-gpr-the-rest-go-on-the-stack-in-8-byte-slots)).
+
+* **Tier T2** · **Source anchor** the backend prologue (`config/mips/mips.c`; no line read from the shipped
+  tree) · **Constants** the `__builtin_va_start` relocation, the count 7
+* **Falsifies** the expectation that a variadic function has an FP register save area and passes its floats in
+  `$f12`
+* **Lever** a run of `sd` from `a1`–`t3` into consecutive 8-byte slots means *this function is variadic*; and
+  at a variadic call site, compare floating-point arguments against `$4`–`$11`, not `$f12`
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`, synthetic variadic functions with 1/2/5 named parameters; the
+  `va_list` layout itself was not decoded
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).

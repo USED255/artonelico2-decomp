@@ -22,6 +22,7 @@
 | [CASE-STUDY.zh-CN.md](CASE-STUDY.zh-CN.md) | 一个函数从头走到尾：工具、查过的 law、试过的改动，以及为什么否掉它 |
 | [SOURCE-STUDY.zh-CN.md](SOURCE-STUDY.zh-CN.md) | 有哪些源码、没有哪些、规则怎么对锚，以及为什么社区 EE 补丁是另一棵树 |
 | [AGENT-SKILL.md](AGENT-SKILL.zh-CN.md) | agent（或赶时间的人）跑的循环：测量 → 定位 pass → 查 law → 用杠杆 → 复测 |
+| [ABI.zh-CN.md](ABI.zh-CN.md) | 一页看懂调用约定：实参与返回值走哪里、帧怎么算、怎么反推目标签名 |
 | [CROSS-2.96.zh-CN.md](CROSS-2.96.zh-CN.md) | 哪些规则能迁移到编译 CRI 中间件的 2.96，哪些不能 |
 | [QUICK-REFERENCE.zh-CN.md](QUICK-REFERENCE.zh-CN.md) | 从眼前的形状出发：帧 / 指令流 / 数据段里看到的东西对应哪条 law |
 | [`laws.json`](laws.json) | 同一批 law 的机器可读版本，供工具与 agent 查询 |
@@ -34,7 +35,7 @@
 | `tools/compiler/ee-gcc-anchor.py` | 在出厂 `cc1` 里解析符号、地址、结构体或常量；`selftest` 复核本机能验证的锚点 |
 | `tools/compiler/ee-gcc-passdiff.py` | 编译同一函数的两种写法，报出第一个分叉的 pass |
 | `tools/compiler/ee-gcc-spill-map.py` | 把过大的帧映射到区块与源码行，并把每次溢出溯源到定义该值的那一行 |
-| `tools/compiler/ee-gcc-observe.py` | 编译 28 组合成夹具并断言「本手册说必须出现的东西」（`--selftest`），或对你自己的文件打印帧/常量池/助记符观测 |
+| `tools/compiler/ee-gcc-observe.py` | 编译 29 组合成夹具并断言「本手册说必须出现的东西」（`--selftest`），或对你自己的文件打印帧/常量池/助记符观测 |
 
 `make check` 会跑 law 数据校验、二进制锚点复核，以及上述每条命令的冒烟测试。
 
