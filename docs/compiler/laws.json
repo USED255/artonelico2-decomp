@@ -2179,6 +2179,55 @@
       "evidence": [
         "private:out/evidence/ee_gcc_branch_likely.txt"
       ]
+    },
+    {
+      "id": "L-EE-046",
+      "title": "Every move is daddu $d,$s,$0 - a 64-bit copy - and objdump prints it as move, so the mnemonic never reveals the encoding",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips.md",
+        "line": 0,
+        "note": "Which move pattern the backend picks is port-specific; no line was read from the shipped tree, so the rule is measured from the object encodings."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 45,
+            "at": "funct field 0x2d",
+            "means": "every move is DADDU, the 64-bit form"
+          },
+          {
+            "kind": "int",
+            "value": 33,
+            "at": "funct field 0x21",
+            "means": "ADDU, the 32-bit form, is never used for a copy"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "22.lreg"
+      ],
+      "symptom": [
+        "your reconstruction writes addu $d,$s,$0 and the bytes do not match",
+        "you are grepping a disassembly for daddu and the histogram shows none of them"
+      ],
+      "lever": [
+        "the compiler copies registers with the 64-bit form, so every move in the object is daddu $d,$s,$0 (funct 0x2d) - even when the C type is int",
+        "objdump prints daddu $d,$s,$0 as move, which is why a mnemonic histogram of real code shows move but no daddu at all",
+        "addu (funct 0x21) is never emitted as a copy, so writing addu $d,$s,$0 in a reconstruction will not match the bytes",
+        "in practice most moves are argument shuffling (targets a0/a1/a2), a large minority fill branch and jump delay slots, and move $d,$0 materialises zero"
+      ],
+      "receipt": "At -O2 -G0 on this machine, decoding the object words of int c32(int a){int b=a;return b;} and long long c64(long long a){long long b=a;return b;} gives 0x0080102d for both - DADDU v0,a0,zero, the 64-bit special-function code 0x2d, not ADDU's 0x21. The same holds for every move in the sample: int x=0 and long long x=0 both produce 0x0000102d, and g(b,a) produces 0x0080782d, 0x00a0202d and 0x01e0282d. Because objdump renders daddu $d,$s,$0 as move, a 170-file mnemonic histogram of this project's sources lists move 322 times and daddu zero times. A 60-file context count of 125 moves shows 48 in branch or jump delay slots, 57 in ordinary positions, 19 as move $d,$0, and targets dominated by a0 (46), a1 (18) and a2 (7).",
+      "falsifies": "the assumption that move expands to addu, and that the mnemonic tells you whether a copy is 32-bit or 64-bit",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0, object-word decoding of synthetic 32-bit and 64-bit copies plus a 60-file context sample; moves of floating-point and vector values were not measured",
+      "evidence": [
+        "private:out/evidence/ee_gcc_move_encoding.txt"
+      ]
     }
   ],
   "verification": {

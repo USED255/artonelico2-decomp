@@ -217,6 +217,23 @@ def check_quick_reference(data: dict) -> None:
         check(f"{name} covers every law ({len(laws)} laws)", not missing,
               f"missing: {', '.join(missing[:6])}" if missing else "")
 
+    # L-EE-046：`move` 的真实编码必须是 daddu（funct 0x2d），不是 addu（0x21）
+    objdump = Path.home() / "eecc" / "ps2binutils" / "mips-ps2-decompals-objdump"
+    gcc = Path.home() / "eecc" / "ee-gcc3.2-040921" / "bin" / "ee-gcc"
+    if objdump.exists() and gcc.exists():
+        with tempfile.TemporaryDirectory(prefix="moveenc-") as td:
+            work = Path(td)
+            (work / "t.c").write_text("int f(int a){ return a; }\n", encoding="utf-8")
+            made = subprocess.run([str(gcc), "-O2", "-G0", "-c", "-o", str(work / "t.o"), str(work / "t.c")],
+                                  capture_output=True, cwd=work, check=False)
+            functs = set()
+            if made.returncode == 0:
+                dis = subprocess.run([str(objdump), "-d", str(work / "t.o")], capture_output=True, text=True).stdout
+                for m in re.finditer(r"^\s+[0-9a-f]+:\s+([0-9a-f]{8})\s+move\b", dis, re.M):
+                    functs.add(int(m.group(1), 16) & 0x3F)
+            check("move is encoded as daddu (funct 0x2d)", functs == {0x2D},
+                  f"functs seen: {sorted(hex(f) for f in functs)}")
+
 
 def _gh_slug(heading: str) -> str:
     """GitHub 的标题锚点算法：小写、去标点（保留空格）、每个空格→连字符（**不折叠**）。"""

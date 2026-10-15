@@ -1365,6 +1365,39 @@ j 60  sw 56  addu 54  sh 30  lh 28  sll 27  sb 27  beqz 26  mult 22  slti 21 …
 
 ---
 
+## L-EE-046 · Every `move` is a 64-bit `daddu`
+
+Decoding the object words: **`move` is always `daddu $d,$s,$0` (funct `0x2d`)**, never `addu` (funct
+`0x21`) — even when the C type is `int`.
+
+| function | type | word | meaning |
+| --- | --- | --- | --- |
+| `int b = a;` | 32-bit | `0080102d` | `daddu v0,a0,zero` |
+| `long long b = a;` | 64-bit | `0080102d` | `daddu v0,a0,zero` |
+| `int x = 0;` | 32-bit | `0000102d` | `daddu v0,zero,zero` |
+
+**The trap**: objdump **prints `daddu $d,$s,$0` as `move`**, so
+
+* a mnemonic histogram of real code shows **`move` 322 times and `daddu` not once** (the 170-file sample of
+  [L-EE-045](LAWS.md#l-ee-045--loop-back-edges-are-branch-likely-forward-branches-are-not)) — `daddu` only appears when the third operand is not `$0`;
+* writing `addu $d,$s,$0` in a reconstruction **will not match the bytes**, even though the mnemonic `move`
+  looks the same.
+
+In practice (125 `move`s over 60 real files): **48 (38 %) sit in branch or jump delay slots**, 57 are ordinary,
+19 are `move $d,$0` (zero), and the targets are dominated by argument registers — `a0` 46, `a1` 18, `a2` 7 —
+so most copies are **argument shuffling**.
+
+* **Tier T2** · **Source anchor** the port's move pattern (no line read from the shipped tree; the rule comes
+  from decoding the object words) · **Constants** funct `0x2d` versus `0x21`
+* **Falsifies** the assumption that `move` expands to `addu`, and that the mnemonic tells you whether a copy is
+  32-bit or 64-bit
+* **Lever** verify copies by their **encoding**, not their mnemonic; an argument swap appears as a temporary
+  plus three `move`s, and the tail call after it is a `j`
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`, object-word decoding of 32/64-bit copies plus a 60-file
+  context sample; moves of floating-point and vector values were not measured
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).
