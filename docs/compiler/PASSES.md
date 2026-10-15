@@ -17,11 +17,11 @@ python3 tools/compiler/ee-gcc-observe.py --matrix
 
 | level | fixtures passing | notes |
 | --- | ---: | --- |
-| `-O0` | 35/59 | no optimiser: the frame pointer is used, constants are not pooled or deduplicated, narrow compares are not masked, loops are not strength-reduced |
-| `-O1` | 56/59 | no tail calls ([L-EE-036](LAWS.md#l-ee-036--tail-calls-are-jumps--but-not-below--o2)) and the constant-trip loop keeps an upward `slt` comparison ([L-EE-025](LAWS.md#l-ee-025--loops-count-down-at--o2-os-at--o1-they-keep-slt-and-are-not-unrolled)) |
-| **`-O2`** | **59/59** | reference level for the receipts |
-| **`-Os`** | **59/59** | the level most of this project's files use ([L-EE-034](LAWS.md#l-ee-034---os-is-this-projects-most-common-level-and-the-rules-hold-there)) |
-| `-O3` | 58/59 | a plain `static` helper is inlined ([L-EE-023](LAWS.md#l-ee-023--at-these-flags-only-an-inline-declaration-is-inlined)) |
+| `-O0` | 38/62 | no optimiser: the frame pointer is used, constants are not pooled or deduplicated, narrow compares are not masked, loops are not strength-reduced |
+| `-O1` | 59/62 | no tail calls ([L-EE-036](LAWS.md#l-ee-036--tail-calls-are-jumps--but-not-below--o2)) and the constant-trip loop keeps an upward `slt` comparison ([L-EE-025](LAWS.md#l-ee-025--loops-count-down-at--o2-os-at--o1-they-keep-slt-and-are-not-unrolled)) |
+| **`-O2`** | **62/62** | reference level for the receipts |
+| **`-Os`** | **62/62** | the level most of this project's files use ([L-EE-034](LAWS.md#l-ee-034---os-is-this-projects-most-common-level-and-the-rules-hold-there)) |
+| `-O3` | 61/62 | a plain `static` helper is inlined ([L-EE-023](LAWS.md#l-ee-023--at-these-flags-only-an-inline-declaration-is-inlined)) |
 
 For this project only the last four matter — its sources are built with `-Os` (687 files), `-O1` (542), `-O2`
 (264) and `-O3` (98), never `-O0`. So: **`-O2` and `-Os` take every rule as written, `-O1` differs in the loop

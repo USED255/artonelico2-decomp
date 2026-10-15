@@ -1250,6 +1250,44 @@ double-precision instructions at all ([L-EE-029](LAWS.md#l-ee-029--single-precis
 
 ---
 
+## L-EE-043 · 64-bit integers are native; only multiply, divide and modulo call out
+
+**41 % of this project's files use `s64`/`u64`.** Unlike `double`, a 64-bit *integer* uses the R5900's native
+64-bit GPR instructions — measured at `-O1`, `-O2` and `-Os` alike, with **no libgcc relocation at all** in the
+test set.
+
+| operation | code |
+| --- | --- |
+| `a + b` / `a - b` / `a + 1` | **`daddu`** / **`dsubu`** / **`daddiu`** |
+| `-a` | `dsubu $r,$0,$a` |
+| `a << 4`, `a << n` | **`dsll`** |
+| `a >> 4` signed / unsigned | **`dsra`** / **`dsrl`** |
+| `&`, `|`, `^` | `and` / `or` / `xor` |
+| `a < b` | **`slt`** — an inline 64-bit compare |
+| `a == b` | `xor` + `sltu …,1` ([L-EE-040](LAWS.md#l-ee-040--comparison-idioms-materialised-as-values-branched-as-conditions)) |
+| `int` → `long long` | **`move`** — the ABI already sign-extends a 32-bit argument |
+| `long long` → `int` | **`dsll $r,$r,32` + `dsra $r,$r,32`** |
+| `unsigned` → `long long` | `dsll …,32` + **`dsrl …,32`** |
+
+So within the same 64-bit type the shape depends on the operation: `daddu`/`dsll`/`slt` are inline, while
+**multiply, divide and modulo become `jal __muldi3` / `__divdi3` / `__moddi3`**
+([L-EE-032](LAWS.md#l-ee-032--division-hardware-div-no-magic-number-constants-64-bit-is-libgcc)).
+
+The `dsll …,32` + `dsra …,32` pair is the **"narrow a 64-bit value to 32 bits"** idiom — the same one that
+extracts element 0 of a 128-bit vector ([L-EE-041](LAWS.md#l-ee-041--128-bit-containers-lqsq-a-register-pair-and-no-by-value-return)), so seeing it tells you a 64-bit
+value is being reduced to `int`.
+
+* **Tier T2** · **Source anchor** the EE-specific 64-bit GPR patterns (mainline MIPS would call libgcc; no line
+  read from the shipped tree) · **Constants** `daddu`, `dsll`, and the 32 in `dsll`/`dsra`
+* **Falsifies** the assumption that 64-bit integer arithmetic is out of line like `double`, and that a 64-bit
+  compare needs a helper
+* **Lever** `daddu`/`dsubu`/`dsll`/`dsra`/`dsrl`/`slt` in the target ⇒ a 64-bit integer type
+  ([L-EE-033](LAWS.md#l-ee-033--the-data-model-4-byte-pointers-8-byte-long)); `dsll …,32` + `dsra …,32` ⇒ that value is being narrowed to 32 bits
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O1`/`-O2`/`-Os` with `-G0`, synthetic one-operation functions over
+  `long long`/`unsigned long long`
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).

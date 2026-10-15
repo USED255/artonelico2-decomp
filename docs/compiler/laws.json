@@ -2027,6 +2027,61 @@
       "evidence": [
         "private:out/evidence/ee_gcc_float_vs_double.txt"
       ]
+    },
+    {
+      "id": "L-EE-043",
+      "title": "64-bit integer add, subtract, shift, bitwise and compare are native inline instructions (daddu, dsll, dsra, dsrl, slt); only multiply, divide and modulo call libgcc",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips5900.md",
+        "line": 0,
+        "note": "The 64-bit GPR patterns are EE-specific (mainline MIPS would call libgcc); no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "daddu",
+            "at": "64-bit addition",
+            "means": "the R5900 adds 64-bit values inline"
+          },
+          {
+            "kind": "string",
+            "value": "dsll",
+            "at": "64-bit shift",
+            "means": "shifts are native, not libgcc calls"
+          },
+          {
+            "kind": "int",
+            "value": 32,
+            "at": "dsll then dsra",
+            "means": "the narrow-a-64-bit-value-to-32-bits idiom"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "17.combine"
+      ],
+      "symptom": [
+        "you expect a libgcc call for 64-bit arithmetic and the target has daddu or dsll",
+        "the target has dsll $r,$r,32 followed by dsra $r,$r,32"
+      ],
+      "lever": [
+        "64-bit integer arithmetic is native: daddu/dsubu/daddiu for add, subtract and increment, dsll/dsra/dsrl for shifts, and/or/xor for bitwise, and slt for comparison",
+        "only multiply, divide and modulo leave the function: __muldi3, __divdi3, __moddi3, __udivdi3, __umoddi3 (L-EE-032)",
+        "int to long long is a no-op move because the ABI sign-extends a 32-bit argument; long long to int is dsll $r,$r,32 then dsra $r,$r,32, and unsigned to long long is dsll then dsrl",
+        "the dsll-32-then-dsra-32 pair is the 'narrow a 64-bit value to 32 bits' idiom and is also how element 0 of a128-bit vector is extracted (L-EE-041)"
+      ],
+      "receipt": "At -O1, -O2 and -Os with -G0, identical, and the object contains no R_MIPS_26 relocation for this set. long long a+b is daddu $4,$4,$5; a-b is dsubu; a+1 is daddiu; -a is dsubu $4,$0,$4; a<<4 and a<<n are dsll; a>>4 is dsra (dsrl unsigned); &, | and ^ are and/or/xor; a<b is a single slt; a==b is xor plus sltu ...,1. A long long to int conversion is dsll $4,$4,32 then dsra $4,$4,32, an unsigned to long long conversion is dsll then dsrl, and an int to long long conversion is a bare move. Only multiply, divide and modulo are out of line, which L-EE-032 records as __muldi3, __divdi3, __moddi3, __udivdi3 and __umoddi3.",
+      "falsifies": "the assumption that 64-bit integer arithmetic is out of line like double arithmetic, and that a 64-bit compare needs a helper",
+      "scope": "ee-gcc 3.2-ee-040921 at -O1/-O2/-Os with -G0, synthetic one-operation functions over long long and unsigned long long; 64-bit floating point and 128-bit values are covered by L-EE-029 and L-EE-041",
+      "evidence": [
+        "private:out/evidence/ee_gcc_int64.txt"
+      ]
     }
   ],
   "verification": {

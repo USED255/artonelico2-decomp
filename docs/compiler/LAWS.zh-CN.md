@@ -908,6 +908,37 @@ falsifies：「`double` 像 `float` 一样用 COP1」与「double 比较是 `c.l
 
 ---
 
+## L-EE-043 · 64 位整数是原生运算；只有乘、除、取模走调用
+
+**本项目 41% 的文件用到 `s64`/`u64`。** 与 `double` 不同，64 位**整数**用的是 R5900 原生 64 位 GPR 指令——
+`-O1`/`-O2`/`-Os` 实测一致，且本组夹具的**对象里没有任何 libgcc 重定位**。
+
+| 运算 | 生成 |
+| --- | --- |
+| `a + b` / `a - b` / `a + 1` | **`daddu`** / **`dsubu`** / **`daddiu`** |
+| `-a` | `dsubu $r,$0,$a` |
+| `a << 4`、`a << n` | **`dsll`** |
+| `a >> 4` 有符号 / 无符号 | **`dsra`** / **`dsrl`** |
+| `&`、`|`、`^` | `and` / `or` / `xor` |
+| `a < b` | **`slt`** —— **内联 64 位比较** |
+| `a == b` | `xor` + `sltu …,1`（[L-EE-040](LAWS.md#l-ee-040--comparison-idioms-materialised-as-values-branched-as-conditions)） |
+| `int` → `long long` | **`move`** —— ABI 已把 32 位实参符号扩展 |
+| `long long` → `int` | **`dsll $r,$r,32` + `dsra $r,$r,32`** |
+| `unsigned` → `long long` | `dsll …,32` + **`dsrl …,32`** |
+
+⇒ **同一个 64 位类型，运算不同形态就不同**：`daddu`/`dsll`/`slt` 是内联，而**乘/除/取模会变成
+`jal __muldi3`/`__divdi3`/`__moddi3`**（[L-EE-032](LAWS.md#l-ee-032--division-hardware-div-no-magic-number-constants-64-bit-is-libgcc)）。
+
+`dsll …,32` + `dsra …,32` 是**「把 64 位值收窄成 32 位」的固定习语**——与 128 位向量取第 0 个元素
+（[L-EE-041](LAWS.md#l-ee-041--128-bit-containers-lqsq-a-register-pair-and-no-by-value-return)）是同一个，看到它就知道有个 64 位值被降成了 `int`。
+
+**T2**｜源码锚点：EE 特有的 64 位 GPR 模式（mainline MIPS 会调 libgcc；未从出厂树读到行号）｜常量：`daddu`、`dsll`、以及 `dsll`/`dsra` 里的 32｜
+falsifies：「64 位整数像 `double` 一样全部线下」与「64 位比较需要辅助函数」。
+**杠杆**：目标里 `daddu`/`dsubu`/`dsll`/`dsra`/`dsrl`/`slt` ⇒ 源码用了 **64 位整数类型**（[L-EE-033](LAWS.md#l-ee-033--the-data-model-4-byte-pointers-8-byte-long)）；
+`dsll …,32` + `dsra …,32` ⇒ 该值正被**收窄成 32 位**。
+
+---
+
 ## 仍未解决
 
 * `$L` 计数器精确公式（多标签函数）。
