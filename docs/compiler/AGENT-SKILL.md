@@ -62,9 +62,12 @@ python3 tools/compiler/ee-gcc-anchor.py --cc1 "$CC1" const 0x821e360 --bytes 8
   addresses and jump tables.
 * Do not trust a lower `-O` level, a different `-G`, or a 2.96 build to reproduce 3.2 behaviour: the
   pass numbering differs and 2.96 builds only the CRI middleware here.
-* Do not report a colouring model as "modelled". The current state is recorded in
-  [LAWS.md](LAWS.md) open items: a preference-first heuristic reproduces 34.3% of recorded
-  dispositions, and a source-faithful replay does worse.
+* Do not report a colouring model as "modelled". The current state is [L-EE-018](LAWS.md#l-ee-018--global-allocation-preference-first-then-the-lowest-register-left-after-two-passes-that-first-avoid-registers-other-allocnos-prefer):
+  the measured rule reproduces **46.5%** of held-out dispositions (34.3% for the earlier heuristic, 9.1% for a
+  mainline-modelled replay), and 82.7% when the dynamic conflict set is held at ground truth. Two levers were
+  tried and rejected — a rotating scan start and live-range-derived occupancy. When you add a rule here, test it
+  **both** end-to-end and with the oracle context: a rule that gains end-to-end but loses under the oracle is
+  compensating for the model's own errors, not modelling the compiler.
 
 ## Feeding back
 

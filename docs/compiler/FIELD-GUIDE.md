@@ -158,7 +158,7 @@ the form, and that is a real lever; changing a float's spelling is not.
 **When**: a global is read as a bare symbol in one build and with `lui %hi`/`%lo` in the other, or an
 object lands in a different section.
 
-**Why**: small-data addressing follows `-G` ([L-EE-014](LAWS.md#l-ee-014--small-data-addressing-follows--g-objects-up-to-the--g-size-go-to-sdatasbss-and-are-read-as-a-bare-symbol-gp_rel)).
+**Why**: small-data addressing follows `-G` ([L-EE-014](LAWS.md#l-ee-014--small-data-addressing-follows--g)).
 The project's `MATCHED_CFLAGS` passes no `-G`, so the MIPS default **8** applies: objects up to 8 bytes
 become `gp_rel`, larger objects and all constants stay absolute.
 
@@ -183,6 +183,24 @@ removal moved the frame 176 B → 160 B, exactly two 8-byte slots). Check the ra
 **Caution**: on the function measured here the edit shrank the frame but *lowered* objdiff
 (80.1846 → 78.95184), i.e. the target really does keep that copy. Confirm against the target's
 disassembly (it will show the re-read) before committing to the rewrite.
+
+## Lever 9 — Predict which register the compiler will choose
+
+**When**: the instruction stream matches but registers differ, or you want to know whether a
+respelling can move an allocation.
+
+**Why**: the allocation rule is measured ([L-EE-018](LAWS.md#l-ee-018--global-allocation-preference-first-then-the-lowest-register-left-after-two-passes-that-first-avoid-registers-other-allocnos-prefer)):
+the pool is the class minus the fixed registers (minus the caller-saved set for a call-crossing
+allocno); the banned set is the allocno's hard conflicts plus the registers of the already-placed
+conflicting allocnos; the choice is the first available preference, otherwise the lowest candidate; and
+a first pass also avoids the registers other allocnos prefer.
+
+**Expected movement**: the measured rule reproduces **46.5%** of held-out decisions (34.3% for a
+preference-first heuristic; 82.7% when the occupancy is known exactly). Two levers were tested and
+rejected — a rotating scan start and live-range-derived occupancy — so do not spend time on those.
+
+**Caution**: an early wrong pick cascades. When a prediction disagrees with the target, check whether
+an *earlier* allocno was predicted wrongly before concluding the rule is wrong.
 
 ---
 

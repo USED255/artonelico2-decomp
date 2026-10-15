@@ -51,7 +51,10 @@ python3 tools/compiler/ee-gcc-anchor.py --cc1 "$CC1" const 0x821e360 --bytes 8
 * 不要把 `24.postreload` 的重载簿记当成寄存器引用，它会虚高使用次数。
 * 不要跨不同 TU 布局直接比对象，先归一化绝对地址与跳转表。
 * 不要指望更低的 `-O`、不同的 `-G` 或 2.96 构建能复现 3.2 的行为：pass 编号不同，2.96 在本项目只编 CRI 中间件。
-* 不要把着色模型报告成「已建模」。当前状态记在 [LAWS.md](LAWS.md) 的 Open items：朴素启发式复现 34.3% 的已记录 dispositions，按源码忠实实现反而更差。
+* 不要把着色模型报告成「已建模」。当前状态见 [L-EE-018](LAWS.md#l-ee-018--global-allocation-preference-first-then-the-lowest-register-left-after-two-passes-that-first-avoid-registers-other-allocnos-prefer)：
+  实测规则复现留出集 **46.5%**（此前启发式 34.3%、按 mainline 写的重放 9.1%），把动态冲突集换成真值则 **82.7%**。
+  已试并否证两条杠杆（旋转起点、活跃区间占用集）。新增规则时**同时**测端到端与 oracle 上下文：
+  端到端涨但 oracle 下跌的，是在补偿模型自身的误差，不是在建模编译器。
 
 ## 回填
 

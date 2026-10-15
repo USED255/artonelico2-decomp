@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import os
 import sys
 from pathlib import Path
@@ -141,6 +142,7 @@ def main() -> int:
         check_index(data)
         check_tiers(data)
         check_binary_anchors(data)
+    check_anchors()
     print()
     if FAILURES:
         print(f"FAIL: {len(FAILURES)} of {COUNT} checks failed")
@@ -149,6 +151,33 @@ def main() -> int:
         return 1
     print(f"OK: {COUNT} checks passed")
     return 0
+
+
+def _gh_slug(heading: str) -> str:
+    """GitHub 的标题锚点算法：小写、去标点（保留空格）、每个空格→连字符（**不折叠**）。"""
+    text = heading.lstrip("#").strip().lower()
+    text = re.sub(r"[^\w\s-]", "", text)
+    return text.replace(" ", "-")
+
+
+def check_anchors() -> None:
+    """页内锚点必须指向真实存在的标题。
+
+    为什么单独查：相对**文件**链接有人查（`check_docs.py`），页内 `#anchor` 没人查；
+    改一次标题就会静默产生 46 条死链（2026-10-15 实际发生过）。
+    """
+    base = ROOT / "docs" / "compiler"
+    texts = {p.name: p.read_text(encoding="utf-8") for p in base.glob("*.md")}
+    heads = {name: {_gh_slug(line) for line in text.splitlines() if line.startswith("#")}
+             for name, text in texts.items()}
+    bad = []
+    for name, text in texts.items():
+        for m in re.finditer(r"\]\(([A-Za-z0-9._-]+\.md)#([^)]+)\)", text):
+            target, anchor = m.group(1), m.group(2)
+            if target in heads and anchor not in heads[target]:
+                bad.append(f"{name} -> {target}#{anchor}")
+    check(f"in-page anchors resolve ({sum(len(h) for h in heads.values())} headings)",
+          not bad, "; ".join(bad[:3]))
 
 
 if __name__ == "__main__":

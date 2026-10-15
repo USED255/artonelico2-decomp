@@ -231,7 +231,7 @@ mainline global.c       find_reg (struct allocno *allocno, HARD_REG_SET *allocno
   有一条路径还会查 `reg_alternate_class`。⇒ 选择是**副作用**，
   我此前在 `%eax` 里读到的 `-1` 只是残留值。
 
-同一段反汇编还确认 `sizeof(struct allocno) == 144`：allocno 数组用「×9 再 <<4」索引（[L-EE-003](LAWS.md#l-ee-003--the-ee-register-pressure-model-is-wider-struct-allocno-is-144-b-and-hard_reg_set-is-192-bits)）。
+同一段反汇编还确认 `sizeof(struct allocno) == 144`：allocno 数组用「×9 再 <<4」索引（[L-EE-003](LAWS.md#l-ee-003--register-pressure-is-wider-on-ee-struct-allocno-is-144-b-hard_reg_set-is-192-bits)）。
 
 **T1**｜源码锚点 `global.c:1336`（DWARF）｜二进制锚点 `find_reg @ 0x081acd64`（global.c）与 `find_reg @ 0x08134570`（reload1.c，按地址消歧）｜
 falsifies：「按 mainline 的 `find_reg` 写的重放能复现出厂决策」，以及「`find_reg` 会**返回**选中的寄存器」。
@@ -249,7 +249,7 @@ falsifies：「按 mainline 的 `find_reg` 写的重放能复现出厂决策」�
    **不要**把所有已分配的寄存器都禁掉——那是在冲突表已表达之处重复计算，会掉约 6 个点。
 3. **选择** = 首选列表里第一个仍可用的寄存器；否则取**编号最小**的候选。
 4. **两趟**：第一趟额外避开**别人**首选的寄存器（EE 独有字段 `regs_someone_prefers`），第二趟放开——这正是观测到的
-   阶梯里 `alt_regs_p` 在切换的东西（[L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--it-is-a-two-step-ladder-whose-decision-is-a-side-effect)）。
+   阶梯里 `alt_regs_p` 在切换的东西（[L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--a-two-step-ladder-whose-decision-is-a-side-effect)）。
 
 | 规则 | 留出集复现率（527 个 allocno） |
 | --- | ---: |
@@ -260,7 +260,7 @@ falsifies：「按 mainline 的 `find_reg` 写的重放能复现出厂决策」�
 | 本规则 + 第 4 步两趟（v6） | **46.5%** |
 | v6 + 动态冲突集取真值 | **82.7%** |
 
-**T2**｜源码锚点 `global.c:400`（[L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--it-is-a-two-step-ladder-whose-decision-is-a-side-effect) 的阶梯；规则本身是**实测**而非读出）｜二进制锚点 `reg_renumber @ 0x082ea1ec`、`allocno @ 0x082e8a54`、`allocno_order @ 0x082e8a58`｜
+**T2**｜源码锚点 `global.c:400`（[L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--a-two-step-ladder-whose-decision-is-a-side-effect) 的阶梯；规则本身是**实测**而非读出）｜二进制锚点 `reg_renumber @ 0x082ea1ec`、`allocno @ 0x082e8a54`、`allocno_order @ 0x082e8a58`｜
 falsifies：「把所有已分配的寄存器都禁掉是安全的」（掉约 6 点），以及「mainline 的两趟扫描就是出厂算法」（12.8%）。
 **杠杆**：按上面的池与禁止集预测分配；**剩余误差主要是级联**——早期一次选错会污染后面的冲突集（41.0% → 82.7%）。
 
@@ -288,6 +288,6 @@ falsifies：「把所有已分配的寄存器都禁掉是安全的」（掉约 6
 
 * `$L` 计数器精确公式（多标签函数）。
 * ~~EE 构建的 `FIRST_PSEUDO_REGISTER`~~ —— **已结清：140**，从活 `cc1` 读出（[L-EE-016](LAWS.md#l-ee-016--the-ee-register-file-140-hard-registers-in-29-classes)）。
-* **着色已部分建模。** [L-EE-018](LAWS.md#l-ee-018--global-allocation-the-candidate-set-and-the-selection-rule) 用实测出的候选/选择规则复现留出集 **41.0%** 的决策（此前启发式 34.3%、按 mainline 写的两趟重放 9.1%）；把动态冲突集换成真值后同一规则达 **82.7%** ⇒ 剩余误差主要是**级联**，不是单次判断错。
-  [L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--it-is-a-two-step-ladder-whose-decision-is-a-side-effect) 解释了为什么照搬 mainline 不行：出厂的 `find_reg` 带 `losers` 与三个标志、并按重试阶梯调用（`alt_regs_p` 在切换）。
+* **着色已部分建模。** [L-EE-018](LAWS.md#l-ee-018--global-allocation-preference-first-then-the-lowest-register-left-after-two-passes-that-first-avoid-registers-other-allocnos-prefer) 用实测出的候选/选择规则复现留出集 **46.5%** 的决策（此前启发式 34.3%、按 mainline 写的两趟重放 9.1%）；把动态冲突集换成真值后同一规则达 **82.7%** ⇒ 剩余误差主要是**级联**，不是单次判断错。
+  [L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--a-two-step-ladder-whose-decision-is-a-side-effect) 解释了为什么照搬 mainline 不行：出厂的 `find_reg` 带 `losers` 与三个标志、并按重试阶梯调用（`alt_regs_p` 在切换）。
   下一步：钉住**处理顺序**（`allocno_compare`）与阶梯的精确语义。

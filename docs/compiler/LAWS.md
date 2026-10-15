@@ -407,7 +407,7 @@ by 9 and shifting left 4 ([L-EE-003](#l-ee-003--the-ee-register-pressure-model-i
 
 ---
 
-## L-EE-018 · Global allocation: the candidate set and the selection rule
+## L-EE-018 · Global allocation: preference first, then the lowest register left, after two passes that first avoid registers other allocnos prefer
 
 The rule, fitted by measurement (see the receipt):
 
@@ -432,7 +432,7 @@ The rule, fitted by measurement (see the receipt):
 | v6, with the dynamic conflict set held at ground truth | **82.7%** |
 
 * **Tier T2** · **Source anchor** `global.c:400` (the ladder of
-  [L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--it-is-a-two-step-ladder-whose-decision-is-a-side-effect));
+  [L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--a-two-step-ladder-whose-decision-is-a-side-effect));
   the rule itself is measured, not read · **Binary anchors** `reg_renumber @ 0x082ea1ec`,
   `allocno @ 0x082e8a54`, `allocno_order @ 0x082e8a58`
 * **Falsifies** two assumptions of the earlier replays: that banning every already-assigned register is
@@ -477,11 +477,12 @@ ascending 42.0%, against 38.9% for the printed order) changes the error pattern 
 * The exact `$L` counter formula (multi-label functions).
 * ~~`FIRST_PSEUDO_REGISTER` for the EE build~~ — **settled**: **140**, read from a live `cc1`
   ([L-EE-016](LAWS.md#l-ee-016--the-ee-register-file-140-hard-registers-in-29-classes)).
-* **Colouring is now partially modelled.** [L-EE-018](LAWS.md#l-ee-018--global-allocation-the-candidate-set-and-the-selection-rule)
-  reproduces **41.0%** of held-out decisions with a measured candidate/selection rule, against 34.3% for
+* **Colouring is now partially modelled.** [L-EE-018](LAWS.md#l-ee-018--global-allocation-preference-first-then-the-lowest-register-left-after-two-passes-that-first-avoid-registers-other-allocnos-prefer)
+  reproduces **46.5%** of held-out decisions with a measured candidate/selection rule, against 34.3% for
   the earlier heuristic and 9.1% for a mainline-modelled two-pass replay. The same rule reaches **82.7%**
   when the dynamic conflict set is held at ground truth, so the residual is dominated by **cascade**
-  rather than by the per-decision rule. [L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--it-is-a-two-step-ladder-whose-decision-is-a-side-effect)
+  rather than by the per-decision rule. Two levers were tried and rejected (a rotating scan start, and
+  live-range-derived occupancy). [L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--a-two-step-ladder-whose-decision-is-a-side-effect)
   explains why a mainline port cannot work: the shipped `find_reg` takes a `losers` set plus three flags
   and is called in a retry ladder (`alt_regs_p` toggling). Next: pin the **processing order**
   (`allocno_compare`) and the ladder's precise semantics.

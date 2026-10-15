@@ -68,7 +68,7 @@ objdump -d "$CC1" | grep 'call .*<global_alloc>'
 这正是本手册里重放精度可信的前提。
 
 注意：**逐次追 `find_reg` 不是办法**——它是两级阶梯、结果是副作用
-（[L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--it-is-a-two-step-ladder-whose-decision-is-a-side-effect)），
+（[L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--a-two-step-ladder-whose-decision-is-a-side-effect)），
 长轨迹还会把调试器绊倒。分配后一个断点就能回答。
 
 ## 4. 两个假信号

@@ -77,7 +77,7 @@ holds an **allocno index**, `allocno[num].reg` holds the **pseudo register numbe
 live reading agree — which is what makes the recorded replay scores trustworthy.
 
 Note: tracing *every* `find_reg` call is not the way to do this — the function is a two-step ladder whose
-result is a side effect ([L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--it-is-a-two-step-ladder-whose-decision-is-a-side-effect)),
+result is a side effect ([L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--a-two-step-ladder-whose-decision-is-a-side-effect)),
 and a long trace trips over the debugger. One breakpoint after allocation answers the question.
 
 ## 4. Two false signals
