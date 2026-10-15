@@ -1041,6 +1041,54 @@
       "evidence": [
         "private:out/evidence/ee_gcc_func_alignment.txt"
       ]
+    },
+    {
+      "id": "L-EE-023",
+      "title": "At the project's flags only an 'inline' declaration is inlined: a plain static helper always keeps its call, and always_inline needs inline to work",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "cgraphunit.c",
+        "line": 0,
+        "note": "The inlining gate lives in the inliner (cgraphunit.c/integrate.c in this tree); no line was read from the shipped source, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "flag_inline_functions",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 0,
+            "at": "-O2",
+            "means": "-finline-functions is off at -O2, so plain static functions are not inlined"
+          },
+          {
+            "kind": "int",
+            "value": 1,
+            "at": "-O3",
+            "means": "-finline-functions is on at -O3"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "17.combine"
+      ],
+      "symptom": [
+        "the target has a small helper expanded inline but your candidate emits jal to it, or the reverse",
+        "a static function called exactly once is not inlined even though 'called once' inlining is expected"
+      ],
+      "lever": [
+        "at -O2 only a declaration carrying inline or __inline__ is inlined; add inline to the helper if the target has it expanded",
+        "always_inline has no effect unless the function is also declared inline; with inline it inlines even at -O0",
+        "-finline-functions or -O3 inlines plain static functions too, so check the unit's flags before respelling"
+      ],
+      "receipt": "Assembly-level test at -G0, judging by whether jal helper and a helper: label survive. Plain static: a call at -O0, -O1 and -O2, inlined at -O3 and with -O2 -finline-functions. static inline and plain inline: inlined from -O1 up, a call at -O0. static always_inline alone: a call at -O0/-O1/-O2, inlined at -O3 only. static inline always_inline: inlined even at -O0. A sweep of body sizes 1/2/4/6/8/10/12 statements with 1 and 3 call sites found no size at which a plain static function is inlined at -O2, so 'called once' inlining does not happen at the project's flags either.",
+      "falsifies": "the expectation that -O2 inlines a small static function called once, and the expectation that always_inline works on its own",
+      "scope": "ee-gcc 3.2-ee-040921 at -G0 with -O0/-O1/-O2/-O3 and -finline-functions, synthetic single-helper units",
+      "evidence": [
+        "private:out/evidence/ee_gcc_inlining.txt"
+      ]
     }
   ],
   "verification": {

@@ -66,6 +66,12 @@ FIXTURES: list[tuple[str, str, str, str]] = [
      "return s+v0+v1+v2+v3+v4+v5+v6+v7;}\n",
      r"#\s*vars=\s*0,\s*regs=\s*10/0",
      "L-EE-012: eight call-crossing values fill the save area to its cap of 10 registers"),
+    ("static-not-inlined",
+     "static int helper(int a){return a*3+1;}\nint f(int a){int s=0;s+=helper(a);return s;}\n",
+     r"jal\s+helper", "L-EE-023: a plain static helper keeps its call at -O2"),
+    ("inline-expanded",
+     "static inline int helper(int a){return a*3+1;}\nint f(int a){int s=0;s+=helper(a);return s;}\n",
+     r"!jal\s+helper", "L-EE-023: an inline helper is expanded at -O2"),
     ("gprel-sbss",
      "int g_sbss __attribute__((section(\".sbss\")));\nint f(void){return g_sbss;}\n",
      r"\blw\s+\$\d+,\s*g_sbss", "L-EE-021: a .sbss definition is a bare symbol even at -G0"),
@@ -96,7 +102,11 @@ def selftest(cc: str, flags: list[str], work: Path, verbose: bool) -> int:
             print(f"[FAIL] {name:<26} {exc}", file=sys.stderr)
             failed += 1
             continue
-        ok = re.search(pattern, asm, re.M | re.S) is not None
+        # `!` 前缀 = 该模式必须**不**出现（例如「这里不该还有 jal」）
+        if pattern.startswith("!"):
+            ok = re.search(pattern[1:], asm, re.M | re.S) is None
+        else:
+            ok = re.search(pattern, asm, re.M | re.S) is not None
         if ok:
             passed += 1
             print(f"[ok  ] {name:<26} {why}")

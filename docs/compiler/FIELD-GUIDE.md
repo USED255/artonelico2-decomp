@@ -218,6 +218,22 @@ the object in `.sbss`/`.sdata`.
 the small-data section being discarded by the linker script. If the object must keep its real storage, a
 separate definition is needed.
 
+## Lever 11 — The target inlines a helper, your candidate emits `jal`
+
+**When**: the target has a small helper expanded into its caller, or the reverse (your build keeps a call).
+
+**Why**: at the project's flags (`-O2`, no `-finline-functions`) only a declaration carrying `inline` or
+`__inline__` is inlined; a plain `static` helper always keeps its call, even when called once
+([L-EE-023](LAWS.md#l-ee-023--at-these-flags-only-an-inline-declaration-is-inlined)).
+`always_inline` alone does nothing.
+
+**Expected movement**: adding `inline` to the helper removes the `jal` and the `helper:` label, and the body
+appears in the caller. If that does not reproduce the target, check whether the target unit was built with
+`-O3`/`-finline-functions`.
+
+**Caution**: this is a *source* difference with a large effect on the instruction stream — confirm the helper
+really is expanded in the target before respelling, since an extra `inline` also changes the caller's frame.
+
 ---
 
 ## Recorded but not yet measured locally

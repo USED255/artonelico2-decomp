@@ -591,6 +591,33 @@ So the default is **8-byte** alignment, which pads a 12-byte function to 16; `-f
 
 ---
 
+## L-EE-023 · At these flags only an `inline` declaration is inlined
+
+`-G0`, judging by whether `jal helper` and the `helper:` label survive:
+
+| declaration | -O0 | -O1 | -O2 | -O3 / `-O2 -finline-functions` |
+| --- | --- | --- | --- | --- |
+| `static int helper(...)` | call | call | **call** | inlined |
+| `static inline int helper(...)` | call | **inlined** | **inlined** | inlined |
+| `inline int helper(...)` | call | **inlined** | **inlined** | inlined |
+| `static __attribute__((always_inline))` | call | call | **call** | inlined |
+| `static inline __attribute__((always_inline))` | **inlined** | inlined | inlined | inlined |
+
+At the project's flags — `-O2`, **without** `-finline-functions` — a plain `static` helper **always keeps its
+call**, even when it is small and called exactly once (a sweep over 1–12 statements and 1 or 3 call sites
+found no size that inlines). `always_inline` **needs `inline`** to have any effect, as the 3.2 manual says;
+with it, the function inlines even at `-O0`.
+
+* **Tier T2** · **Source anchor** the inliner (`cgraphunit.c`/`integrate.c`; no line read from the shipped
+  tree) · **Constants** `-finline-functions` off at `-O2`, on at `-O3`
+* **Falsifies** the expectation that `-O2` inlines a small static function called once, and that
+  `always_inline` works alone
+* **Lever** if the target has a helper expanded and your candidate emits `jal`, add `inline` (or check
+  whether that unit was built with `-O3`/`-finline-functions`)
+* **Scope** `ee-gcc 3.2-ee-040921` at `-G0`, `-O0`–`-O3`, synthetic single-helper units
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).

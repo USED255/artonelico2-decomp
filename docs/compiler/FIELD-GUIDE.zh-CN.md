@@ -152,6 +152,19 @@ python3 tools/compiler/ee-gcc-spill-map.py --cc "$EE_GCC" --src candidate.c \
 
 **注意**：这是**寻址**变化、不是存储变化——项目的 gp_rel 类候选依赖该小数据段被链接脚本丢弃。若对象必须保留真实存储，需要另做定义。
 
+## 杠杆 11 —— 目标把助手内联了，候选却发 `jal`
+
+**何时用**：目标把一个小助手展开进了调用者，或反过来（你的构建保留了调用）。
+
+**为什么**：在项目旗标（`-O2`，不带 `-finline-functions`）下，只有带 `inline`/`__inline__` 的声明会被内联；
+普通 `static` 助手**永远保留调用**，即使只被调用一次
+（[L-EE-023](LAWS.md#l-ee-023--at-these-flags-only-an-inline-declaration-is-inlined)）。
+`always_inline` 单独无效。
+
+**预期移动**：给助手加 `inline` 后 `jal` 与 `helper:` 符号消失、函数体出现在调用者里。若这样仍不还原目标，再确认目标单元是否用了 `-O3`/`-finline-functions`。
+
+**注意**：这是对指令流影响很大的**源码**差异——先确认目标里助手**确实**被展开，因为多一个 `inline` 也会改变调用者的帧。
+
 ---
 
 ## 已记录但尚未在本机实测

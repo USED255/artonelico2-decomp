@@ -375,6 +375,27 @@ falsifies：「`-ffunction-sections` 单独就能去掉函数间填充」，以�
 
 ---
 
+## L-EE-023 · 在项目旗标下只有带 `inline` 的声明会被内联
+
+`-G0`，判据是汇编里 `jal helper` 与 `helper:` 是否还在：
+
+| 声明 | -O0 | -O1 | -O2 | -O3 / `-O2 -finline-functions` |
+| --- | --- | --- | --- | --- |
+| `static int helper(...)` | 调用 | 调用 | **调用** | 内联 |
+| `static inline int helper(...)` | 调用 | **内联** | **内联** | 内联 |
+| `inline int helper(...)` | 调用 | **内联** | **内联** | 内联 |
+| `static __attribute__((always_inline))` | 调用 | 调用 | **调用** | 内联 |
+| `static inline __attribute__((always_inline))` | **内联** | 内联 | 内联 | 内联 |
+
+在项目旗标（`-O2`，**不带** `-finline-functions`）下，普通 `static` 助手函数**永远保留调用**——即使它很小、且只被调用一次
+（按 1–12 条语句 × 1/3 次调用遍历，没有任何尺寸会内联）。`always_inline` **必须配合 `inline`** 才生效（与 3.2 手册一致）；配合后在 `-O0` 也内联。
+
+**T2**｜源码锚点：内联器（`cgraphunit.c`/`integrate.c`；未从出厂树读到行号）｜常量：`-O2` 下 `-finline-functions` 关、`-O3` 开｜
+falsifies：「`-O2` 会内联只调用一次的小 static 函数」与「`always_inline` 单独生效」。
+**杠杆**：目标里助手被展开、候选却发 `jal` ⇒ 给助手加 `inline`（或确认该单元是否用了 `-O3`/`-finline-functions`）。
+
+---
+
 ## 仍未解决
 
 * `$L` 计数器精确公式（多标签函数）。
