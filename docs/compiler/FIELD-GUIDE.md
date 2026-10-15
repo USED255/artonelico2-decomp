@@ -202,6 +202,22 @@ rejected — a rotating scan start and live-range-derived occupancy — so do no
 **Caution**: an early wrong pick cascades. When a prediction disagrees with the target, check whether
 an *earlier* allocno was predicted wrongly before concluding the rule is wrong.
 
+## Lever 10 — Get `gp_rel` addressing when the unit is built with `-G0`
+
+**When**: the target reads a global as a **bare symbol** (gp_rel) and your candidate emits `lui %hi`/`%lo`.
+
+**Why**: small-data membership needs a **definition in this translation unit** inside `.sdata`/`.sbss`
+([L-EE-021](LAWS.md#l-ee-021--gp_rel-needs-a-definition-in-this-unit-placed-in-sdatasbss)). At the default
+`-G8` a small object qualifies automatically; at `-G0` it does not, and `weak` does not change that. An
+`extern` declaration (no definition here) is **always** absolute, even with a section attribute.
+
+**Expected movement**: the access changes from `lui` + `%lo` to the bare symbol. `objdump -t` should show
+the object in `.sbss`/`.sdata`.
+
+**Caution**: this is an addressing change, not a storage change — the project's `gp_rel` candidates rely on
+the small-data section being discarded by the linker script. If the object must keep its real storage, a
+separate definition is needed.
+
 ---
 
 ## Recorded but not yet measured locally

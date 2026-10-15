@@ -59,6 +59,12 @@ FIXTURES: list[tuple[str, str, str, str]] = [
      "int f(signed char x){return x < 100;}\n", r"\bsll\b.*\n.*\bsra\b|\bsll\b", "L-EE-013: a narrow signed compare shifts first"),
     ("small-data-off",
      "int g_int;\nint f(void){return g_int;}\n", r"%hi\(g_int\)", "L-EE-014: at -G0 a global is addressed absolutely"),
+    ("gprel-sbss",
+     "int g_sbss __attribute__((section(\".sbss\")));\nint f(void){return g_sbss;}\n",
+     r"\blw\s+\$\d+,\s*g_sbss", "L-EE-021: a .sbss definition is a bare symbol even at -G0"),
+    ("extern-absolute",
+     "extern int g_ext;\nint f(void){return g_ext;}\n", r"%hi\(g_ext\)",
+     "L-EE-021: an extern reference stays absolute"),
 ]
 
 

@@ -945,6 +945,54 @@
       "evidence": [
         "private:out/evidence/ee_gcc_o1_pipeline.txt"
       ]
+    },
+    {
+      "id": "L-EE-021",
+      "title": "gp_rel needs a definition in this translation unit placed in .sdata/.sbss; 'weak' does not help, and an extern reference stays absolute at every -G",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "varasm.c",
+        "line": 0,
+        "note": "Which objects count as small data is decided in the backend plus varasm.c; no line could be read from the shipped tree, so the rule is measured. See L-EE-014 for the -G threshold itself."
+      },
+      "binary_anchor": {
+        "symbol": "mips_section_threshold",
+        "addr": "0x0823ed20",
+        "related": [
+          {
+            "symbol": "g_switch_value",
+            "addr": "0x0830d0c0"
+          }
+        ],
+        "constants": [
+          {
+            "kind": "int",
+            "value": -1,
+            "at": "0x0823ed20",
+            "means": "the 'unset' sentinel; -G or the default 8 decides the threshold"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "a global is addressed with lui %hi/%lo where the target uses the bare symbol, or the reverse",
+        "you declared an object with a small-data section attribute but the addressing did not change"
+      ],
+      "lever": [
+        "at -G0 the only way to get gp_rel is to define the object in this translation unit with section(\".sdata\") or section(\".sbss\")",
+        "weak is irrelevant to the choice: a weak object without a section attribute stays absolute",
+        "an extern declaration cannot be made small-data in any -G setting - the definition has to be in the same translation unit"
+      ],
+      "receipt": "Assembly-level test at -O2 with -G0, the default (-G8) and -G8. Definitions in this unit: a plain int and a weak int are addressed with lui %hi at -G0 and as a bare symbol at the default; the same objects with section(\".sbss\") or section(\".sdata\") are addressed as a bare symbol at -G0 as well, with or without weak. Extern-only references (no definition in the unit) are addressed with lui %hi in every setting, even when the declaration carries a section attribute. objdump -t confirms the section attribute wins for placement: section(\".sbss\") lands in .sbss and section(\".sdata\") in .sdata, while a weak object without an attribute lands in .bss.",
+      "falsifies": "the reading that a weak small-data definition is what produces gp_rel: the section attribute is the operative part, and an extern declaration cannot produce it at all",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 with -G0/-G8/default, synthetic declarations; a link is not needed to observe the addressing form",
+      "evidence": [
+        "private:out/evidence/ee_gcc_gprel_trigger.txt"
+      ]
     }
   ],
   "verification": {

@@ -532,6 +532,36 @@ That is why some functions in this project match only at `-O1`.
 
 ---
 
+## L-EE-021 · `gp_rel` needs a definition in this unit placed in `.sdata`/`.sbss`
+
+[L-EE-014](LAWS.md#l-ee-014--small-data-addressing-follows--g) gives the `-G` threshold. This is the other
+half: which *declarations* become small data.
+
+| declaration (defined in this unit) | `-G0` | default (`-G8`) |
+| --- | --- | --- |
+| `int g;` | `lui %hi` — absolute | **bare symbol** — `gp_rel` |
+| `int g __attribute__((weak));` | **absolute** — `weak` alone does nothing | bare symbol |
+| `int g __attribute__((section(".sbss")));` | **bare symbol** ✔ | bare symbol |
+| `int g __attribute__((section(".sdata"))) = 7;` | **bare symbol** ✔ | bare symbol |
+| `extern int g;` (no definition here) | absolute | **absolute** |
+| `extern int g __attribute__((section(".sbss")));` | absolute | **absolute** |
+
+So at `-G0` — the flag the CRI sources use — the only way to get `gp_rel` is to **define** the object in
+this unit inside `.sdata`/`.sbss`. `weak` is not the operative part, and an `extern` declaration can never
+be made small-data: the definition has to be in the same translation unit.
+
+`objdump -t` confirms the placement: `section(".sbss")` lands in `.sbss`, `section(".sdata")` in `.sdata`,
+while a weak object without an attribute lands in `.bss`.
+
+* **Tier T2** · **Source anchor** `varasm.c` (the small-data decision; no line could be read from the
+  shipped tree) · **Binary anchors** `mips_section_threshold @ 0x0823ed20`, `g_switch_value @ 0x0830d0c0`
+* **Falsifies** the reading that a *weak* small-data definition is what produces `gp_rel`
+* **Lever** when a target uses the bare symbol and the candidate uses `lui %hi`, define the object in this
+  unit inside `.sdata`/`.sbss` — that is what the project's `gp_rel` candidates do; an `extern` cannot
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2` with `-G0`/`-G8`/default, synthetic declarations
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).

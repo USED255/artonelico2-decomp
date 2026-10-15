@@ -140,6 +140,18 @@ python3 tools/compiler/ee-gcc-spill-map.py --cc "$EE_GCC" --src candidate.c \
 
 **注意**：早期一次选错会**级联**。预测与目标不一致时，先检查是不是**更早**的 allocno 预测错了，再怀疑规则。
 
+## 杠杆 10 —— 在 `-G0` 的编译单元里拿到 `gp_rel`
+
+**何时用**：目标用**裸符号**（gp_rel）读全局，而候选发出 `lui %hi`/`%lo`。
+
+**为什么**：要让对象进小数据区，必须在**本编译单元内有定义**并放进 `.sdata`/`.sbss`
+（[L-EE-021](LAWS.md#l-ee-021--gp_rel-needs-a-definition-in-this-unit-placed-in-sdatasbss)）。默认 `-G8` 下小对象自动合格，`-G0` 下不会，而且 **`weak` 不改变这一点**；
+`extern` 声明（本单元无定义）**永远**是绝对寻址，写 section 属性也没用。
+
+**预期移动**：访问形式从 `lui`+`%lo` 变成裸符号；`objdump -t` 应显示该对象在 `.sbss`/`.sdata`。
+
+**注意**：这是**寻址**变化、不是存储变化——项目的 gp_rel 类候选依赖该小数据段被链接脚本丢弃。若对象必须保留真实存储，需要另做定义。
+
 ---
 
 ## 已记录但尚未在本机实测

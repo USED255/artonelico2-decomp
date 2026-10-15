@@ -327,6 +327,30 @@ receipt：上表 + 四条规则在 `-O1`/`-O2` 的对照｜falsifies：「一份
 
 ---
 
+## L-EE-021 · `gp_rel` 要求对象**在本编译单元内定义**并放进 `.sdata`/`.sbss`
+
+[L-EE-014](LAWS.md#l-ee-014--small-data-addressing-follows--g) 给的是 `-G` 阈值；这里补另一半：**哪些声明形式**会成为小数据。
+
+| 声明（在本单元内有定义） | `-G0` | 默认（`-G8`） |
+| --- | --- | --- |
+| `int g;` | `lui %hi` 绝对 | **裸符号** —— `gp_rel` |
+| `int g __attribute__((weak));` | **绝对** —— `weak` 本身没用 | 裸符号 |
+| `int g __attribute__((section(".sbss")));` | **裸符号** ✔ | 裸符号 |
+| `int g __attribute__((section(".sdata"))) = 7;` | **裸符号** ✔ | 裸符号 |
+| `extern int g;`（本单元无定义） | 绝对 | **绝对** |
+| `extern int g __attribute__((section(".sbss")));` | 绝对 | **绝对** |
+
+⇒ 在 `-G0`（CRI 源用的旗标）下，拿到 `gp_rel` 的唯一办法是**在本单元定义**并放进 `.sdata`/`.sbss`；
+**`weak` 不是关键**；而 `extern` 声明**永远**做不到——定义必须在同一编译单元。
+
+`objdump -t` 确认段归属：`section(".sbss")` 进 `.sbss`、`section(".sdata")` 进 `.sdata`；无属性的 weak 对象进 `.bss`。
+
+**T2**｜源码锚点 `varasm.c`（小数据判定；出厂树中未能读到行号）｜二进制锚点 `mips_section_threshold @ 0x0823ed20`、`g_switch_value @ 0x0830d0c0`｜
+falsifies：「产生 `gp_rel` 的是 **weak** 小数据定义」——真正起作用的是 **section 属性**。
+**杠杆**：目标用裸符号、候选用 `lui %hi` 时，把对象**在本单元**定义进 `.sdata`/`.sbss`（项目里 gp_rel 类候选就是这么做的）；`extern` 做不到。
+
+---
+
 ## 仍未解决
 
 * `$L` 计数器精确公式（多标签函数）。
