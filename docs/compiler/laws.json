@@ -1524,6 +1524,60 @@
       "evidence": [
         "private:out/evidence/ee_gcc_divmod.txt"
       ]
+    },
+    {
+      "id": "L-EE-033",
+      "title": "The data model has 4-byte pointers but an 8-byte long: long is 64-bit by default and aligns to 8, and long double is 8 bytes",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips.h",
+        "line": 0,
+        "note": "The type sizes come from the port's SIZE_TYPE/LONG_TYPE_SIZE macros; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 8,
+            "at": "sizeof(long)",
+            "means": "long is 64-bit by default"
+          },
+          {
+            "kind": "int",
+            "value": 4,
+            "at": "sizeof(void*)",
+            "means": "pointers stay 32-bit"
+          },
+          {
+            "kind": "int",
+            "value": 8,
+            "at": "sizeof(long double)",
+            "means": "long double is the same as double"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "a field access in the target uses sd/ld where your reconstruction assumes a 4-byte field",
+        "a struct in your reconstruction is smaller than the target's frame or data usage implies"
+      ],
+      "lever": [
+        "sizeof(long) is 8 on this target - the default is -mlong64, and only -mlong32 makes it 4 - so a long field is loaded and stored with ld/sd and a 64-bit operation on a long goes to libgcc",
+        "pointers are still 4 bytes and long double is 8, i.e. the same as double",
+        "alignment equals the type's size, so an 8-byte member is 8-aligned: struct{char;double} and struct{char;long} are both 16 bytes with the second member at offset 8"
+      ],
+      "receipt": "At -O2 -G0 on this machine, reading the immediates the compiler emits for sizeof: char 1, short 2, int 4, long 8, long long 8, void* 4, float 4, double 8, long double 8. With -mlong32 the same program reports long 4, and with -mlong64 it reports 8, so the default is the 64-bit long. Struct offsets read out of the generated accesses: {char,int} has b at 4; {char,short,int} has b at 2 and c at 4; {char,double}, {char,long long} and {char,long} all place the second member at 8 and are 16 bytes; {int,long long} puts q at 8; {char,long,int,void*} is 24 bytes with l at 8, i at 16 and p at 20.",
+      "falsifies": "the assumption that a 32-bit-pointer target has a 32-bit long, which is the usual ILP32 model",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0 (plus -mlong32/-mlong64 for the switch), synthetic types and structs; bitfields and packed attributes were not measured",
+      "evidence": [
+        "private:out/evidence/ee_gcc_data_model.txt"
+      ]
     }
   ],
   "verification": {

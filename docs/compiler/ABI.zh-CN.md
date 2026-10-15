@@ -16,6 +16,17 @@
 | 聚合 > 8 字节 | **按隐形引用** —— `$4` 里是地址 |
 | 变参里的浮点 | 提升为 `double`，走**整数**序列（[L-EE-031](LAWS.md#l-ee-031--a-variadic-function-saves-the-argument-registers-and-calls-__builtin_va_start)） |
 
+## 数据模型
+
+| 类型 | 尺寸 | 说明 |
+| --- | ---: | --- |
+| `char` / `short` / `int` | 1 / 2 / 4 | |
+| **`long`** | **8** | 默认 `-mlong64`；只有 `-mlong32` 才变 4（[L-EE-033](LAWS.md#l-ee-033--the-data-model-4-byte-pointers-8-byte-long)） |
+| `long long`、`double`、`long double` | 8 | `long double` 同 `double` |
+| 指针 | **4** | 32 位地址 |
+
+对齐 = 自身尺寸，故 8 字节成员按 8 对齐。
+
 ## 返回值
 
 | 结果 | 位置 |

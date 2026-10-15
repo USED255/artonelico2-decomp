@@ -29,6 +29,7 @@ Start from the shape in front of you, not from the law list.
 | `sltu`/`beqz` then `lw` + `jr $reg` | [L-EE-010](LAWS.md#l-ee-010--a-switch-becomes-a-jump-table-only-when-count--5-and-range--10--count) — a dense switch became a table |
 | `lui %hi(sym)` where the target reads a bare symbol | [L-EE-014](LAWS.md#l-ee-014--small-data-addressing-follows--g) and [L-EE-021](LAWS.md#l-ee-021--gp_rel-needs-a-definition-in-this-unit-placed-in-sdatasbss) — gp_rel needs a definition **here** in `.sdata`/`.sbss` |
 | `lwc1` loading a float | [L-EE-011](LAWS.md#l-ee-011--float-constants-come-from-the-pool-a-double-is-inline-when-its-low-32-bits-are-zero) on 3.2; on 2.96 check [L-EE-019](LAWS.md#l-ee-019--the-float-rule-is-version-specific-296-inlines-32-uses-the-pool) |
+| `ld` / `sd` on a struct field | [L-EE-033](LAWS.md#l-ee-033--the-data-model-4-byte-pointers-8-byte-long) — the field is `long`/`long long`/`double`; `long` is 8 bytes here |
 | `li` + `div`, or `jal __divdi3` / `__muldi3` | [L-EE-032](LAWS.md#l-ee-032--division-hardware-div-no-magic-number-constants-64-bit-is-libgcc) — a non-power-of-two constant divisor, or a source using `long long` |
 | `jal dpadd` / `dpmul` / `dpcmp` | [L-EE-029](LAWS.md#l-ee-029--single-precision-is-hardware-double-precision-is-soft-float) — the source uses `double`; there is no `add.d` in this build |
 | `lui`/`ori` then `mtc1` | [L-EE-019](LAWS.md#l-ee-019--the-float-rule-is-version-specific-296-inlines-32-uses-the-pool) (2.96 materialises every float inline) |

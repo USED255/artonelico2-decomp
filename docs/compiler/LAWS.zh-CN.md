@@ -610,6 +610,37 @@ falsifies：「常量除法会变成乘魔法数」与「64 位乘法是内联�
 
 ---
 
+## L-EE-033 · 数据模型：4 字节指针、**8 字节 `long`**
+
+| 类型 | 尺寸 | | 类型 | 尺寸 |
+| --- | ---: | --- | --- | ---: |
+| `char` | 1 | | 指针 | **4** |
+| `short` | 2 | | `float` | 4 |
+| `int` | 4 | | `double` | 8 |
+| **`long`** | **8** | | `long double` | **8** |
+| `long long` | 8 | | | |
+
+默认就是 **`-mlong64`**（只有 `-mlong32` 才让 `long` 变 4）⇒ `long` 字段用 `ld`/`sd` 读写，
+对 `long` 的 64 位算术与 `long long` 一样走 libgcc
+（[L-EE-032](LAWS.md#l-ee-032--division-hardware-div-no-magic-number-constants-64-bit-is-libgcc)）。
+
+对齐 = 自身尺寸，所以 8 字节成员按 8 对齐：
+
+| 结构体 | 偏移 | 尺寸 |
+| --- | --- | ---: |
+| `{char a; int b;}` | a@0, b@4 | 8 |
+| `{char a; short b; int c;}` | a@0, b@2, c@4 | 8 |
+| `{char a; double d;}` | a@0, **d@8** | 16 |
+| `{char a; long l;}` | a@0, **l@8**（`sd`） | 16 |
+| `{char a; long l; int i; void *p;}` | a@0, **l@8**, i@16, p@20 | 24 |
+
+**T2**｜源码锚点：该 port 的尺寸宏（`config/mips/mips.h`；未从出厂树读到行号）｜常量：`long` 8、指针 4、`long double` 8｜
+falsifies：「32 位指针的目标必然有 32 位 `long`」（常见 ILP32 直觉）。
+**杠杆**：目标里字段用 `ld`/`sd` ⇒ 该字段是 `long`/`long long`/`double`，不是 `int`；
+结构体尺寸对不上，通常是 `long` vs `int` 或 8 字节对齐的问题。
+
+---
+
 ## 仍未解决
 
 * `$L` 计数器精确公式（多标签函数）。

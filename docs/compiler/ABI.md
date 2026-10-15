@@ -16,6 +16,17 @@ Measured on this machine at `-O2 -G0`; each row links to the law with its receip
 | aggregate > 8 bytes | **by invisible reference** — the pointer is in `$4` |
 | variadic floats/doubles | promoted to `double` and passed in the **integer** sequence ([L-EE-031](LAWS.md#l-ee-031--a-variadic-function-saves-the-argument-registers-and-calls-__builtin_va_start)) |
 
+## Data model
+
+| type | size | note |
+| --- | ---: | --- |
+| `char` / `short` / `int` | 1 / 2 / 4 | |
+| **`long`** | **8** | the default is `-mlong64`; only `-mlong32` makes it 4 ([L-EE-033](LAWS.md#l-ee-033--the-data-model-4-byte-pointers-8-byte-long)) |
+| `long long`, `double`, `long double` | 8 | `long double` is the same as `double` |
+| pointer | **4** | 32-bit addresses |
+
+Alignment equals size, so an 8-byte member is 8-aligned.
+
 ## Returns
 
 | result | travels in |

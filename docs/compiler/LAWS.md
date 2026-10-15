@@ -888,6 +888,41 @@ Every 64-bit operation is a libgcc call, **including multiplication**, unlike th
 
 ---
 
+## L-EE-033 · The data model: 4-byte pointers, **8-byte `long`**
+
+| type | size | | type | size |
+| --- | ---: | --- | --- | ---: |
+| `char` | 1 | | pointer | **4** |
+| `short` | 2 | | `float` | 4 |
+| `int` | 4 | | `double` | 8 |
+| **`long`** | **8** | | `long double` | **8** |
+| `long long` | 8 | | | |
+
+The default is **`-mlong64`** — only `-mlong32` makes `long` 4 bytes — so a `long` field is loaded and stored
+with `ld`/`sd` and 64-bit arithmetic on a `long` goes to libgcc just like `long long`
+([L-EE-032](LAWS.md#l-ee-032--division-hardware-div-no-magic-number-constants-64-bit-is-libgcc)).
+
+Alignment equals the type's size, so an 8-byte member is 8-aligned:
+
+| struct | offsets | size |
+| --- | --- | ---: |
+| `{char a; int b;}` | a@0, b@4 | 8 |
+| `{char a; short b; int c;}` | a@0, b@2, c@4 | 8 |
+| `{char a; double d;}` | a@0, **d@8** | 16 |
+| `{char a; long l;}` | a@0, **l@8** (`sd`) | 16 |
+| `{char a; long l; int i; void *p;}` | a@0, **l@8**, i@16, p@20 | 24 |
+
+* **Tier T2** · **Source anchor** the port's size macros (`config/mips/mips.h`; no line read from the shipped
+  tree) · **Constants** 8 for `long`, 4 for a pointer, 8 for `long double`
+* **Falsifies** the assumption that a 32-bit-pointer target has a 32-bit `long` (the usual ILP32 model)
+* **Lever** `ld`/`sd` on a field in the target ⇒ that field is `long`/`long long`/`double`, not `int`; a
+  struct whose size disagrees with your reconstruction is usually a `long` vs `int` or 8-byte-alignment
+  mistake
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`, synthetic types and structs; bitfields and
+  `__attribute__((packed))` were not measured
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).
