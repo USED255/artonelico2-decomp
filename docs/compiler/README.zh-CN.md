@@ -20,6 +20,7 @@
 | [DIAGNOSTICS.md](DIAGNOSTICS.zh-CN.md) | 从「diff 不对」走到「这个 pass 负责」：第一分叉流程、两个假信号、什么时候别用模型 |
 | [FIELD-GUIDE.md](FIELD-GUIDE.zh-CN.md) | 能移动读数的源写法，以及每种写法移动哪个读数 |
 | [CASE-STUDY.zh-CN.md](CASE-STUDY.zh-CN.md) | 一个函数从头走到尾：工具、查过的 law、试过的改动，以及为什么否掉它 |
+| [CASE-STUDY-LARGE.zh-CN.md](CASE-STUDY-LARGE.zh-CN.md) | 大函数：把帧当作结构指纹、能让它变 6.5 倍的改法，以及那个什么也改不动的改法 |
 | [SOURCE-STUDY.zh-CN.md](SOURCE-STUDY.zh-CN.md) | 有哪些源码、没有哪些、规则怎么对锚，以及为什么社区 EE 补丁是另一棵树 |
 | [AGENT-SKILL.md](AGENT-SKILL.zh-CN.md) | agent（或赶时间的人）跑的循环：测量 → 定位 pass → 查 law → 用杠杆 → 复测 |
 | [ABI.zh-CN.md](ABI.zh-CN.md) | 一页看懂调用约定：实参与返回值走哪里、帧怎么算、怎么反推目标签名 |
@@ -37,7 +38,7 @@
 | `tools/compiler/ee-gcc-passdiff.py` | 编译同一函数的两种写法，报出第一个分叉的 pass |
 | `tools/compiler/ee-gcc-spill-map.py` | 把过大的帧映射到区块与源码行，并把每次溢出溯源到定义该值的那一行 |
 | `tools/compiler/ee-gcc-coverage.py` | 测量手册解释了一份反汇编的多少，并把剩下的分成「只能来自汇编」与「尚未解释」 |
-| `tools/compiler/ee-gcc-observe.py` | 编译 77 组合成夹具并断言「本手册说必须出现的东西」（`--selftest`），或对你自己的文件打印帧/常量池/助记符观测 |
+| `tools/compiler/ee-gcc-observe.py` | 编译 79 组合成夹具并断言「本手册说必须出现的东西」（`--selftest`），或对你自己的文件打印帧/常量池/助记符观测 |
 
 `make check` 会跑 law 数据校验、二进制锚点复核，以及上述每条命令的冒烟测试。
 

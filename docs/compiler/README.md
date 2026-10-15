@@ -25,6 +25,7 @@ such question with evidence, and each lever names the source spelling that moves
 | [DIAGNOSTICS.md](DIAGNOSTICS.md) · [中文](DIAGNOSTICS.zh-CN.md) | From "the diff looks wrong" to "this pass owns it": the first-divergence workflow, its two false signals, and when the model should not be used at all |
 | [FIELD-GUIDE.md](FIELD-GUIDE.md) · [中文](FIELD-GUIDE.zh-CN.md) | The source spellings that move a measurement, with the measurement each one moves |
 | [CASE-STUDY.md](CASE-STUDY.md) · [中文](CASE-STUDY.zh-CN.md) | One function end to end: the tools, the laws consulted, the edit tried, and why it was rejected |
+| [CASE-STUDY-LARGE.md](CASE-STUDY-LARGE.md) · [中文](CASE-STUDY-LARGE.zh-CN.md) | A large function: the frame as a structural fingerprint, the edit that moves it 6.5×, and the edit that moves nothing |
 | [SOURCE-STUDY.md](SOURCE-STUDY.md) · [中文](SOURCE-STUDY.zh-CN.md) | What source exists, what does not, how a rule is anchored, and why the community EE patches are a different tree |
 | [AGENT-SKILL.md](AGENT-SKILL.md) · [中文](AGENT-SKILL.zh-CN.md) | The loop an agent (or a hurried person) runs: measure -> localise the pass -> look up the law -> apply the lever -> re-measure |
 | [ABI.md](ABI.md) · [中文](ABI.zh-CN.md) | The calling convention on one page: where every argument and return value travels, the frame, and how to read a target signature |
@@ -42,7 +43,7 @@ such question with evidence, and each lever names the source spelling that moves
 | `tools/compiler/ee-gcc-passdiff.py` | compile two spellings of one function and report the first pass that diverges |
 | `tools/compiler/ee-gcc-spill-map.py` | map a too-large frame onto its blocks and source lines, and trace each spill to the line that defined the value |
 | `tools/compiler/ee-gcc-coverage.py` | measure how much of a disassembly the handbook explains, and split what is left into assembly-only and unexplained |
-| `tools/compiler/ee-gcc-observe.py` | compile seventy-seven synthetic fixtures and assert what this handbook says must appear (`--selftest`), or print frame/pool/mnemonic observations for your own file |
+| `tools/compiler/ee-gcc-observe.py` | compile seventy-nine synthetic fixtures and assert what this handbook says must appear (`--selftest`), or print frame/pool/mnemonic observations for your own file |
 
 `make check` runs the law data check, the binary-anchor re-verification and a smoke test of every command
 above.

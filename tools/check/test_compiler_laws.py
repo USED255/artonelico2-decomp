@@ -259,7 +259,7 @@ def check_quick_reference(data: dict) -> None:
     if observe.exists():
         body = observe.read_text(encoding="utf-8")
         actual = len(re.findall(r'^    \("', body, re.M))
-        words = {52: "fifty-two", 74: "seventy-four", 77: "seventy-seven"}
+        words = {52: "fifty-two", 74: "seventy-four", 77: "seventy-seven", 79: "seventy-nine"}
         for page, pat in ((Path(__file__).resolve().parents[2] / "docs" / "compiler" / "README.md", "synthetic fixtures"),
                           (Path(__file__).resolve().parents[2] / "tools" / "README.md", "synthetic fixtures")):
             if page.exists():
