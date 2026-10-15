@@ -241,7 +241,25 @@ def check_published(root: Path = ROOT) -> None:
             bad("the sha256 of toolchain.lock.json does not match PUBLISHED.json")
         else:
             ok("the publication record agrees: toolchain.lock.json")
-    ok(f"the publication record is consistent (source_revision={str(pub.get('source_revision'))[:12]})")
+    # The record must name the commit the verified run built (see P-112). The live record is checked
+    # on every run now that the corrected publication is on `main`; a legacy baseline without a
+    # `source_commit` keeps the old, weaker report.
+    # 记录里的 source_revision 必须是**被验证那次运行**所用的提交（P-112）。线上记录纠正之后，
+    # 这条检查在每次运行都会执行；没有 source_commit 的旧基线仍按原来的弱口径放行。
+    base_doc = {}
+    base_path = root / "progress" / "baseline.json"
+    if base_path.is_file():
+        try:
+            base_doc = json.loads(base_path.read_text(encoding="utf-8"))
+        except Exception:
+            base_doc = {}
+    rev = str(pub.get("source_revision") or "")
+    committed = str(base_doc.get("source_commit") or "")
+    if committed and rev != committed:
+        bad(f"PUBLISHED.json source_revision ({rev[:12]!r}) is not the commit the baseline provenance "
+            f"verified ({committed[:12]!r})")
+    else:
+        ok(f"the publication record is consistent (source_revision={rev[:12]})")
 
 
 def check_deny(root: Path = ROOT) -> None:
