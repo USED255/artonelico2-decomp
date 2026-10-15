@@ -1626,6 +1626,60 @@
       "evidence": [
         "private:out/evidence/ee_gcc_os_and_levels.txt"
       ]
+    },
+    {
+      "id": "L-EE-035",
+      "title": "Bitfields are allocated LSB-first in a container the size of the declared type and never straddle a 32-bit boundary; reads are narrowed and sign-extended, writes are masked read-modify-writes",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "stor-layout.c",
+        "line": 0,
+        "note": "Bitfield layout is decided by stor-layout.c plus the backend's bitfield access patterns; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": -65536,
+            "at": "li before and",
+            "means": "a 64-bit mask is built for a bitfield write"
+          },
+          {
+            "kind": "int",
+            "value": 4,
+            "at": "sizeof(struct{unsigned a:1;b:3;c:12;d:16;})",
+            "means": "four bitfields totalling 32 bits take one word"
+          },
+          {
+            "kind": "int",
+            "value": 8,
+            "at": "sizeof(struct{unsigned a:20;b:20;})",
+            "means": "40 bits cannot fit one word, so a second word is used"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "a field read uses lh or lbu instead of lw",
+        "a write contains li with a negative value followed by and/or"
+      ],
+      "lever": [
+        "bitfields fill their container from the least significant bit upward and never straddle a 32-bit boundary, so {unsigned a:20; unsigned b:20;} is 8 bytes with b in the second word",
+        "a read is narrowed to the smallest aligned access: a 16-bit field on a 16-bit boundary is a bare lhu, an unsigned field otherwise is lw plus srl plus andi, and a signed field is a sign-extending load (lh/lbu) plus sra",
+        "a write is a masked read-modify-write: li with a 64-bit negative mask, and/or, then sw - the mask immediate is the giveaway"
+      ],
+      "receipt": "At -O2 -G0 on this machine. Layout and sizes: struct{unsigned a:1;b:3;c:12;d:16;} is 4 bytes with the fields at bits 0, 1, 4 and 16; struct{int a:1;b:3;c:12;d:16;} is also 4; struct{unsigned char a:3;b:5;} is 1 byte; struct{unsigned short a:4;b:12;} is 2; and struct{unsigned a:20;b:20;} is 8, with the second field starting in the second word rather than straddling. Reads: an unsigned 3-bit field at bit 1 is lw + srl 1 + andi 0x7; an unsigned 16-bit field at bit 16 is a bare lhu $2,2($4); a signed 12-bit field at bit 4 is lh $2,0($4) + sra 4; a 5-bit field in an unsigned char container is lbu + srl 3. Writes: p->c = v becomes lw, li $15,-65536 (a 64-bit mask), andi $5,$5,0xfff, ori $15,$15,0xf, and, sll $5,$5,4, or, sw.",
+      "falsifies": "the assumption that every bitfield read is a masked lw (aligned fields use a narrower load) and that a write is a shift-and-insert",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0, synthetic structures with 1- to 20-bit fields in char, short and int containers; packed attributes and bitfields wider than their container were not measured",
+      "evidence": [
+        "private:out/evidence/ee_gcc_bitfields.txt"
+      ]
     }
   ],
   "verification": {

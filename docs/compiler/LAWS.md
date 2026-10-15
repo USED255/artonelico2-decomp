@@ -962,6 +962,48 @@ that flag will not match.
 
 ---
 
+## L-EE-035 · Bitfields: LSB-first, no 32-bit straddling, narrowed reads and masked writes
+
+| structure | size | layout |
+| --- | ---: | --- |
+| `{unsigned a:1; b:3; c:12; d:16;}` | **4** | bits 0, 1, 4, 16 |
+| `{int a:1; b:3; c:12; d:16;}` | **4** | same |
+| `{unsigned char a:3; b:5;}` | **1** | container = `unsigned char` |
+| `{unsigned short a:4; b:12;}` | **2** | container = `unsigned short` |
+| `{unsigned a:20; b:20;}` | **8** | **no straddling** — the second field starts in the second word |
+
+Reads are **narrowed to the smallest aligned access**:
+
+| field | code |
+| --- | --- |
+| unsigned 3-bit at bit 1 | `lw` + `srl 1` + `andi 0x7` |
+| unsigned 16-bit at bit 16 | a bare **`lhu $2,2($4)`** |
+| **signed** 12-bit at bit 4 | **`lh $2,0($4)` + `sra 4`** |
+| 5 bits inside `unsigned char` | `lbu` + `srl 3` |
+
+Writes are **masked read-modify-writes**, and the mask comes from a **64-bit immediate**:
+
+```asm
+lw   $14,0($4)
+li   $15,-65536        # 0xffffffffffff0000
+ori  $15,$15,0xf
+and  $14,$14,$15       # clear
+sll  $5,$5,4
+or   $14,$14,$5        # insert
+sw   $14,0($4)
+```
+
+* **Tier T2** · **Source anchor** `stor-layout.c` plus the backend's access patterns (no line read from the
+  shipped tree) · **Constants** the mask −65536, sizes 4 and 8
+* **Falsifies** the assumption that every bitfield read is a masked `lw` (aligned fields use a narrower load)
+  and that a write is a shift-and-insert
+* **Lever** `lh`/`lbu` + `sra` ⇒ a **signed** bitfield; `lw` + `srl` + `andi` ⇒ an unsigned one; a bare `lhu`
+  ⇒ an aligned 16-bit field; `li` with a negative value before `and`/`or` ⇒ a bitfield **write**
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`, synthetic 1- to 20-bit fields in `char`, `short` and `int`
+  containers; `packed` and fields wider than their container were not measured
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).
