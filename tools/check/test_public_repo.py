@@ -256,17 +256,20 @@ def provenance_for(rep: bytes, measures: dict, **over) -> dict:
     return prov
 
 
-def published_json(report_sha: str, baseline_sha: str, lock_sha: str, *, verified: bool = True) -> dict:
+def published_json(report_sha: str, baseline_sha: str, lock_sha: str, *, verified: bool = True,
+                   source_revision: str = "b" * 40) -> dict:
+    # `source_revision` defaults to the provenance's `source_commit` (see provenance_for): the record
+    # must name the commit the verified run built, not the commit that published it (P-112).
     return {"schema": "at2-published/2",
             "report": {"path": "progress/SLPS_258.19_report.json", "sha256": report_sha},
             "baseline": {"path": "progress/baseline.json", "sha256": baseline_sha},
             "toolchain_lock_sha256": lock_sha, "payload_sha1": PAYLOAD,
-            "payload_verified": verified, "source_revision": "a" * 40}
+            "payload_verified": verified, "source_revision": source_revision}
 
 
 def publication_repo(name: str, *, new_matched: int = 11, old_matched: int = 10,
-                     prov_over: dict | None = None, extra_file: str | None = None,
-                     break_hash: bool = False):
+                     prov_over: dict | None = None, pub_over: dict | None = None,
+                     extra_file: str | None = None, break_hash: bool = False):
     """A repo whose base commit holds a legacy publication and whose HEAD holds a publication."""
     repo = WORK / name
     repo.mkdir(parents=True, exist_ok=True)
@@ -288,9 +291,9 @@ def publication_repo(name: str, *, new_matched: int = 11, old_matched: int = 10,
     prov_b = (json.dumps(prov, indent=1) + "\n").encode()
     (repo / "progress" / "SLPS_258.19_report.json").write_bytes(new)
     (repo / "progress" / "baseline.json").write_bytes(prov_b)
-    (repo / "PUBLISHED.json").write_text(
-        json.dumps(published_json(sha_of(new + (b"\n" if break_hash else b"")), sha_of(prov_b), lock_sha)),
-        encoding="utf-8")
+    pub = published_json(sha_of(new + (b"\n" if break_hash else b"")), sha_of(prov_b), lock_sha)
+    pub.update(pub_over or {})
+    (repo / "PUBLISHED.json").write_text(json.dumps(pub), encoding="utf-8")
     if extra_file:
         (repo / extra_file).write_text("sneaky\n", encoding="utf-8")
     git(repo, "add", "-A")
@@ -325,6 +328,10 @@ check("a record that does not match its file is refused",
 
 repo, base = publication_repo("pub-regress", new_matched=5)
 check("a regression is refused", any("regression" in m for m in run_pub(repo, base)), bad_text())
+
+repo, base = publication_repo("pub-rev-mismatch", pub_over={"source_revision": "c" * 40})
+check("a record that names a revision the run did not build is refused",
+      any("is not the commit the baseline provenance verified" in m for m in run_pub(repo, base)), bad_text())
 
 repo, base = publication_repo("pub-mixed", extra_file="sneaky.txt")
 check("a mixed change is refused",

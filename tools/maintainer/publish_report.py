@@ -176,8 +176,17 @@ def baseline_warning() -> str | None:
     return None
 
 
-def write_published(*, payload_sha1: str, payload_verified: bool, force_reason: str = "") -> int:
-    """Rewrite PUBLISHED.json atomically. Returns non-zero when a hashed file is missing."""
+def write_published(*, source_revision: str, payload_sha1: str, payload_verified: bool,
+                    force_reason: str = "") -> int:
+    """Rewrite PUBLISHED.json atomically. Returns non-zero when a hashed file is missing.
+
+    `source_revision` is the commit the **verified run** built, not the commit that publishes:
+    publishing from a branch would otherwise record a revision CI never saw (P-112). Callers pass
+    the provenance's `source_commit`; `--refresh` keeps the value already in the record.
+    `source_revision` 是**被验证的那次运行**所用的提交，而不是执行发布动作的提交：否则从分支发布
+    就会记下一个 CI 从未验证过的版本（P-112）。发布路径传 provenance 的 `source_commit`；
+    `--refresh` 沿用记录里已有的值。
+    """
     for f in (REPORT, BASELINE, LOCK):
         if not f.is_file():
             print(f"FAIL: cannot update PUBLISHED.json: {f.relative_to(ROOT)} is missing", file=sys.stderr)
@@ -187,7 +196,7 @@ def write_published(*, payload_sha1: str, payload_verified: bool, force_reason: 
         "project": "Ar tonelico II: Melody of Metafalica — matching decompilation",
         "target": "SLPS_258.19",
         "published_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-        "source_revision": _git_head(),
+        "source_revision": source_revision or _git_head(),
         # The value the publication refers to, plus whether this tool verified it. `--refresh`
         # writes the toolchain lock's expectation and records `payload_verified: false`.
         # 本次发布指向的载荷 sha1，以及本工具是否**实测**过它。`--refresh` 只写锁文件里的期望值，
@@ -226,6 +235,10 @@ def check() -> int:
             problems.append(f"{key} does not match PUBLISHED.json")
     if pub.get("toolchain_lock_sha256") != sha256(LOCK):
         problems.append("toolchain.lock.json does not match PUBLISHED.json")
+    base_doc = at2_io.guarded_json_load(BASELINE) or {}
+    if str(pub.get("source_revision") or "") != str(base_doc.get("source_commit") or ""):
+        problems.append("source_revision is not the commit the baseline provenance verified "
+                        f"({str(pub.get('source_revision'))[:12]!r} vs {str(base_doc.get('source_commit'))[:12]!r})")
     problems += regression_problems(measures(REPORT), measures(BASELINE))
     warn = baseline_warning()
     if warn:
@@ -257,7 +270,12 @@ def main() -> int:
               "provenance record, not a copy of the report", file=sys.stderr)
         return 2
     if a.refresh:
-        return write_published(payload_sha1=_lock_payload_sha1(), payload_verified=False) or check()
+        # A refresh only re-hashes the files, so it must not rewrite the verified revision that the
+        # record already carries (the local HEAD is a different commit). P-112.
+        # refresh 只重算哈希，不能改写记录里已经写好的「被验证版本」（本地 HEAD 是另一个提交）。P-112。
+        prev = at2_io.guarded_json_load(PUB) or {}
+        return write_published(source_revision=str(prev.get("source_revision") or ""),
+                               payload_sha1=_lock_payload_sha1(), payload_verified=False) or check()
     if a.check or not a.report:
         return check()
 
@@ -300,7 +318,11 @@ def main() -> int:
         print("the baseline now holds the provenance record")
     payload = (prov or {}).get("payload_check") if isinstance(prov, dict) else None
     payload_sha1 = str((payload or {}).get("mixed_sha1") or "") or _lock_payload_sha1()
-    return write_published(payload_sha1=payload_sha1,
+    # Prefer the provenance's own commit; `--force` without a provenance falls back to the local HEAD.
+    # 优先用 provenance 自带的提交；`--force` 且没给 provenance 时才回落到本地 HEAD。
+    source_revision = str((prov or {}).get("source_commit") or "") if isinstance(prov, dict) else ""
+    return write_published(source_revision=source_revision,
+                           payload_sha1=payload_sha1,
                            payload_verified=bool((payload or {}).get("ok")),
                            force_reason=a.reason.strip() if a.force else "")
 
