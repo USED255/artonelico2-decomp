@@ -716,7 +716,7 @@
     },
     {
       "id": "L-EE-017",
-      "title": "The shipped global.c find_reg is not mainline's: it takes (num, losers, alt_regs_p, accept_call_clobbered, retrying) and the caller retries it, toggling alt_regs_p",
+      "title": "The shipped global.c find_reg is not mainline's: a two-step alt_regs ladder whose decision is a side effect, not a return value",
       "tier": "T1",
       "ee_specific": true,
       "source_anchor": {
@@ -746,11 +746,12 @@
         "an allocno is queried repeatedly with the same conflicts"
       ],
       "lever": [
-        "model the allocation as a retry ladder: the caller calls find_reg again with alt_regs_p toggled, and a return of -1 means no register was found",
-        "do not port mainline's two-pass scan: the shipped scan takes a losers set and three flags"
+        "model the decision as a two-step ladder that writes the result as a side effect; alt_regs_p 0 is the first try and 1 the retry",
+        "do not read find_reg's return value: at the call sites it is discarded immediately",
+        "an allocno with no register is detected by the caller as a negative signed 16-bit entry, not by a return code"
       ],
-      "receipt": "gdb on the shipped cc1: `info args` at global.c:1336 prints find_reg (num=0, losers=0x0, alt_regs_p=0, accept_call_clobbered=0, retrying=0), where mainline declares find_reg (struct allocno *, HARD_REG_SET *). A traced run on a 10-parameter fixture shows one call for allocno 0 and, for allocno 2, the sequence alt=0, alt=1, alt=0, alt=1 - the caller retries with alternate registers. find_reg does not write allocno[num].reg (the caller stores the result) and returns -1 when it fails. struct allocno is 144 B and carries five HARD_REG_SETs including the EE-only regs_someone_prefers.",
-      "falsifies": "the assumption that a replay built on mainline's find_reg can reproduce the shipped decisions - the structural reason the faithful replay scores 9.1% (and 9.9% with the real runtime class tables) against a 34.3% preference-first heuristic",
+      "receipt": "gdb on the shipped cc1: `info args` at global.c:1336 prints find_reg (num=0, losers=0x0, alt_regs_p=0, accept_call_clobbered=0, retrying=0), where mainline declares find_reg (struct allocno *, HARD_REG_SET *). The function is called as a two-step ladder from two independent sites - 0x81aad68/0x81aadbe (global_init) and 0x81aa4ba/0x81aa520 (global_alloc) - with alt_regs_p 0 then 1 (losers NULL, the other flags zero in every observed call). At both external sites the return value is discarded: the instruction after the call immediately overwrites %eax (0x81aad6d, 0x81aa4bf), and the caller then reads a signed 16-bit per-register array (cmpw + js) to decide that an allocno has no register; one path also consults reg_alternate_class. So the choice is a side effect, not a return value, and the earlier reading of -1 in %eax was leftover. The same listing confirms sizeof(struct allocno) = 144 from the scaling (x9 then <<4) that indexes the allocno array.",
+      "falsifies": "the assumption that a replay built on mainline's find_reg can reproduce the shipped decisions (the structural reason a faithful replay scores 9.1%, and 9.9% with the real runtime class tables, against a 34.3% preference-first heuristic), and the reading that find_reg returns the chosen register",
       "scope": "ee-gcc 3.2-ee-040921, observed on this machine with gdb; the retry ladder is shown for one fixture, other flag combinations (retrying, accept_call_clobbered) were zero in that sample",
       "evidence": [
         "private:out/evidence/ee_gcc_find_reg_trace.txt"

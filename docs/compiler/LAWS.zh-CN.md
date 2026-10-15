@@ -205,22 +205,29 @@ receipt：上表（活进程读出）。这些数组在 `.bss`、启动时填充
 falsifies：「EE 寄存器文件可以按 mainline MIPS 近似」，以及「这些表读不出来」。
 **杠杆**：只在 `reg_class_contents[类] − fixed_reg_set` 内分配；跨调用的 allocno 再去掉 `call_used_reg_set`。
 
-## L-EE-017 · 出厂的 `find_reg` **不是** mainline 那个——它是一套带标志的**重试阶梯**
+## L-EE-017 · 出厂的 `find_reg` **不是** mainline 那个——两级阶梯，且**决策是副作用**
 
-出厂二进制自己的调试信息给出了签名，与 mainline 不同：
+出厂二进制自己的调试信息给出签名，与 mainline 不同：
 
 ```
 出厂    global.c:1336   find_reg (num, losers, alt_regs_p, accept_call_clobbered, retrying)
 mainline global.c       find_reg (struct allocno *allocno, HARD_REG_SET *allocnos_live)
 ```
 
-gdb 追踪（10 参数夹具）：allocno 0 调一次；allocno 2 的序列是 `alt=0, alt=1, alt=0, alt=1`——**调用者用备用寄存器重试**。
-`find_reg` **不写** `allocno[num].reg`（结果由调用者写），失败时返回 **-1**。
+同一轮的另两点观测（gdb 轨迹 + 反汇编）：
 
-**T1**｜源码锚点 `global.c:1336`（DWARF）｜二进制锚点 `find_reg @ 0x081acd64`（global.c）与 `find_reg @ 0x08134570`（reload1.c，**一律按地址消歧**）｜
-receipt：gdb `info args` + 实测调用序列；`struct allocno` = 144 B、含 EE 独有的 `regs_someone_prefers`｜
-falsifies：「按 mainline 的 `find_reg` 写的重放能复现出厂决策」——这正是忠实重放 **9.1%**（换真值类表后 **9.9%**）而首选优先启发式有 **34.3%** 的结构性原因。
-**杠杆**：建模分配时要预期「带备用寄存器的重试阶梯」，不要照搬 mainline 的两趟扫描。
+* 它是**两级阶梯**，从两个独立站点调用——`0x81aad68`/`0x81aadbe`（`global_init`）与 `0x81aa4ba`/`0x81aa520`（`global_alloc`）——
+  `alt_regs_p` 依次为 **0、1**；实测中 `losers` 为 NULL、其余标志全为 0。
+* **返回值被丢弃**：外部调用点后的第一条指令立刻覆盖 `%eax`（`0x81aad6d`、`0x81aa4bf`）。调用者随后读一个**有符号 16 位**的
+  逐寄存器数组（`cmpw` + `js`）来判断「没拿到寄存器」；有一条路径还会查 `reg_alternate_class`。⇒ 选择是**副作用**，
+  我此前在 `%eax` 里读到的 `-1` 只是残留值。
+
+同一段反汇编还确认 `sizeof(struct allocno) == 144`：allocno 数组用「×9 再 <<4」索引（[L-EE-003](LAWS.md#l-ee-003--the-ee-register-pressure-model-is-wider-struct-allocno-is-144-b-and-hard_reg_set-is-192-bits)）。
+
+**T1**｜源码锚点 `global.c:1336`（DWARF）｜二进制锚点 `find_reg @ 0x081acd64`（global.c）与 `find_reg @ 0x08134570`（reload1.c，按地址消歧）｜
+falsifies：「按 mainline 的 `find_reg` 写的重放能复现出厂决策」，以及「`find_reg` 会**返回**选中的寄存器」。
+**杠杆**：把分配建成「`alt_regs_p` 0→1 两级阶梯 + 结果走副作用」；「没拿到寄存器」按逐寄存器的负值判断。
+
 
 ---
 

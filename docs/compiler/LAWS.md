@@ -365,7 +365,7 @@ once `$ra` is included ([L-EE-012](#l-ee-012--frame-composition-varsoutgoing-arg
   allocno also remove `call_used_reg_set`.
 * **Scope** `ee-gcc 3.2-ee-040921`, read on this machine. These are compiler constants.
 
-## L-EE-017 · The shipped `find_reg` is not mainline's — it is a flagged retry ladder
+## L-EE-017 · The shipped `find_reg` is not mainline's — a two-step ladder whose decision is a side effect
 
 The shipped binary's own debug info gives the signature, and it is not the mainline one:
 
@@ -374,21 +374,27 @@ shipped   global.c:1336   find_reg (num, losers, alt_regs_p, accept_call_clobber
 mainline  global.c        find_reg (struct allocno *allocno, HARD_REG_SET *allocnos_live)
 ```
 
-A traced run (gdb) on a 10-parameter fixture shows one call for allocno 0, then for allocno 2 the
-sequence `alt=0, alt=1, alt=0, alt=1` — the **caller retries with alternate registers**. `find_reg`
-does not write `allocno[num].reg` (the caller stores the result) and returns **-1** when it fails.
+Two further observations from the same session (gdb trace plus the listing):
+
+* The function is called as a **two-step ladder** from two independent sites —
+  `0x81aad68`/`0x81aadbe` (`global_init`) and `0x81aa4ba`/`0x81aa520` (`global_alloc`) — with `alt_regs_p` **0
+  then 1**; `losers` was NULL and the other flags zero in every observed call.
+* **The return value is discarded.** The instruction after each external call immediately overwrites `%eax`
+  (`0x81aad6d`, `0x81aa4bf`). The caller then reads a **signed 16-bit** per-register array (`cmpw` + `js`) to
+  decide that an allocno got no register; one path also consults `reg_alternate_class`. So the choice is a
+  **side effect**, and an earlier reading of `-1` in `%eax` was leftover.
+
+The same listing confirms `sizeof (struct allocno) == 144`: the allocno array is indexed by scaling the number
+by 9 and shifting left 4 ([L-EE-003](#l-ee-003--the-ee-register-pressure-model-is-wider-struct-allocno-is-144-b-and-hard_reg_set-is-192-bits)).
 
 * **Tier T1** · **Source anchor** `global.c:1336` (DWARF) · **Binary anchors** `find_reg @ 0x081acd64`
   (global.c) and `find_reg @ 0x08134570` (reload1.c — always disambiguate by address)
-* **Receipt** `info args` under gdb plus the traced call sequence; `struct allocno` is 144 B with five
-  `HARD_REG_SET`s, including the EE-only `regs_someone_prefers`
-* **Falsifies** the assumption that a replay built on mainline's `find_reg` can reproduce the shipped
-  decisions — the structural reason a faithful replay scores **9.1%** (and **9.9%** with the real runtime
-  class tables) against a **34.3%** preference-first heuristic
-* **Lever** when modelling allocation, expect a retry ladder with alternate registers; do not port
-  mainline's two-pass scan
-* **Scope** `ee-gcc 3.2-ee-040921`, observed with gdb on this machine; `retrying` and
-  `accept_call_clobbered` were zero in the traced sample
+* **Falsifies** both the assumption that a replay built on mainline's `find_reg` can reproduce the shipped
+  decisions, and the reading that `find_reg` *returns* the chosen register
+* **Lever** model a two-step ladder (`alt_regs_p` 0 then 1) that writes its result as a side effect; treat a
+  negative signed per-register entry as "no register"
+* **Scope** `ee-gcc 3.2-ee-040921`, observed with gdb and objdump on this machine; two external call sites and
+  one recursive site were located, and the flags other than `alt_regs_p` were zero in the traced sample
 
 ---
 
