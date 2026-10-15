@@ -1094,6 +1094,47 @@ Two usable judgements:
 
 ---
 
+## L-EE-039 · Indirect calls are `jalr`, and never become tail jumps
+
+| source | code |
+| --- | --- |
+| `gfp(a)` — global function pointer | `lw $2,%lo(gfp)($15)` then **`jalr $2`** |
+| `v->fn(a,b)` — struct field | `lw $2,0($4)`, set up the arguments, **`jalr $2`** |
+| `fp(a)` — parameter | `move $2,$4` then **`jalr $2`** |
+| `f()` — void pointer | **`jalr $4`** |
+
+The target travels in an **ordinary allocated register** (`$2`, `$4` measured) — not `$25`/`t9`. The object
+disassembles the instruction as **`jalr`**; the assembly writes it as **`jal $31,$reg`**.
+
+**Sibling calls cover direct calls only.** In tail position:
+
+```asm
+d:  # return g(a);     direct
+        sd      $31,0($sp)
+        ld      $31,0($sp)
+        j       g              # a bare tail jump
+i:  # return gp(a);    indirect
+        sd      $31,0($sp)
+        lw      $2,%lo(gp)($15)
+        jal     $31,$2         # still a real call
+        ld      $31,0($sp)
+        j       $31            # and still a return
+```
+
+`-O1`, `-O2` and `-Os` produce the same shape, so an indirect call says nothing about the level.
+
+* **Tier T2** · **Source anchor** the MIPS backend's indirect-call pattern (no line read from the shipped
+  tree) · **Constants** `jalr` and `jal $31,$reg`
+* **Falsifies** the expectation that an indirect tail call becomes a jump like a direct one, and that the
+  target travels in `$25`/`t9`
+* **Lever** a `jalr` with a following `j $31` in the target ⇒ the source called through a **function
+  pointer**; if you reconstruct it as a named call it becomes a bare tail jump at `-O2` and the whole shape
+  changes
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O1`/`-O2`/`-Os` with `-G0`, pointer calls through a global, a struct
+  field and a parameter
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).

@@ -1824,6 +1824,54 @@
       "evidence": [
         "private:out/evidence/ee_gcc_struct_copy.txt"
       ]
+    },
+    {
+      "id": "L-EE-039",
+      "title": "An indirect call is jalr $reg with the target in an ordinary register, and it is never turned into a tail jump - even in tail position it keeps the call plus j $31",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "config/mips/mips.md",
+        "line": 0,
+        "note": "The indirect-call pattern is in the MIPS backend; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "jalr",
+            "at": "object disassembly",
+            "means": "indirect calls; the assembly prints jal $31,$reg"
+          },
+          {
+            "kind": "string",
+            "value": "jal $31,$reg",
+            "at": "assembly",
+            "means": "the same instruction as the compiler writes it"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "the target calls through a register where your reconstruction calls a named function",
+        "the target has jalr plus j $31 where the direct equivalent would be a bare jump"
+      ],
+      "lever": [
+        "an indirect call is jalr $reg (the assembly writes jal $31,$reg) with the target in an allocation-dependent general register - not $25 or $t9, so do not look for a fixed register",
+        "sibling-call optimisation applies only to direct calls: a function pointer called in tail position still saves $31, calls, restores $31 and returns with j $31, while the direct equivalent becomes a bare j target (L-EE-036)",
+        "the same shape appears at -O1, -O2 and -Os, so an indirect call tells you nothing about the level"
+      ],
+      "receipt": "At -O2, -Os and -O1 with -G0, all three levels identical. int c1(int a){return gfp(a);} loads the global function pointer (lw $2,%lo(gfp)($15)) and calls jalr $2; a call through a structure field loads it from the struct, a function-pointer parameter is moved into $2 first, and a void pointer call uses jalr $4 - so the register is whatever the allocator picks. The object disassembles the instruction as jalr while the assembly writes it as jal $31,$2. In tail position the contrast with a direct call is complete: int d(int a){return g(a);} becomes a bare j g with no jal, while int i(int a){return gp(a);} keeps lw, jal $31,$2, ld $31 and j $31.",
+      "falsifies": "the expectation that an indirect tail call becomes a jump like a direct one (sibling calls only cover direct calls), and that an indirect call target travels in $25/t9",
+      "scope": "ee-gcc 3.2-ee-040921 at -O1/-O2/-Os with -G0, synthetic function-pointer calls through a global, a struct field and a parameter; calls through arrays of pointers and varargs callees were not measured",
+      "evidence": [
+        "private:out/evidence/ee_gcc_indirect_calls.txt"
+      ]
     }
   ],
   "verification": {
