@@ -53,6 +53,33 @@ The first diverging pass names the decision family. Pass names are from 3.2; see
 | `20.sched`, `29.sched2` | scheduling | statement grouping, dependency chains by source line |
 | `31.bbro`, `33.dbr` | block reordering and delay slots | branch layout, what fills a delay slot |
 
+## 3.5 Getting the compiler's own answer (ground truth)
+
+When a question is "which register did the compiler pick for this value?", do not infer it from the
+disassembly — ask the compiler. `global_alloc` runs before register allocation is finalised, and the
+result is written into `reg_renumber` (a `short` array; `-1` means the value got no register). Break at
+the instruction after `global_alloc` returns (`toplev.c:3316` calls it), then read the table:
+
+```sh
+# find the call site once
+objdump -d "$CC1" | grep 'call .*<global_alloc>'
+
+# then, under gdb, at the return address:
+#   for i < max_allocno:  num = allocno_order[i]
+#                         pseudo = allocno[num].reg
+#                         chosen = reg_renumber[pseudo]
+```
+
+Two facts this establishes, both verified against a `-da` dump on the same input: `allocno_order[i]`
+holds an **allocno index**, `allocno[num].reg` holds the **pseudo register number**, and
+`reg_renumber[pseudo]` holds the decision. The dispositions a `-da` dump prints
+(`;; Register dispositions: 169 in 2 …`) are exactly this table, so a dump-derived measurement and a
+live reading agree — which is what makes the recorded replay scores trustworthy.
+
+Note: tracing *every* `find_reg` call is not the way to do this — the function is a two-step ladder whose
+result is a side effect ([L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--it-is-a-two-step-ladder-whose-decision-is-a-side-effect)),
+and a long trace trips over the debugger. One breakpoint after allocation answers the question.
+
 ## 4. Two false signals
 
 Both of these produce a *clean, confident, wrong* answer. They are the reason a first-divergence

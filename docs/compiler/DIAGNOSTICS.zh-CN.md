@@ -47,6 +47,30 @@ python3 tools/compiler/ee-gcc-passdiff.py a.c b.c --cc ~/eecc/ee-gcc2.96/bin/ee-
 | `20.sched`、`29.sched2` | 调度 | 语句分组、按源码行的依赖链 |
 | `31.bbro`、`33.dbr` | 块重排与延迟槽 | 分支布局、槽里放什么 |
 
+## 3.5 直接问编译器（真值）
+
+当问题是「这个值被分到哪个寄存器」时，不要从反汇编猜——去问编译器。`global_alloc` 跑完后分配才定，
+结果写进 **`reg_renumber`**（`short` 数组，`-1` 表示没拿到寄存器）。在 `global_alloc` 返回后的那条指令
+（`toplev.c:3316` 调用它）下断点，然后读表：
+
+```sh
+# 先找到调用点
+objdump -d "$CC1" | grep 'call .*<global_alloc>'
+# 再在 gdb 里于返回地址处：
+#   for i < max_allocno:  num = allocno_order[i]
+#                         pseudo = allocno[num].reg
+#                         chosen = reg_renumber[pseudo]
+```
+
+这样确立三件事（已在同一输入的 `-da` dump 上核对）：`allocno_order[i]` 是 **allocno 下标**、
+`allocno[num].reg` 是**伪寄存器号**、`reg_renumber[pseudo]` 是决策。`-da` dump 打印的
+（`;; Register dispositions: 169 in 2 …`）就是这张表，因此「从 dump 量出的」与「运行时读到的」一致——
+这正是本手册里重放精度可信的前提。
+
+注意：**逐次追 `find_reg` 不是办法**——它是两级阶梯、结果是副作用
+（[L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--it-is-a-two-step-ladder-whose-decision-is-a-side-effect)），
+长轨迹还会把调试器绊倒。分配后一个断点就能回答。
+
 ## 4. 两个假信号
 
 这两件事都会给出**干净、自信、错误**的答案：
