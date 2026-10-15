@@ -11,7 +11,7 @@ Start from the shape in front of you, not from the law list.
 | `.frame $sp,N` **and** a saved `$fp` | [L-EE-024](LAWS.md#l-ee-024--a-saved-fp-is-not-a-frame-pointer) — that `$fp` is the tenth callee-saved register, not a frame pointer |
 | `.frame $fp,N` | [L-EE-024](LAWS.md#l-ee-024--a-saved-fp-is-not-a-frame-pointer) — `alloca`/VLA in the source, or `-fno-omit-frame-pointer` |
 | the target frame is exactly 16 bytes larger with the same callee saves | [L-EE-024](LAWS.md#l-ee-024--a-saved-fp-is-not-a-frame-pointer) |
-| an argument stored at `8($sp)` instead of `4($sp)` | [L-EE-028](LAWS.md#l-ee-028--eight-arguments-in-registers-the-rest-in-8-byte-stack-slots) — stack arguments are 8-byte slots from the ninth argument |
+| an argument stored at `8($sp)` instead of `4($sp)` | [L-EE-028](LAWS.md#l-ee-028--eight-integer-arguments-travel-in-4-11-and-eight-float-arguments-in-f12-f19-a-long-long-or-double-takes-one-64-bit-gpr-the-rest-go-on-the-stack-in-8-byte-slots) — stack arguments are 8-byte slots from the ninth argument |
 | you are counting save slots | [L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers) — 8 B each, saturating at 10 |
 | saving more than 10 values but the frame stops growing | [L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers) — the extra values go to `vars` |
 

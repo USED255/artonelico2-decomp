@@ -1283,7 +1283,7 @@
     },
     {
       "id": "L-EE-028",
-      "title": "Eight arguments travel in $4-$11; from the ninth they go on the stack in 8-byte slots, and the frame's args field is that area rounded up to 16",
+      "title": "Eight integer arguments travel in $4-$11 and eight float arguments in $f12-$f19; a long long or double takes one 64-bit GPR; the rest go on the stack in 8-byte slots",
       "tier": "T2",
       "ee_specific": true,
       "source_anchor": {
@@ -1328,9 +1328,9 @@
         "read the maximum call shape out of args=: args=16 means nine or ten arguments, args=32 means eleven or twelve",
         "the stack slots are 8 bytes even for ints, so a 4-byte stride is wrong"
       ],
-      "receipt": "At -O2 -G0 on this machine, sixteen callers passing one to sixteen int arguments. Arguments 1-8 are set up in $4-$11 (li $5,1 ... li $11,7 in the sixteen-argument case) and none of them touches the stack. From the ninth, each argument is stored at an 8-byte stride: 0($sp), 8($sp), 16($sp) and so on. The frame's args field is that area rounded up to 16 bytes - 9 and 10 arguments give args=16, 11/12 give 32, 13/14 give 48 and 15/16 give 64, i.e. args = round16(8 * max(0, n - 8)). The whole frame is round16(vars + 8*regs + args), which holds for all sixteen rows.",
+      "receipt": "At -O2 -G0 on this machine, sixteen callers passing one to sixteen int arguments. Arguments 1-8 are set up in $4-$11 (li $5,1 ... li $11,7 in the sixteen-argument case) and none of them touches the stack. From the ninth, each argument is stored at an 8-byte stride: 0($sp), 8($sp), 16($sp) and so on. The frame's args field is that area rounded up to 16 bytes - 9 and 10 arguments give args=16, 11/12 give 32, 13/14 give 48 and 15/16 give 64, i.e. args = round16(8 * max(0, n - 8)). The whole frame is round16(vars + 8*regs + args), which holds for all sixteen rows. The floating-point side was measured too and uses a separate budget: up to eight float arguments travel in $f12-$f19, so a call with eight ints and four floats fills $4-$11 and $f12-$f15 at the same time. A long long or double occupies a single 64-bit GPR from the same $4-$11 sequence rather than a register pair: long long arguments are built with dli into $4 and $5, and a callee taking long long z reads it back with daddiu a0,a0,1.",
       "falsifies": "the assumption that the outgoing stack arguments are 4-byte slots, and that the args field is an exact multiple of 4 rather than of 16",
-      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0, synthetic callers with one to sixteen integer arguments; floating-point and structure arguments were not measured",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0, synthetic callers with one to sixteen integer arguments, up to ten floats, mixed int/float calls and long long/double arguments; varargs and structure arguments were not measured",
       "evidence": [
         "private:out/evidence/ee_gcc_args_abi.txt"
       ]

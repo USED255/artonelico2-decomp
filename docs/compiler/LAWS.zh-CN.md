@@ -499,6 +499,9 @@ falsifies：「把常量池的 per-function 规则推广到字符串」与「对
 **整帧** = `round16(vars + 8 × regs + args)`
 （[L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers)）：九个实参时和为 24、帧为 32。
 
+**浮点用另一套额度**：最多 8 个 `float` 实参走 **`$f12`–`$f19`**——所以「8 个 int + 4 个 float」会**同时**占满 `$4`–`$11` 与 `$f12`–`$f15`。
+`long long` / `double` 则**各占一个 64 位 GPR**（`dli $4,1`、`dli $5,2` 传两个 `long long`；被调用方用 `daddiu a0,a0,1` 读 `long long z`），**不是寄存器对**。
+
 **T2**｜源码锚点：MIPS 后端的 EABI 实参布局（`config/mips/mips.c`；未从出厂树读到行号）｜常量：8 个寄存器实参、8 字节槽、16 字节取整｜
 falsifies：「出参栈槽是 4 字节」与「`args=` 只按 4 字节对齐」。
 **杠杆**：从 `args=` 反推调用形状（16 ⇒ 9 或 10 个实参；32 ⇒ 11 或 12 个）；帧差 8 或 24 字节时先想**取整**，别急着加变量。

@@ -732,7 +732,7 @@ Two more things the assembly misleads about:
 
 ---
 
-## L-EE-028 · Eight arguments in registers, the rest in 8-byte stack slots
+## L-EE-028 · Eight integer arguments travel in $4-$11 and eight float arguments in $f12-$f19; a long long or double takes one 64-bit GPR; the rest go on the stack in 8-byte slots
 
 Sixteen callers, one to sixteen `int` arguments, `-O2 -G0`:
 
@@ -752,8 +752,12 @@ a caller with nine arguments has a sum of 24 and a frame of 32.
   4-byte aligned
 * **Lever** read the call shape out of `args=`: 16 means nine or ten arguments, 32 means eleven or twelve;
   and when a frame differs by 8 or 24 bytes, check the 16-byte rounding before adding a variable
-* **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`, integer arguments only; floating-point and structure
-  arguments were not measured
+* **Floats use a separate budget**: up to eight `float` arguments travel in **`$f12`–`$f19`**, so a call with
+  eight ints and four floats fills `$4`–`$11` *and* `$f12`–`$f15` at once. A `long long` or `double` occupies
+  **a single 64-bit GPR** from the same `$4`–`$11` sequence (`dli $4,1` / `dli $5,2` for two `long long`s;
+  a callee reads `long long z` with `daddiu a0,a0,1`) — not a register pair.
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`: one to sixteen integer arguments, up to ten floats, mixed
+  int/float calls, and `long long`/`double` arguments; varargs and structure arguments were not measured
 
 ---
 
