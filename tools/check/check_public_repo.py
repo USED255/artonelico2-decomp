@@ -458,6 +458,15 @@ def check_publication(root: Path, base: str) -> list[str]:
         problems.append(f"the baseline provenance came from a --limit {base_doc.get('limit')} smoke test")
     if not re.fullmatch(r"[0-9a-f]{40}", str(base_doc.get("source_commit") or "")):
         problems.append(f"the baseline provenance has no usable source_commit: {base_doc.get('source_commit')!r}")
+    # The record must name the commit the verified run built, not the commit that published it.
+    # `publish_report.py` used to write the local HEAD there, so a publication produced from a
+    # branch recorded a revision CI never verified (P-112).
+    # 记录里的 source_revision 必须是**被验证的那次运行**所用的提交，而不是发布动作所在的提交。
+    # 旧版 publish_report.py 写的是本地 HEAD，于是从分支发布就会记下一个 CI 从未验证过的版本（P-112）。
+    elif str(pub.get("source_revision") or "") != str(base_doc.get("source_commit") or ""):
+        problems.append(
+            f"PUBLISHED.json source_revision ({str(pub.get('source_revision'))[:12]!r}) is not the commit the "
+            f"baseline provenance verified ({str(base_doc.get('source_commit'))[:12]!r})")
     if base_doc.get("report_sha256") != sha256(report):
         problems.append("the baseline provenance does not describe the published report (report_sha256 mismatch)")
 
