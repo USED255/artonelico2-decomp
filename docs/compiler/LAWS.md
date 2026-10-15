@@ -418,14 +418,18 @@ The rule, fitted by measurement (see the receipt):
    already expresses and costs about 6 points.
 3. **Choice** = the first entry of the allocno's preference list that is still available; otherwise the
    **lowest-numbered** candidate.
+4. **Two passes.** The first pass also avoids the registers that **other** allocnos prefer (the EE-only
+   `regs_someone_prefers` field); the second pass drops that exclusion. This is what `alt_regs_p`
+   toggles in the observed ladder ([L-EE-017](#l-ee-017--the-shipped-find_reg-is-not-mainlines--it-is-a-two-step-ladder-whose-decision-is-a-side-effect)).
 
 | rule | held-out accuracy (527 allocnos) |
 | --- | ---: |
 | mainline-modelled two-pass replay (v2) | 9.1% |
 | preference-first heuristic banning all assigned (previous best) | 34.3% |
 | runtime tables + v2 rule (v4) | 9.9% |
-| **this rule** | **41.0%** |
-| this rule, with the dynamic conflict set held at ground truth | **82.7%** |
+| this rule (v5) | **41.0%** |
+| this rule plus the two passes of step 4 (v6) | **46.5%** |
+| v6, with the dynamic conflict set held at ground truth | **82.7%** |
 
 * **Tier T2** · **Source anchor** `global.c:400` (the ladder of
   [L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--it-is-a-two-step-ladder-whose-decision-is-a-side-effect));
@@ -442,6 +446,11 @@ The rule, fitted by measurement (see the receipt):
 that is still available** and **none picks a later entry** — "first available preference" is the whole rule. Where there
 is no preference the pick is *not* the lowest candidate (334 of 461 such cases, with the true register inside the computed
 candidate set every time), so something else decides the scan.
+
+**How to tell a rule from a compensation.** Step 4 gains 5.5 points end-to-end but leaves the oracle-context score
+**unchanged** (82.7% → 82.7%), and it matches both an EE-only struct field and the observed ladder — so it is a rule.
+The rejected "rotating start" below looks similar end-to-end but *loses* 3 points under the oracle, which is how a
+compensation for the replay's own errors is identified.
 
 **A rejected hypothesis — the "rotating start".** Scanning from `pseudo mod 32` lifts the corpus score from 38.9% to
 49.1%, which looks like a real rule. It is not: with the dynamic conflict set held at ground truth the rotation scores
