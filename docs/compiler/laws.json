@@ -1089,6 +1089,54 @@
       "evidence": [
         "private:out/evidence/ee_gcc_inlining.txt"
       ]
+    },
+    {
+      "id": "L-EE-024",
+      "title": "A saved $fp is just the tenth callee-saved register; the frame directive's first operand tells you whether a real frame pointer is in use, and -fno-omit-frame-pointer adds 16 bytes",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "function.c",
+        "line": 0,
+        "note": "Frame-pointer choice and the .frame directive come from the backend prologue code; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 80,
+            "at": "fixture frame without a frame pointer",
+            "means": "eight call-crossing values, ten save slots"
+          },
+          {
+            "kind": "int",
+            "value": 96,
+            "at": "same fixture with -fno-omit-frame-pointer",
+            "means": "the same function with a real frame pointer, 16 bytes larger"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "you see sd $fp in the prologue and conclude the target uses a frame pointer",
+        "the target frame is 16 bytes larger than the candidate frame with the same callee saves"
+      ],
+      "lever": [
+        "read the first operand of the .frame directive, not the prologue: .frame $sp means no frame pointer, .frame $fp means there is one",
+        "a real frame pointer comes from alloca/VLA in the source or from -fno-omit-frame-pointer; the latter adds 16 bytes even with no dynamic stack",
+        "the compiler omits the frame pointer by default at -O2 here, so a saved $fp in a normal function is only the tenth callee-saved register (L-EE-016)"
+      ],
+      "receipt": "At -O2 -G0 on this machine. A function whose locals all take registers has no frame at all (.frame $sp,0). A function with eight call-crossing values has .frame $sp,80 and still saves $fp - the save is the tenth callee-saved slot, not a frame pointer. Adding __builtin_alloca switches the directive to .frame $fp,64 with move $fp,$sp, and a VLA does the same (.frame $fp,96). Rebuilding the eight-value function with -fno-omit-frame-pointer switches it to .frame $fp,96, i.e. 16 bytes larger (vars goes from 0 to 16), while -fomit-frame-pointer reproduces the default exactly, so the default is to omit the frame pointer.",
+      "falsifies": "the reading that a saved $fp in the prologue means the function uses a frame pointer",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0 on this machine; synthetic functions, including one with __builtin_alloca and one with a VLA",
+      "evidence": [
+        "private:out/evidence/ee_gcc_frame_pointer.txt"
+      ]
     }
   ],
   "verification": {

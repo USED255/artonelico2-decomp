@@ -66,6 +66,13 @@ FIXTURES: list[tuple[str, str, str, str]] = [
      "return s+v0+v1+v2+v3+v4+v5+v6+v7;}\n",
      r"#\s*vars=\s*0,\s*regs=\s*10/0",
      "L-EE-012: eight call-crossing values fill the save area to its cap of 10 registers"),
+    ("frame-pointer-alloca",
+     "extern void use(void *);\nint f(int n){char *p=__builtin_alloca(n);use(p);return n;}\n",
+     r"\.frame\s+\$fp,", "L-EE-024: alloca forces a real frame pointer (.frame $fp,...)"),
+    ("no-frame-pointer",
+     "extern int sink(int);\nint f(int *p){int v0=p[0],v1=p[1],v2=p[2],v3=p[3];int s=0;\n"
+     "s+=sink(v0);s+=sink(v1);s+=sink(v2);s+=sink(v3);return s+v0+v1+v2+v3;}\n",
+     r"!\.frame\s+\$fp,", "L-EE-024: an ordinary frame stays $sp-based even though $fp is saved"),
     ("static-not-inlined",
      "static int helper(int a){return a*3+1;}\nint f(int a){int s=0;s+=helper(a);return s;}\n",
      r"jal\s+helper", "L-EE-023: a plain static helper keeps its call at -O2"),

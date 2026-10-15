@@ -90,6 +90,15 @@ so a 12-byte function is padded to 16; `-falign-functions=4` lowers it to 4 and 
 This project builds with `-O2 -falign-functions=4 -ffunction-sections`, so every function section should be
 exactly the function's size.
 
+## 3.7 Read `.frame`'s first operand before anything else
+
+`.frame $sp,80,$31` and `.frame $fp,96,$31` differ in a way that survives the whole function: the first
+operand is the base register. `$sp` means no frame pointer — and a saved `$fp` in that function is just the
+tenth callee-saved register, not evidence of one. `$fp` means a real frame pointer, which comes from
+`alloca`/VLA in the source or from `-fno-omit-frame-pointer`; the latter adds 16 bytes
+([L-EE-024](LAWS.md#l-ee-024--a-saved-fp-is-not-a-frame-pointer)).
+If the target frame is exactly 16 bytes larger with the same callee saves, this is the first thing to check.
+
 ## 4. Two false signals
 
 Both of these produce a *clean, confident, wrong* answer. They are the reason a first-divergence

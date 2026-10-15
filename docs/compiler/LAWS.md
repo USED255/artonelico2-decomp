@@ -618,6 +618,33 @@ with it, the function inlines even at `-O0`.
 
 ---
 
+## L-EE-024 · A saved `$fp` is not a frame pointer
+
+| fixture (`-O2 -G0`) | `.frame` first operand | frame |
+| --- | --- | ---: |
+| locals all in registers | `$sp,0` | 0 |
+| eight call-crossing values | **`$sp`,80** | 80 — `$fp` is saved, but as a register |
+| `__builtin_alloca` | **`$fp`,64** | 64 — a real frame pointer |
+| VLA (`int v[n]`) | **`$fp`,96** | 96 — a real frame pointer |
+| eight values + `-fno-omit-frame-pointer` | **`$fp`,96** | **96** (was 80) |
+| eight values + `-fomit-frame-pointer` | `$sp`,80 | 80 — same as the default |
+
+1. **`-O2` omits the frame pointer by default here** (explicit `-fomit-frame-pointer` reproduces the default).
+2. A saved `$fp` in a normal function is only the **tenth callee-saved register**
+   ([L-EE-016](LAWS.md#l-ee-016--the-ee-register-file-140-hard-registers-in-29-classes)) — the judgement is the
+   **first operand of `.frame`**: `$sp` = no frame pointer, `$fp` = one.
+3. `.frame $fp,…` comes from **alloca/VLA** or from **`-fno-omit-frame-pointer`**; the latter adds **16 bytes**
+   even with no dynamic stack (80 → 96 above), which objdiff shows as a size or offset mismatch.
+
+* **Tier T2** · **Source anchor** `function.c` (prologue/frame-pointer choice; no line read from the shipped
+  tree) · **Constants** 80 vs 96 in the same fixture
+* **Falsifies** the reading that a saved `$fp` in the prologue means a frame pointer is used
+* **Lever** read `.frame`'s first operand; when the target frame is exactly 16 bytes larger with the same
+  callee saves, suspect `-fno-omit-frame-pointer` or a dynamic stack
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`, synthetic functions including `alloca` and a VLA
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).

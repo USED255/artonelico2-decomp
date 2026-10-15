@@ -78,6 +78,14 @@ objdump -d "$CC1" | grep 'call .*<global_alloc>'
 （[L-EE-022](LAWS.md#l-ee-022--function-alignment-8-bytes-by-default-4-with--falign-functions4)）。
 本项目用 `-O2 -falign-functions=4 -ffunction-sections`，所以每个函数段应当**正好等于函数大小**。
 
+## 3.7 先读 `.frame` 的**首操作数**
+
+`.frame $sp,80,$31` 与 `.frame $fp,96,$31` 的差别会贯穿整个函数：首操作数是**基址寄存器**。`$sp` 表示没有帧指针——
+此时函数里被保存的 `$fp` 只是**第 10 个被调用者保存寄存器**，不是帧指针的证据。`$fp` 表示有真帧指针，来源是源码里的
+`alloca`/VLA，或 `-fno-omit-frame-pointer`；后者会**多 16 字节**
+（[L-EE-024](LAWS.md#l-ee-024--a-saved-fp-is-not-a-frame-pointer)）。
+目标帧在同样保存槽下**正好大 16 字节**时，先查这一条。
+
 ## 4. 两个假信号
 
 这两件事都会给出**干净、自信、错误**的答案：
