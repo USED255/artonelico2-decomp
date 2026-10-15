@@ -216,10 +216,19 @@ mainline global.c       find_reg (struct allocno *allocno, HARD_REG_SET *allocno
 
 同一轮的另两点观测（gdb 轨迹 + 反汇编）：
 
-* 它是**两级阶梯**，从两个独立站点调用——`0x81aad68`/`0x81aadbe`（`global_init`）与 `0x81aa4ba`/`0x81aa520`（`global_alloc`）——
-  `alt_regs_p` 依次为 **0、1**；实测中 `losers` 为 NULL、其余标志全为 0。
+* 它是**两级阶梯**，而且阶梯出现**两次**：
+
+| 级 | 地址 | 所在函数 | EE 源码行 |
+| --- | --- | --- | --- |
+| 1（`alt_regs_p=0`） | `0x81aa4ba` | `global_alloc` | `global.c:400` |
+| 2（`alt_regs_p=1`） | `0x81aa520` | `global_alloc` | `global.c:407` |
+| 1（`alt_regs_p=0`） | `0x81aad68` | `global_init` | `global.c:772` |
+| 2（`alt_regs_p=1`） | `0x81aadbe` | `global_init` | `global.c:777` |
+
+  另外 `find_reg` 会在 `global.c:1540` **递归调用自己**（`retrying` 就是干这个的）。实测外部调用中 `losers` 为 NULL、其余标志为 0。
 * **返回值被丢弃**：外部调用点后的第一条指令立刻覆盖 `%eax`（`0x81aad6d`、`0x81aa4bf`）。调用者随后读一个**有符号 16 位**的
-  逐寄存器数组（`cmpw` + `js`）来判断「没拿到寄存器」；有一条路径还会查 `reg_alternate_class`。⇒ 选择是**副作用**，
+  逐寄存器数组（`cmpw` + `js`）来判断「没拿到寄存器」；表就是 **`reg_renumber`**（`0x82ea1ec`，`short` 数组）；
+  有一条路径还会查 `reg_alternate_class`。⇒ 选择是**副作用**，
   我此前在 `%eax` 里读到的 `-1` 只是残留值。
 
 同一段反汇编还确认 `sizeof(struct allocno) == 144`：allocno 数组用「×9 再 <<4」索引（[L-EE-003](LAWS.md#l-ee-003--the-ee-register-pressure-model-is-wider-struct-allocno-is-144-b-and-hard_reg_set-is-192-bits)）。

@@ -722,7 +722,7 @@
       "source_anchor": {
         "file": "global.c",
         "line": 1336,
-        "note": "The shipped binary's DWARF puts find_reg's body at global.c:1336. Mainline gcc-3.2.3 declares the same name as find_reg (struct allocno *, HARD_REG_SET *), so this file's allocation core was reworked despite the shared name."
+        "note": "The shipped binary's DWARF puts find_reg's body at global.c:1336. The two-step ladder appears twice: global_alloc calls find_reg at global.c:400 (alt=0) and global.c:407 (alt=1), and global_init calls it at global.c:772 (alt=0) and global.c:777 (alt=1); find_reg also calls itself recursively at global.c:1540. Mainline gcc-3.2.3 declares the same name as find_reg (struct allocno *, HARD_REG_SET *), so this file's allocation core was reworked despite the shared name."
       },
       "binary_anchor": {
         "symbol": "find_reg",
@@ -733,7 +733,44 @@
             "addr": "0x08134570"
           }
         ],
-        "constants": [],
+        "constants": [
+          {
+            "kind": "addr",
+            "value": "0x81aa4ba",
+            "at": "global.c:400",
+            "means": "ladder step 1 (alt=0) in global_alloc"
+          },
+          {
+            "kind": "addr",
+            "value": "0x81aa520",
+            "at": "global.c:407",
+            "means": "ladder step 2 (alt=1) in global_alloc"
+          },
+          {
+            "kind": "addr",
+            "value": "0x81aad68",
+            "at": "global.c:772",
+            "means": "ladder step 1 (alt=0) in global_init"
+          },
+          {
+            "kind": "addr",
+            "value": "0x81aadbe",
+            "at": "global.c:777",
+            "means": "ladder step 2 (alt=1) in global_init"
+          },
+          {
+            "kind": "addr",
+            "value": "0x81adbc0",
+            "at": "global.c:1540",
+            "means": "recursive call inside find_reg"
+          },
+          {
+            "kind": "addr",
+            "value": "0x82ea1ec",
+            "at": "reg_renumber",
+            "means": "the decision table the caller tests with cmpw/js"
+          }
+        ],
         "struct": {
           "struct allocno": 144
         }
@@ -750,7 +787,7 @@
         "do not read find_reg's return value: at the call sites it is discarded immediately",
         "an allocno with no register is detected by the caller as a negative signed 16-bit entry, not by a return code"
       ],
-      "receipt": "gdb on the shipped cc1: `info args` at global.c:1336 prints find_reg (num=0, losers=0x0, alt_regs_p=0, accept_call_clobbered=0, retrying=0), where mainline declares find_reg (struct allocno *, HARD_REG_SET *). The function is called as a two-step ladder from two independent sites - 0x81aad68/0x81aadbe (global_init) and 0x81aa4ba/0x81aa520 (global_alloc) - with alt_regs_p 0 then 1 (losers NULL, the other flags zero in every observed call). At both external sites the return value is discarded: the instruction after the call immediately overwrites %eax (0x81aad6d, 0x81aa4bf), and the caller then reads a signed 16-bit per-register array (cmpw + js) to decide that an allocno has no register; one path also consults reg_alternate_class. So the choice is a side effect, not a return value, and the earlier reading of -1 in %eax was leftover. The same listing confirms sizeof(struct allocno) = 144 from the scaling (x9 then <<4) that indexes the allocno array.",
+      "receipt": "gdb on the shipped cc1: `info args` at global.c:1336 prints find_reg (num=0, losers=0x0, alt_regs_p=0, accept_call_clobbered=0, retrying=0), where mainline declares find_reg (struct allocno *, HARD_REG_SET *). The function is called as a two-step ladder from two independent sites - 0x81aad68/0x81aadbe (global_init) and 0x81aa4ba/0x81aa520 (global_alloc) - with alt_regs_p 0 then 1 (losers NULL, the other flags zero in every observed call). At both external sites the return value is discarded: the instruction after the call immediately overwrites %eax (0x81aad6d, 0x81aa4bf), and the caller then reads a signed 16-bit per-register array (cmpw + js) to decide that an allocno has no register; one path also consults reg_alternate_class. So the choice is a side effect, not a return value, and the earlier reading of -1 in %eax was leftover. The same listing confirms sizeof(struct allocno) = 144 from the scaling (x9 then <<4) that indexes the allocno array. The call sites resolve to global.c:400/407 (global_alloc) and global.c:772/777 (global_init), and find_reg recurses at global.c:1540. The result lands in reg_renumber (a short array at 0x82ea1ec): the caller tests reg_renumber[pseudo] with cmpw + js.",
       "falsifies": "the assumption that a replay built on mainline's find_reg can reproduce the shipped decisions (the structural reason a faithful replay scores 9.1%, and 9.9% with the real runtime class tables, against a 34.3% preference-first heuristic), and the reading that find_reg returns the chosen register",
       "scope": "ee-gcc 3.2-ee-040921, observed on this machine with gdb; the retry ladder is shown for one fixture, other flag combinations (retrying, accept_call_clobbered) were zero in that sample",
       "evidence": [

@@ -376,13 +376,22 @@ mainline  global.c        find_reg (struct allocno *allocno, HARD_REG_SET *alloc
 
 Two further observations from the same session (gdb trace plus the listing):
 
-* The function is called as a **two-step ladder** from two independent sites —
-  `0x81aad68`/`0x81aadbe` (`global_init`) and `0x81aa4ba`/`0x81aa520` (`global_alloc`) — with `alt_regs_p` **0
-  then 1**; `losers` was NULL and the other flags zero in every observed call.
+* The function is called as a **two-step ladder**, and the ladder appears **twice**:
+
+| step | address | in | EE source line |
+| --- | --- | --- | --- |
+| 1 (`alt_regs_p=0`) | `0x81aa4ba` | `global_alloc` | `global.c:400` |
+| 2 (`alt_regs_p=1`) | `0x81aa520` | `global_alloc` | `global.c:407` |
+| 1 (`alt_regs_p=0`) | `0x81aad68` | `global_init` | `global.c:772` |
+| 2 (`alt_regs_p=1`) | `0x81aadbe` | `global_init` | `global.c:777` |
+
+  `find_reg` also **calls itself recursively** at `global.c:1540` (that is what `retrying` is for). `losers` was
+  NULL and the other flags zero in every observed external call.
 * **The return value is discarded.** The instruction after each external call immediately overwrites `%eax`
   (`0x81aad6d`, `0x81aa4bf`). The caller then reads a **signed 16-bit** per-register array (`cmpw` + `js`) to
-  decide that an allocno got no register; one path also consults `reg_alternate_class`. So the choice is a
-  **side effect**, and an earlier reading of `-1` in `%eax` was leftover.
+  decide that an allocno got no register; one path also consults `reg_alternate_class`. The table is
+  **`reg_renumber`** (`0x82ea1ec`, a `short` array), so the choice is a **side effect** and an earlier reading of
+  `-1` in `%eax` was leftover.
 
 The same listing confirms `sizeof (struct allocno) == 144`: the allocno array is indexed by scaling the number
 by 9 and shifting left 4 ([L-EE-003](#l-ee-003--the-ee-register-pressure-model-is-wider-struct-allocno-is-144-b-and-hard_reg_set-is-192-bits)).
