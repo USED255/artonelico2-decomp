@@ -146,6 +146,7 @@ def main() -> int:
         check_binary_anchors(data)
     check_anchors()
     check_build_flags(data)
+    check_quick_reference(data)
     print()
     if FAILURES:
         print(f"FAIL: {len(FAILURES)} of {COUNT} checks failed")
@@ -196,6 +197,25 @@ def check_build_flags(data: dict) -> None:
         dumps_o1 = sorted(p.name.split("t.c.", 1)[1] for p in work.glob("t.c.[0-9]*"))
     check("-O1 dump inventory (20, six fewer than -O2)", len(dumps_o1) == 20,
           f"{len(dumps_o1)} dumps; missing {sorted(set(dumps) - set(dumps_o1))}")
+
+
+def check_quick_reference(data: dict) -> None:
+    """每条 law 都必须能从「形状」在速查表里找到（中英两版）。
+
+    为什么：速查表是这份手册的入口页；一条 law 若不在里面，读者即使遇到那个形状也找不到它。
+    实测过：40 条 law 里曾有 19 条不在速查表里（2026-10-15），所以这条检查是必要的。
+    """
+    base = ROOT / "docs" / "compiler"
+    laws = [l["id"] for l in (data or {}).get("laws", [])]
+    for name in ("QUICK-REFERENCE.md", "QUICK-REFERENCE.zh-CN.md"):
+        path = base / name
+        if not path.exists():
+            check(f"{name} exists", False, "missing")
+            continue
+        text = path.read_text(encoding="utf-8")
+        missing = [lid for lid in laws if lid not in text]
+        check(f"{name} covers every law ({len(laws)} laws)", not missing,
+              f"missing: {', '.join(missing[:6])}" if missing else "")
 
 
 def _gh_slug(heading: str) -> str:

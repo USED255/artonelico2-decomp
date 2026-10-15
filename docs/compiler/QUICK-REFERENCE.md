@@ -15,6 +15,10 @@ Start from the shape in front of you, not from the law list.
 | an argument stored at `8($sp)` instead of `4($sp)` | [L-EE-028](LAWS.md#l-ee-028--eight-integer-arguments-travel-in-4-11-and-eight-float-arguments-in-f12-f19-a-long-long-or-double-takes-one-64-bit-gpr-the-rest-go-on-the-stack-in-8-byte-slots) — stack arguments are 8-byte slots from the ninth argument |
 | you are counting save slots | [L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers) — 8 B each, saturating at 10 |
 | saving more than 10 values but the frame stops growing | [L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers) — the extra values go to `vars` |
+| the target has a `nop` in a delay slot where you have a real instruction | [L-EE-009](LAWS.md#l-ee-009--the-delay-slot-is-filled-the-leftover-nop-is-the-function-ending-jr-ra) — delay slots are almost always filled; the leftover `nop` is the function-end one |
+| the frame grows one 8 B slot for a value that is also passed to a call | [L-EE-015](LAWS.md#l-ee-015--the-outgoing-argument-area-doubles-as-storage-for-a-value-used-after-the-call) — a value passed in the outgoing area is re-read from that slot after the call |
+| you need to know which registers are allocatable, caller-saved or reserved | [L-EE-016](LAWS.md#l-ee-016--the-ee-register-file-140-hard-registers-in-29-classes) — 140 hard registers in 29 classes; allocatable callee-saved GPRs are `$16`–`$23` and `$30` |
+| a prologue stores `a1`–`t3` into consecutive 8-byte slots | [L-EE-031](LAWS.md#l-ee-031--a-variadic-function-saves-the-argument-registers-and-calls-__builtin_va_start) — the function is **variadic**; `jal __builtin_va_start` confirms it |
 
 ## In the instruction stream
 
@@ -35,6 +39,14 @@ Start from the shape in front of you, not from the law list.
 | `jal dpadd` / `dpmul` / `dpcmp` | [L-EE-029](LAWS.md#l-ee-029--single-precision-is-hardware-double-precision-is-soft-float) — the source uses `double`; there is no `add.d` in this build |
 | `lui`/`ori` then `mtc1` | [L-EE-019](LAWS.md#l-ee-019--the-float-rule-is-version-specific-296-inlines-32-uses-the-pool) (2.96 materialises every float inline) |
 | 12-byte functions are 16 bytes apart | [L-EE-022](LAWS.md#l-ee-022--function-alignment-8-bytes-by-default-4-with--falign-functions4) — 8-byte alignment by default |
+| two values with equal reference counts allocate in an unexpected order | [L-EE-001](LAWS.md#l-ee-001--global-allocation-order-is-allocno_compare) — the priority is `(floor_log2(n_refs) * freq) / live_length * (10000 / REG_BR_PROB_BASE)` |
+| a value the dump reports was placed is treated as a hard register | [L-EE-008](LAWS.md#l-ee-008--in-23greg-regs-to-allocate-is-the-local-allocation-residue-conflicts-lists-every-allocno) — `regs to allocate` is the residue after local allocation, `conflicts` lists every allocno |
+| a port of mainline's allocation loop does not reproduce the recorded dispositions | [L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--a-two-step-ladder-whose-decision-is-a-side-effect) — the shipped `find_reg` is a two-step `alt_regs` ladder whose decision is a side effect |
+| a field read uses `lh`/`lbu` instead of `lw`, or a write has a negative `li` before `and`/`or` | [L-EE-035](LAWS.md#l-ee-035--bitfields-lsb-first-no-32-bit-straddling-narrowed-reads-and-masked-writes) — signed bitfield read, or a bitfield write |
+| the target loads the same address twice where you load it once | [L-EE-037](LAWS.md#l-ee-037--volatile-is-visible-as-unmerged-accesses) — the source used a `volatile` pointer (or a call sits between the reads) |
+| the target has an `ldl`/`ldr`-`sdl`/`sdr` loop where you call `memcpy` | [L-EE-038](LAWS.md#l-ee-038--aggregate-copies-unrolled-to-32-bytes-then-an-inline-ldlldr-loop--never-memcpy) — copies above 32 bytes are inline loops; `memcpy` is never called |
+| the target calls through a register (`jalr`) plus `j $31` | [L-EE-039](LAWS.md#l-ee-039--indirect-calls-are-jalr-and-never-become-tail-jumps) — the source used a **function pointer**; indirect calls never become tail jumps |
+| you expected `beq`/`bne` for `==` but see `xor` + `sltu`, or `xori 0x1` for `<=` | [L-EE-040](LAWS.md#l-ee-040--comparison-idioms-materialised-as-values-branched-as-conditions) — comparisons used as values are materialised |
 
 ## In the data
 
@@ -53,3 +65,10 @@ Start from the shape in front of you, not from the law list.
 | a size or offset mismatch while the instructions agree | [L-EE-022](LAWS.md#l-ee-022--function-alignment-8-bytes-by-default-4-with--falign-functions4), then [L-EE-024](LAWS.md#l-ee-024--a-saved-fp-is-not-a-frame-pointer) |
 | the source is CRI middleware | [CROSS-2.96.md](CROSS-2.96.md) — which rules transfer and which do not |
 | every instruction agrees but the registers do not | [L-EE-018](LAWS.md#l-ee-018--global-allocation-preference-first-then-the-lowest-register-left-after-two-passes-that-first-avoid-registers-other-allocnos-prefer) — and read its rejected levers before inventing your own |
+| no `(N)` size suffix appears in the `;; N regs to allocate:` line | [L-EE-002](LAWS.md#l-ee-002--allocnosize-is-in-words-and-prints-only-when-it-is-not-1) — `size` is in words and is printed only when it is not 1 |
+| a mainline-calibrated pressure model predicts the wrong spill count | [L-EE-003](LAWS.md#l-ee-003--register-pressure-is-wider-on-ee-struct-allocno-is-144-b-hard_reg_set-is-192-bits) — `struct allocno` is 144 B and `HARD_REG_SET` is 192 bits here |
+| a rule taken from mainline `config/mips/mips.c` does not reproduce EE code selection | [L-EE-004](LAWS.md#l-ee-004--ee-ships-its-own-backend-configmipsmips5900c) — EE ships its own `mips5900.c`, which mainline does not have |
+| a frequency proxy built from de-duplicated instructions mis-ranks adjacent pairs | [L-EE-005](LAWS.md#l-ee-005--reg_freq-counts-every-register-occurrence-reg_freq_max-is-1000) — `REG_FREQ` is accumulated per note, one block frequency per occurrence |
+| a mainline line number is cited for an EE behaviour and the lines do not contain that code | [L-EE-006](LAWS.md#l-ee-006--line-numbers-are-not-portable-between-trees) — line numbers are not portable between trees |
+| you suspect a one-TU-many-functions build changes codegen | [L-EE-007](LAWS.md#l-ee-007--there-is-no-translation-unit-level-codegen-state-except-l-numbering) — there is no TU-level codegen state except the `$L` label counter |
+| you are assuming `-O2` behaviour for a unit that was built with `-Os` | [L-EE-034](LAWS.md#l-ee-034---os-is-this-projects-most-common-level-and-the-rules-hold-there) — `-Os` is this project's most common level (687 files) and takes every rule as written |

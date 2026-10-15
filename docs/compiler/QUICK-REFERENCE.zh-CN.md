@@ -15,6 +15,10 @@
 | 实参被放在 `8($sp)` 而不是 `4($sp)` | [L-EE-028](LAWS.md#l-ee-028--eight-integer-arguments-travel-in-4-11-and-eight-float-arguments-in-f12-f19-a-long-long-or-double-takes-one-64-bit-gpr-the-rest-go-on-the-stack-in-8-byte-slots) —— 第 9 个实参起按 8 字节槽入栈 |
 | 你在数保存槽 | [L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers) —— 每个 8 B，上限 10 |
 | 保存超过 10 个值但帧不再涨 | [L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers) —— 多出的进 `vars` |
+| 目标延迟槽里是 `nop`、你的却是真指令 | [L-EE-009](LAWS.md#l-ee-009--the-delay-slot-is-filled-the-leftover-nop-is-the-function-ending-jr-ra) —— 延迟槽几乎总被填满；剩下的 `nop` 是函数末尾那一个 |
+| 对一个既传给调用、又要在调用后使用的值，帧多出一个 8 B 槽 | [L-EE-015](LAWS.md#l-ee-015--the-outgoing-argument-area-doubles-as-storage-for-a-value-used-after-the-call) —— 经出参区传出的值会在调用后**从该槽重读** |
+| 需要知道哪些寄存器可分配、调用者保存或被保留 | [L-EE-016](LAWS.md#l-ee-016--the-ee-register-file-140-hard-registers-in-29-classes) —— 140 个硬寄存器、29 个类；可分配的被调用者保存 GPR 是 `$16`–`$23` 与 `$30` |
+| 序言把 `a1`–`t3` 存进连续 8 字节槽 | [L-EE-031](LAWS.md#l-ee-031--a-variadic-function-saves-the-argument-registers-and-calls-__builtin_va_start) —— 该函数**是可变参数**；`jal __builtin_va_start` 可确证 |
 
 ## 指令流
 
@@ -35,6 +39,14 @@
 | `jal dpadd` / `dpmul` / `dpcmp` | [L-EE-029](LAWS.md#l-ee-029--single-precision-is-hardware-double-precision-is-soft-float) —— 源码在用 `double`；本构建里没有 `add.d` |
 | `lui`/`ori` 后接 `mtc1` | [L-EE-019](LAWS.md#l-ee-019--the-float-rule-is-version-specific-296-inlines-32-uses-the-pool) —— 2.96 把每个 float 内联构造 |
 | 12 字节函数之间隔了 16 字节 | [L-EE-022](LAWS.md#l-ee-022--function-alignment-8-bytes-by-default-4-with--falign-functions4) —— 默认 8 字节对齐 |
+| 引用次数相同的两个值分配顺序不符预期 | [L-EE-001](LAWS.md#l-ee-001--global-allocation-order-is-allocno_compare) —— 优先级是 `(floor_log2(n_refs) * freq) / live_length * (10000 / REG_BR_PROB_BASE)` |
+| 把 dump 报「已放置」的值当成了硬寄存器 | [L-EE-008](LAWS.md#l-ee-008--in-23greg-regs-to-allocate-is-the-local-allocation-residue-conflicts-lists-every-allocno) —— `regs to allocate` 是局部分配后的残留，`conflicts` 会列出**所有** allocno |
+| 照 mainline 写的分配循环复现不出 dump 里的 disposition | [L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--a-two-step-ladder-whose-decision-is-a-side-effect) —— 出厂 `find_reg` 是两级 `alt_regs` 阶梯，决定通过**副作用**落地 |
+| 字段读用 `lh`/`lbu` 而非 `lw`，或写之前出现负数 `li` 后接 `and`/`or` | [L-EE-035](LAWS.md#l-ee-035--bitfields-lsb-first-no-32-bit-straddling-narrowed-reads-and-masked-writes) —— 有符号位域读、或位域写 |
+| 目标对同一地址读了两次、你只读一次 | [L-EE-037](LAWS.md#l-ee-037--volatile-is-visible-as-unmerged-accesses) —— 源码用了 `volatile` 指针（或两次读之间隔着调用） |
+| 目标是 `ldl`/`ldr`-`sdl`/`sdr` 循环、你在调 `memcpy` | [L-EE-038](LAWS.md#l-ee-038--aggregate-copies-unrolled-to-32-bytes-then-an-inline-ldlldr-loop--never-memcpy) —— 超过 32 字节的拷贝是内联循环，**从不**调 `memcpy` |
+| 目标通过寄存器调用（`jalr`）并跟着 `j $31` | [L-EE-039](LAWS.md#l-ee-039--indirect-calls-are-jalr-and-never-become-tail-jumps) —— 源码用了**函数指针**；间接调用永不变成尾跳转 |
+| 你预期 `==` 是 `beq`，看到的却是 `xor`+`sltu`；或 `<=` 出现 `xori 0x1` | [L-EE-040](LAWS.md#l-ee-040--comparison-idioms-materialised-as-values-branched-as-conditions) —— 比较结果被**当成值**用时会被物化 |
 
 ## 数据
 
@@ -53,3 +65,10 @@
 | 指令一致但大小/偏移不符 | [L-EE-022](LAWS.md#l-ee-022--function-alignment-8-bytes-by-default-4-with--falign-functions4)，再看 [L-EE-024](LAWS.md#l-ee-024--a-saved-fp-is-not-a-frame-pointer) |
 | 源码是 CRI 中间件 | [CROSS-2.96.zh-CN.md](CROSS-2.96.zh-CN.md) —— 哪些规则可迁移、哪些不能 |
 | 指令全对但寄存器不同 | [L-EE-018](LAWS.md#l-ee-018--global-allocation-preference-first-then-the-lowest-register-left-after-two-passes-that-first-avoid-registers-other-allocnos-prefer) —— 并先读它记录的两条**被否证**的杠杆，别重复发明 |
+| `;; N regs to allocate:` 行里没有 `(N)` 尺寸后缀 | [L-EE-002](LAWS.md#l-ee-002--allocnosize-is-in-words-and-prints-only-when-it-is-not-1) —— `size` 以**字**为单位，且仅在不为 1 时打印 |
+| 按 mainline 标定的压力模型算错溢出数 | [L-EE-003](LAWS.md#l-ee-003--register-pressure-is-wider-on-ee-struct-allocno-is-144-b-hard_reg_set-is-192-bits) —— 这里 `struct allocno` 是 144 B、`HARD_REG_SET` 是 192 位 |
+| 从 mainline `config/mips/mips.c` 取的规则复现不出 EE 的选码 | [L-EE-004](LAWS.md#l-ee-004--ee-ships-its-own-backend-configmipsmips5900c) —— EE 有自己独有的 `mips5900.c` |
+| 用去重后的指令算频率代理会排错相邻对 | [L-EE-005](LAWS.md#l-ee-005--reg_freq-counts-every-register-occurrence-reg_freq_max-is-1000) —— `REG_FREQ` 按**每次出现**累加块频率（note 级） |
+| 引用 mainline 行号解释 EE 行为、但那几行并不是那段代码 | [L-EE-006](LAWS.md#l-ee-006--line-numbers-are-not-portable-between-trees) —— 行号**不跨树可移植** |
+| 怀疑「一个 TU 放多个函数」会改变代码生成 | [L-EE-007](LAWS.md#l-ee-007--there-is-no-translation-unit-level-codegen-state-except-l-numbering) —— 除 `$L` 标签计数器外**没有** TU 级代码生成状态 |
+| 你按 `-O2` 假设某单元的行为，而它其实是 `-Os` | [L-EE-034](LAWS.md#l-ee-034---os-is-this-projects-most-common-level-and-the-rules-hold-there) —— `-Os` 是本项目最多的档（687 文件），规则照搬即可 |
