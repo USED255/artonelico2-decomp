@@ -16,6 +16,8 @@ python3 tools/compiler/ee-gcc-observe.py --src func.c --flags="-O2 -G0" # observ
 ```
 
 No game content is needed or produced: every fixture is generated here.
+Fixture note: keep negative assertions narrow (`!jal\s+memcpy`, not `!memcpy`) - the source file name
+appears in the assembly's .file directive, so a bare name can match its own fixture.
 
 Level note: the fixtures assert the `-O2` rules. `--flags="-Os -G0"` passes all of them (that level is the
 most common in this project). `-O1` and `-O3` each fail one fixture, and both failures are documented
@@ -71,6 +73,15 @@ FIXTURES: list[tuple[str, str, str, str]] = [
      "return s+v0+v1+v2+v3+v4+v5+v6+v7;}\n",
      r"#\s*vars=\s*0,\s*regs=\s*10/0",
      "L-EE-012: eight call-crossing values fill the save area to its cap of 10 registers"),
+    ("struct-copy-inline-small",
+     "struct S16 { int a0,a1,a2,a3; };\nvoid f(struct S16 *d, struct S16 *s){ *d = *s; }\n",
+     r"!ldl", "L-EE-038: a 16-byte copy is unrolled lw/sw, with no ldl loop"),
+    ("struct-copy-loop-large",
+     "struct S64 { int a0,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15; };\nvoid f(struct S64 *d, struct S64 *s){ *d = *s; }\n",
+     r"ldl[\s\S]*sdl[\s\S]*bne", "L-EE-038: a 64-byte copy is an inline ldl/ldr-sdl/sdr loop"),
+    ("struct-copy-no-libc-call",
+     "struct S64 { int a0,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15; };\nvoid f(struct S64 *d, struct S64 *s){ *d = *s; }\n",
+     r"!jal\s+memcpy", "L-EE-038: and it does not call memcpy"),
     ("volatile-not-merged",
      "void f(volatile int *p){ *p = *p + 1; *p = *p + 1; }\n",
      r"lw\s+\$\d+,\s*0\(\$4\)[\s\S]*lw\s+\$\d+,\s*0\(\$4\)",

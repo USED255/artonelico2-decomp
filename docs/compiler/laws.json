@@ -1776,6 +1776,54 @@
       "evidence": [
         "private:out/evidence/ee_gcc_volatile.txt"
       ]
+    },
+    {
+      "id": "L-EE-038",
+      "title": "An aggregate copy is unrolled into lw/sw pairs up to 32 bytes and becomes an inline ldl/ldr-sdl/sdr loop above that - memcpy is never called",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "expr.c",
+        "line": 0,
+        "note": "Aggregate copies go through store/load expansion (movstr patterns) in expr.c plus the backend; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 32,
+            "at": "largest fully unrolled copy",
+            "means": "eight words are unrolled; nine words become a loop"
+          },
+          {
+            "kind": "int",
+            "value": 16,
+            "at": "bytes per loop iteration",
+            "means": "ldl/ldr-sdl/sdr move 16 bytes per trip"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "17.combine"
+      ],
+      "symptom": [
+        "the target has an ldl/ldr-sdl/sdr loop where your reconstruction calls memcpy",
+        "the target has a run of lw/sw pairs where your reconstruction calls memcpy for a small structure"
+      ],
+      "lever": [
+        "a copy of 32 bytes or less is fully unrolled into lw/sw pairs, one pair per word",
+        "a copy of more than 32 bytes becomes an inline loop moving 16 bytes per iteration with the unaligned ldl/ldr and sdl/sdr pairs - not a memcpy call, at any size tested up to 256 bytes",
+        "do not confuse ld/sd (aligned 64-bit, used for long and double) with ldl/ldr/sdl/sdr (unaligned, used by these copy loops)"
+      ],
+      "receipt": "At -O2 -G0 on this machine, with void f(struct S *d, struct S *s){*d = *s;} for structures of 4 to 256 bytes. Copies of 4, 8, 12, 16, 20, 24, 28 and 32 bytes are unrolled into lw/sw pairs (2 instructions per word plus the return). At 36 bytes and above the compiler emits an inline loop: ldl/ldr pairs to load 16 bytes, sdl/sdr to store them, addiu to advance both pointers and a bne to close the loop - 14 to 20 instructions regardless of total size. No memcpy or memmove relocation appears at any size tested.",
+      "falsifies": "the expectation that a large structure assignment becomes a memcpy call, and that copies use the aligned ld/sd pairs",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0, structures of 4 to 256 bytes made of int fields; structs with padding, arrays of structs and memcpy with a known constant size were not measured separately",
+      "evidence": [
+        "private:out/evidence/ee_gcc_struct_copy.txt"
+      ]
     }
   ],
   "verification": {

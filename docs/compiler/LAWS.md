@@ -1059,6 +1059,41 @@ Two usable judgements:
 
 ---
 
+## L-EE-038 · Aggregate copies: unrolled to 32 bytes, then an inline `ldl/ldr` loop — never `memcpy`
+
+`void f(struct S *d, struct S *s) { *d = *s; }` at `-O2 -G0`:
+
+| size | form | instructions |
+| ---: | --- | ---: |
+| 4–**32** | fully unrolled `lw`/`sw` pairs | 2 per word + 2 |
+| **36**–256 | **inline loop**: `ldl`/`ldr` + `sdl`/`sdr`, **16 bytes per iteration** | 14–20 |
+
+```asm
+        ldl     t3,7(a1)      # unaligned 64-bit load (low pair)
+        ldr     t3,0(a1)      #                      (high pair)
+        ldl     t4,15(a1)
+        ldr     t4,8(a1)
+        sdl     t3,7(a0)
+        sdr     t3,0(a0)
+        ...
+        addiu   a1,a1,16
+        bne     a1,t7,4 <f+0x4>
+```
+
+**No `memcpy`/`memmove` at any size tested (up to 256 bytes)** — the backend expands the copy itself.
+
+* **Tier T2** · **Source anchor** `expr.c` and the backend's movstr patterns (no line read from the shipped
+  tree) · **Constants** 32 bytes and 16 bytes per iteration
+* **Falsifies** the expectation that a large structure assignment becomes a `memcpy` call, and that copies
+  use the aligned `ld`/`sd` pairs
+* **Lever** an `ldl`/`ldr`-`sdl`/`sdr` loop in the target ⇒ a copy of **more than 32 bytes**; a run of
+  `lw`/`sw` ⇒ a **≤32-byte** copy. Do not confuse `ld`/`sd` (aligned, for `long`/`double`) with
+  `ldl`/`ldr`/`sdl`/`sdr` (unaligned, for these loops)
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`, 4- to 256-byte structures; structs with padding and
+  constant-size `memcpy` were not measured separately
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).
