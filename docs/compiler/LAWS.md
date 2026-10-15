@@ -456,6 +456,13 @@ compensation for the replay's own errors is identified.
 49.1%, which looks like a real rule. It is not: with the dynamic conflict set held at ground truth the rotation scores
 **60.5%** against **63.5%** without it, so it only compensates for this replay's own errors. Do not adopt it.
 
+**A second rejected hypothesis — live-range occupancy.** Rebuilding the conflict set from the **block-level** live sets
+in the `16.life` dump scores **30.6%** against **42.1%** for the dumped `conflicts` list: block granularity merges
+allocnos that are live at different points, so the dumped list (built from instruction-level liveness) remains the
+better occupancy source. Two levers have now been tried and rejected — the rotating start and live-range occupancy —
+and the remaining gap to the oracle ceiling is **cascade**, which needs instruction-level live ranges or the shipped
+source.
+
 **Addressing detail, verified live:** `allocno_order[i]` holds an **allocno index** and
 `allocno[index].reg` holds the **pseudo** register number, so the dump's `;; N regs to allocate:` list already
 prints the pseudos **in allocation order** — for one fixture the live order `[3,1,2,0,…]` maps to the printed
