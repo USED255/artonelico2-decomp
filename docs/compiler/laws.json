@@ -1680,6 +1680,54 @@
       "evidence": [
         "private:out/evidence/ee_gcc_bitfields.txt"
       ]
+    },
+    {
+      "id": "L-EE-036",
+      "title": "Tail calls are jumps: -foptimize-sibling-calls is on at -O2/-Os/-O3, so a call in tail position becomes j target and the function may contain no jal at all - at -O1 it stays jal plus j $31",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "calls.c",
+        "line": 0,
+        "note": "Sibling-call expansion happens in calls.c plus the backend's sibcall patterns; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "jal",
+            "at": "-O1 tail call",
+            "means": "at -O1 a tail call is still jal plus j $31"
+          },
+          {
+            "kind": "string",
+            "value": "j",
+            "at": "-O2 tail call",
+            "means": "at -O2 the same call is a bare jump"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "the target has no jal where your reconstruction calls a function",
+        "your reconstruction has jal plus j $31 where the target jumps straight out"
+      ],
+      "lever": [
+        "at -O2/-Os/-O3 a call in tail position is j target, so a function can end in a jump to an external symbol with no jal and no jr $31 at all",
+        "at -O0/-O1 sibling calls are not optimised: the same source keeps jal target plus j $31 - and 542 files in this project are built at -O1",
+        "the flag is the switch: -O1 -foptimize-sibling-calls turns the jumps on and -O2 -fno-optimize-sibling-calls turns them off"
+      ],
+      "receipt": "At -G0 on this machine. int t1(int a){return g(a);} compiles to j g at -O2 and -Os, and to jal g followed by j $31 at -O0 and -O1. Adding -foptimize-sibling-calls to -O1 produces j g, and adding -fno-optimize-sibling-calls to -O2 restores jal plus j $31, so the transformation is exactly that flag and it is not enabled below -O2. The same jump appears in every tail position tested: with a local variable (int x=a+1; return g(x)), in both branches of an if/else returning from different calls, for a void call, and for return g(*p).",
+      "falsifies": "the expectation that a function's calls all appear as jal, and that the level does not change call shape",
+      "scope": "ee-gcc 3.2-ee-040921 at -O0/-O1/-O2/-Os with -G0 plus the two sibling-call flags, synthetic one-call functions",
+      "evidence": [
+        "private:out/evidence/ee_gcc_tail_calls.txt"
+      ]
     }
   ],
   "verification": {

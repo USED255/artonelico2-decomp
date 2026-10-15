@@ -1004,6 +1004,33 @@ sw   $14,0($4)
 
 ---
 
+## L-EE-036 · Tail calls are jumps — but not below `-O2`
+
+`int t1(int a) { return g(a); }`:
+
+| level | code |
+| --- | --- |
+| `-O0`, **`-O1`** | `jal g` + `j $31` |
+| **`-O2`**, `-Os`, `-O3` | **`j g`** — no `jal`, no `jr $31` |
+
+The switch is `-foptimize-sibling-calls`, off below `-O2`: adding it to `-O1` produces `j g`, and
+`-O2 -fno-optimize-sibling-calls` restores `jal` + `j $31`. **542 files in this project are built at `-O1`**,
+so they contain no tail calls at all.
+
+Every tail position tested becomes a jump at `-O2`: `return g(a)`; with a local (`int x = a+1; return g(x)`);
+**both** branches of an `if`/`else` returning from different calls; a `void` call; and `return g(*p)`.
+
+* **Tier T2** · **Source anchor** `calls.c` plus the backend sibcall patterns (no line read from the shipped
+  tree) · **Constants** the two forms above
+* **Falsifies** the expectation that a function's calls all appear as `jal`, and that the level does not change
+  call shape
+* **Lever** a target that jumps straight to an external symbol where you expected a call is making a **tail
+  call** (level ≥ `-O2`); conversely, at `-O1` every call keeps `jal` + `j $31`, so a reconstruction that
+  drops those two instructions is wrong about the level
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O0`/`-O1`/`-O2`/`-Os` with `-G0`, synthetic one-call functions
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).

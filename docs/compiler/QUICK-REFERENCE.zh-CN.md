@@ -30,6 +30,7 @@
 | 目标读裸符号，你在用 `lui %hi(sym)` | [L-EE-014](LAWS.md#l-ee-014--small-data-addressing-follows--g) 与 [L-EE-021](LAWS.md#l-ee-021--gp_rel-needs-a-definition-in-this-unit-placed-in-sdatasbss) —— gp_rel 需要**在本单元**定义在 `.sdata`/`.sbss` |
 | `lwc1` 装载浮点 | 3.2 见 [L-EE-011](LAWS.md#l-ee-011--float-constants-come-from-the-pool-a-double-is-inline-when-its-low-32-bits-are-zero)；2.96 见 [L-EE-019](LAWS.md#l-ee-019--the-float-rule-is-version-specific-296-inlines-32-uses-the-pool) |
 | 结构体字段用 `ld` / `sd` | [L-EE-033](LAWS.md#l-ee-033--the-data-model-4-byte-pointers-8-byte-long) —— 该字段是 `long`/`long long`/`double`；这里 `long` 是 8 字节 |
+| 本该是调用的地方出现裸 `j <外部符号>` | [L-EE-036](LAWS.md#l-ee-036--tail-calls-are-jumps--but-not-below--o2) —— 尾调用；`-O1` 下同一源码保留 `jal` + `j $31` |
 | `li` + `div`，或 `jal __divdi3` / `__muldi3` | [L-EE-032](LAWS.md#l-ee-032--division-hardware-div-no-magic-number-constants-64-bit-is-libgcc) —— 除的是非 2 的幂常量，或源码用了 `long long` |
 | `jal dpadd` / `dpmul` / `dpcmp` | [L-EE-029](LAWS.md#l-ee-029--single-precision-is-hardware-double-precision-is-soft-float) —— 源码在用 `double`；本构建里没有 `add.d` |
 | `lui`/`ori` 后接 `mtc1` | [L-EE-019](LAWS.md#l-ee-019--the-float-rule-is-version-specific-296-inlines-32-uses-the-pool) —— 2.96 把每个 float 内联构造 |
