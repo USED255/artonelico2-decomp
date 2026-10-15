@@ -1872,6 +1872,57 @@
       "evidence": [
         "private:out/evidence/ee_gcc_indirect_calls.txt"
       ]
+    },
+    {
+      "id": "L-EE-040",
+      "title": "Comparisons used as values are materialised (== is xor plus sltu, <= is an inverted slt plus xori) and comparisons used as conditions either branch or become a branchless select with movn/movz; && is branchless and || is not",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "config/mips/mips.md",
+        "line": 0,
+        "note": "These are the backend's comparison and conditional-move patterns; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 1,
+            "at": "sltu $r,$r,1",
+            "means": "equality is materialised as less-than-one"
+          },
+          {
+            "kind": "int",
+            "value": 1,
+            "at": "xori $r,$r,1",
+            "means": "<= is an inverted, operand-swapped <"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "08.null",
+        "17.combine"
+      ],
+      "symptom": [
+        "you expect beq/bne for == or != and find xor plus sltu",
+        "your reconstruction branches where the target has movz, or the reverse"
+      ],
+      "lever": [
+        "a comparison whose result is used as a value is materialised: a==b is xor $r,$a,$b plus sltu $r,$r,1, a!=b is the same xor plus sltu $r,$0,$r, a==0 is sltu $r,$a,1 and a<b is slt (sltu when unsigned)",
+        "a<=b is not one instruction: it is sltu/slt with the operands swapped (b<a) and then xori $r,$r,0x1",
+        "a comparison used as a condition branches on the operands instead (bne/beq), so a bare bne in the target means the source compared in an if/while",
+        "the two logical operators are not symmetric: a&&b is branchless (sltu plus movz) while a||b uses branches, and min/max use movz rather than branches",
+        "when both arms of an if are cheap values the compiler selects branchlessly with movn/movz, so movn/movz does not by itself mean the source used a ternary"
+      ],
+      "receipt": "At -O2 and -Os on this machine, identical row for row. Materialised results: a==b gives xor $4,$4,$5 then sltu $4,$4,1; a!=b gives the same xor then sltu $4,$0,$4; a==0 gives sltu $4,$4,1; a!=0 gives sltu $4,$0,$4; !a gives sltu $4,$4,1; a<b gives slt (sltu unsigned); a>b gives slt with the operands swapped; a<=b gives slt $5,$5,$4 then xori $5,$5,0x1; a&&b gives sltu $5,$0,$5 then movz $5,$0,$4; a||b is branchy (bne, beq, li $2,1); a<b?a:b gives slt plus movz. As a condition the same comparison branches instead: if(a==b) emits bne $4,$5,$L with no xor or sltu, and a loop test if(i==3) emits xori $13,$12,0x3 with movz. The condition half has two outcomes, not one: with a call in one arm (if (a==b) return g();) the compiler branches (bne $4,$5,$L), but when both arms are simple values (if (a==b) return 1; return 2;) it converts the if into a branchless select - xor $4,$4,$5 then movn $2,$15,$4 - so a materialised xor paired with movn/movz can also come from an if statement. Which conditional move is picked is not fixed: -O2 uses movn with the constants in one order and -O1 uses movz with them swapped, so assert on movn-or-movz rather than on one of them.",
+      "falsifies": "the expectation that == compiles to beq, that <= is a single comparison instruction, and that && and || compile the same way",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 and -Os with -G0, synthetic one-expression functions over int, unsigned and zero comparisons; 64-bit comparisons and comparisons of floating-point values were not measured",
+      "evidence": [
+        "private:out/evidence/ee_gcc_bool_idioms.txt"
+      ]
     }
   ],
   "verification": {

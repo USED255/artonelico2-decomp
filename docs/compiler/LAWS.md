@@ -1135,6 +1135,47 @@ i:  # return gp(a);    indirect
 
 ---
 
+## L-EE-040 · Comparison idioms: materialised as values, branched as conditions
+
+`-O2` and `-Os` are **identical** here.
+
+| expression (result used as a value) | code |
+| --- | --- |
+| `a == b` | `xor` + **`sltu $r,$r,1`** |
+| `a != b` | `xor` + **`sltu $r,$0,$r`** |
+| `a == 0` / `a != 0` / `!a` | **`sltu $r,$a,1`** / `sltu $r,$0,$a` / `sltu $r,$a,1` |
+| `a < b` signed / unsigned | `slt` / `sltu` |
+| `a > b` | `slt` with the **operands swapped** |
+| `a <= b` | `slt(u)` with swapped operands + **`xori $r,$r,0x1`** |
+| `a && b` | `sltu $r,$0,$b` + **`movz`** — **branchless** |
+| `a \|\| b` | **branchy**: `bne`, `beq`, `li $2,1` |
+| `a<b ? a : b` | `slt` + **`movz`** |
+
+Used as a **condition** it usually branches: `if (a == b) return g();` is a bare **`bne $4,$5,$L`** with no
+`xor`/`sltu`. But when **both arms are simple values** the compiler converts the `if` into a **branchless
+select** — `if (a == b) return 1; return 2;` becomes `xor $4,$4,$5` then `movn $2,$15,$4`. So a materialised
+`xor` paired with `movn`/`movz` can come from either a ternary or an `if`. Which conditional move is chosen
+is **not fixed** — `-O2` uses `movn` with the constants in one order and `-O1` uses `movz` with them swapped — so
+compare on the *shape* (branchless select), not on one mnemonic.
+
+Three things that look "almost right" in a diff:
+
+1. `==` is **not** `beq` — as a value it is `xor` + `sltu` against 0/1;
+2. `<=` is **not** one instruction — it is an operand-swapped `<` followed by `xori 1`;
+3. **`&&` is branchless (`sltu`+`movz`) while `||` is branchy** — they are not symmetric, and min/max use
+   `movz` rather than branches.
+
+* **Tier T2** · **Source anchor** the backend's comparison and conditional-move patterns (no line read from
+  the shipped tree) · **Constants** the `1` in `sltu` and in `xori`
+* **Falsifies** the expectation that `==` compiles to `beq`, that `<=` is a single comparison, and that
+  `&&`/`||` compile the same way
+* **Lever** `xor`+`sltu` or `xori 0x1` in the target ⇒ the comparison's **result was used as a value**;
+  a bare `bne`/`beq` ⇒ it was a **condition**
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2`/`-Os` with `-G0`, one-expression functions; 64-bit and
+  floating-point comparisons were not measured
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).
