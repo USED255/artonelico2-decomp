@@ -29,6 +29,8 @@ import importlib.util
 import json
 import re
 import os
+import subprocess
+import tempfile
 import sys
 from pathlib import Path
 
@@ -143,6 +145,7 @@ def main() -> int:
         check_tiers(data)
         check_binary_anchors(data)
     check_anchors()
+    check_build_flags(data)
     print()
     if FAILURES:
         print(f"FAIL: {len(FAILURES)} of {COUNT} checks failed")
@@ -151,6 +154,38 @@ def main() -> int:
         return 1
     print(f"OK: {COUNT} checks passed")
     return 0
+
+
+def check_build_flags(data: dict) -> None:
+    """手册的 scope 说的构建旗标，必须与仓库现状一致。
+
+    为什么：本手册所有条目都声明「在项目构建旗标下」，这些数字来自 `build_mixed.sh` 的 MATCHED_CFLAGS 默认值。
+    若它变了，手册的 scope 就过期——而没有任何检查会因此变红。
+    """
+    toolchain = (data or {}).get("toolchain") or {}
+    stated = toolchain.get("flags", "")
+    script = ROOT / "build_mixed.sh"
+    if not script.exists():
+        check("build flags match the handbook", False, "build_mixed.sh missing")
+        return
+    m = re.search(r'MATCHED_CFLAGS="\$\{MATCHED_CFLAGS:-([^}]*)\}', script.read_text(encoding="utf-8"))
+    if not m:
+        check("build flags match the handbook", False, "MATCHED_CFLAGS default not found")
+        return
+    actual = m.group(1).strip()
+    check("build flags match the handbook", actual == stated, f"script {actual!r} vs laws.json {stated!r}")
+
+    # 有编译器时再核 dump 数量：PASSES.md 声称 3.2 有 26 份 `-da` dump
+    gcc = Path.home() / "eecc" / "ee-gcc3.2-040921" / "bin" / "ee-gcc"
+    if not gcc.exists():
+        return
+    with tempfile.TemporaryDirectory(prefix="dumpcount-") as td:
+        work = Path(td)
+        (work / "t.c").write_text("int f(int a) { return a + 1; }\n", encoding="utf-8")
+        subprocess.run([str(gcc), "-O2", "-da", "-c", "-o", "/dev/null", str(work / "t.c")],
+                       capture_output=True, cwd=work, check=False)
+        dumps = sorted(p.name.split("t.c.", 1)[1] for p in work.glob("t.c.[0-9]*"))
+    check("2.96/3.2 dump inventory (26 for 3.2)", len(dumps) == 26, f"{len(dumps)} dumps: {dumps[:6]}")
 
 
 def _gh_slug(heading: str) -> str:
