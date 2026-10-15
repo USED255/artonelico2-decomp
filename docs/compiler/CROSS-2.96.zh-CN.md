@@ -14,7 +14,7 @@
 | switch 阈值：6 路稠密生成表，4 路与稀疏只生成分支链（[L-EE-010](LAWS.md#l-ee-010--a-switch-becomes-a-jump-table-only-when-count--5-and-range--10--count)） | ✅ 一致 |
 | `-G0` 下全局用 `lui %hi` / `%lo` 绝对寻址（[L-EE-014](LAWS.md#l-ee-014--small-data-addressing-follows--g)） | ✅ 一致 |
 | 双精度常量：`0.0` 用 `move`；低位 32 位为 0 用 `li`+`dsll32`；否则走池（[L-EE-011](LAWS.md#l-ee-011--float-constants-come-from-the-pool-a-double-is-inline-when-its-low-32-bits-are-zero)） | ✅ 一致 |
-| 帧构成与保存槽计数 | ✅ 同一形状（未逐值重标定） |
+| 帧构成与保存槽计数（[L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers)） | ✅ **逐值一致**：k = 2/4/6/8/10/12/16/20 对应帧 32/48/64/80/96/96/112/128，`regs=` 4/6/8/10/10/10/10/10 |
 
 ## **不能**迁移的
 

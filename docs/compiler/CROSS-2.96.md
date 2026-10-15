@@ -16,7 +16,7 @@ misleads.
 | Switch threshold: 6 dense cases become a table, 4 cases and sparse ranges stay a branch chain ([L-EE-010](LAWS.md#l-ee-010--a-switch-becomes-a-jump-table-only-when-count--5-and-range--10--count)) | ✅ same |
 | `-G0`: a global is addressed absolutely with `lui %hi` / `%lo` ([L-EE-014](LAWS.md#l-ee-014--small-data-addressing-follows--g)) | ✅ same |
 | Double constants: `move` for 0.0, `li`+`dsll32` when the low 32 bits are zero, otherwise the pool ([L-EE-011](LAWS.md#l-ee-011--float-constants-come-from-the-pool-a-double-is-inline-when-its-low-32-bits-are-zero)) | ✅ same |
-| Frame composition and the save-slot count | ✅ same shape (not re-calibrated per value) |
+| Frame composition and the save-slot count ([L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers)) | ✅ **identical**, re-calibrated per value: k = 2/4/6/8/10/12/16/20 gives frame 32/48/64/80/96/96/112/128 with regs 4/6/8/10/10/10/10/10 |
 
 ## What does not
 

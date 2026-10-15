@@ -59,6 +59,13 @@ FIXTURES: list[tuple[str, str, str, str]] = [
      "int f(signed char x){return x < 100;}\n", r"\bsll\b.*\n.*\bsra\b|\bsll\b", "L-EE-013: a narrow signed compare shifts first"),
     ("small-data-off",
      "int g_int;\nint f(void){return g_int;}\n", r"%hi\(g_int\)", "L-EE-014: at -G0 a global is addressed absolutely"),
+    ("frame-cap-10",
+     "extern int sink(int);\n"
+     "int f(int *p){int v0=p[0],v1=p[1],v2=p[2],v3=p[3],v4=p[4],v5=p[5],v6=p[6],v7=p[7];int s=0;\n"
+     "s+=sink(v0);s+=sink(v1);s+=sink(v2);s+=sink(v3);s+=sink(v4);s+=sink(v5);s+=sink(v6);s+=sink(v7);\n"
+     "return s+v0+v1+v2+v3+v4+v5+v6+v7;}\n",
+     r"#\s*vars=\s*0,\s*regs=\s*10/0",
+     "L-EE-012: eight call-crossing values fill the save area to its cap of 10 registers"),
     ("gprel-sbss",
      "int g_sbss __attribute__((section(\".sbss\")));\nint f(void){return g_sbss;}\n",
      r"\blw\s+\$\d+,\s*g_sbss", "L-EE-021: a .sbss definition is a bare symbol even at -G0"),
