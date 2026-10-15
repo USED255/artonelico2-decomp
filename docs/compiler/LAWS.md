@@ -1631,6 +1631,38 @@ and `bc1tl`/`bc1fl`.
 
 ---
 
+## L-EE-052 · No latency nops — FP order is scheduler-driven
+
+| source | code at `-O2` |
+| --- | --- |
+| `float f(float *p, float *q){ return *p + *q; }` | `l.s` ; `l.s` ; `j $31` ; **`add.s`** (in the delay slot) |
+| `int f(float *p){ return (int)*p; }` | `l.s` ; **`cvt.w.s` immediately** ; `j $31` ; `mfc1` |
+| `float f(float *p){ return *p; }` | `j $31` ; **`l.s`** (in the delay slot) |
+| `float x = *p; return x > 0.0f;` | `l.s` ; `mtc1` ; `c.lt.s` ; `bc1t` |
+
+**Counting `nop`s over five floating-point shapes at `-O1`, `-O2` and `-Os` gives zero in every case.** This
+compiler does **not** pad COP1 loads, moves or compares.
+
+The consequence matters for matching: **floating-point instruction order is decided by optimisation and
+scheduling alone**, never by latency padding. So do not hunt for a missing `nop` between a load and its use —
+an order difference has to be explained by a source-shape lever
+([FIELD-GUIDE](FIELD-GUIDE.md)), not by latency.
+
+The same measurement shows how free that order is: the four loads of `p[0]*p[1] + p[2]*p[3]` are reordered to
+offsets **0, 4, 12, 8**, and an FP accumulation loop is ordered differently at `-O2` (`mtc1 $0,$f1`) than at
+`-Os` (`mtc1 $0,$f0` plus `mov.s $f1,$f0`).
+
+* **Tier T3** (negative knowledge: the absence is the finding) · **Source anchor** the port's scheduling
+  description (no line read from the shipped tree) · **Constants** `l.s`, `mfc1`
+* **Falsifies** the expectation that a load-delay or COP1-latency `nop` should appear between a
+  floating-point load and its first use
+* **Lever** an FP sequence in a different order is a **source-shape** signal; and a candidate's extra `nop`
+  comes from somewhere else — check the delay-slot rules ([L-EE-009](LAWS.md#l-ee-009--the-delay-slot-is-filled-the-leftover-nop-is-the-function-ending-jr-ra))
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O1`/`-O2`/`-Os` with `-G0`, five FP shapes plus a `double` load;
+  integer load delays and 2.96 were not measured here
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).

@@ -18,10 +18,10 @@ python3 tools/compiler/ee-gcc-observe.py --matrix
 | level | fixtures passing | notes |
 | --- | ---: | --- |
 | `-O0` | 46/80 | no optimiser: the frame pointer is used, constants are not pooled or deduplicated, narrow compares are not masked, loops are not strength-reduced |
-| `-O1` | 76/80 | no tail calls ([L-EE-036](LAWS.md#l-ee-036--tail-calls-are-jumps--but-not-below--o2)) and the constant-trip loop keeps an upward `slt` comparison ([L-EE-025](LAWS.md#l-ee-025--loops-count-down-at--o2-os-at--o1-they-keep-slt-and-are-not-unrolled)) |
-| **`-O2`** | **80/80** | reference level for the receipts |
-| **`-Os`** | **79/80** | everything except the second multiplier, which -Os does not use ([L-EE-049](LAWS.md#l-ee-049--variable-shifts-negation-float-compare--and-the-second-multiplier)); this is the level most of this project's files use ([L-EE-034](LAWS.md#l-ee-034---os-is-this-projects-most-common-level-and-the-rules-hold-there)) |
-| `-O3` | 79/80 | a plain `static` helper is inlined ([L-EE-023](LAWS.md#l-ee-023--at-these-flags-only-an-inline-declaration-is-inlined)) |
+| `-O1` | 77/81 | no tail calls ([L-EE-036](LAWS.md#l-ee-036--tail-calls-are-jumps--but-not-below--o2)) and the constant-trip loop keeps an upward `slt` comparison ([L-EE-025](LAWS.md#l-ee-025--loops-count-down-at--o2-os-at--o1-they-keep-slt-and-are-not-unrolled)) |
+| **`-O2`** | **81/81** | reference level for the receipts |
+| **`-Os`** | **80/81** | everything except the second multiplier, which -Os does not use ([L-EE-049](LAWS.md#l-ee-049--variable-shifts-negation-float-compare--and-the-second-multiplier)); this is the level most of this project's files use ([L-EE-034](LAWS.md#l-ee-034---os-is-this-projects-most-common-level-and-the-rules-hold-there)) |
+| `-O3` | 80/81 | a plain `static` helper is inlined ([L-EE-023](LAWS.md#l-ee-023--at-these-flags-only-an-inline-declaration-is-inlined)) |
 
 For this project only the last four matter — its sources are built with `-Os` (687 files), `-O1` (542), `-O2`
 (264) and `-O3` (98), never `-O0`. So: **`-O2` and `-Os` take every rule as written, `-O1` differs in the loop

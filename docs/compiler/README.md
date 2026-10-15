@@ -44,7 +44,7 @@ such question with evidence, and each lever names the source spelling that moves
 | `tools/compiler/ee-gcc-passdiff.py` | compile two spellings of one function and report the first pass that diverges |
 | `tools/compiler/ee-gcc-spill-map.py` | map a too-large frame onto its blocks and source lines, and trace each spill to the line that defined the value |
 | `tools/compiler/ee-gcc-coverage.py` | measure how much of a disassembly the handbook explains, and split what is left into assembly-only and unexplained |
-| `tools/compiler/ee-gcc-observe.py` | compile eighty synthetic fixtures and assert what this handbook says must appear (`--selftest`), or print frame/pool/mnemonic observations for your own file |
+| `tools/compiler/ee-gcc-observe.py` | compile eighty-one synthetic fixtures and assert what this handbook says must appear (`--selftest`), or print frame/pool/mnemonic observations for your own file |
 
 `make check` runs the law data check, the binary-anchor re-verification and a smoke test of every command
 above.

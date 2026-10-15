@@ -2506,6 +2506,54 @@
       "evidence": [
         "private:out/evidence/ee_gcc_branches_zero_cop1.txt"
       ]
+    },
+    {
+      "id": "L-EE-052",
+      "title": "No latency nops: COP1 loads, moves and compares are never padded, so floating-point instruction order is entirely scheduler-driven",
+      "tier": "T3",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips5900.md",
+        "line": 0,
+        "note": "Latency modelling lives in the port's scheduling description; no line was read from the shipped tree, so the absence is measured rather than read."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "l.s",
+            "at": "COP1 load",
+            "means": "a COP1 load is followed by its use with no padding"
+          },
+          {
+            "kind": "string",
+            "value": "mfc1",
+            "at": "COP1 to GPR",
+            "means": "the move sits in a delay slot rather than after a nop"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "29.sched2"
+      ],
+      "symptom": [
+        "you are looking for a missing nop between a floating-point load and its use",
+        "an FP sequence's order differs from the target and you are attributing it to latency"
+      ],
+      "lever": [
+        "this compiler never inserts a latency nop: l.s is immediately followed by its use, cvt.w.s follows the load it consumes, and mfc1/mtc1 are placed in branch delay slots",
+        "therefore floating-point instruction order is decided by optimisation and scheduling alone - never by latency padding - so an order difference must be explained by a source-shape lever, not by a missing nop",
+        "the same measurement shows the scheduler reordering independent COP1 loads (a dot product loads offsets 0, 4, 12, 8 at -O2), and -O2 and -Os differing in FP loop order"
+      ],
+      "receipt": "At -O1, -O2 and -Os with -G0. float f(float*p,float*q){return *p+*q;} is l.s $f0,0($4); l.s $f1,0($5); j $31; add.s $f0,$f0,$f1 - the add sits in the branch delay slot. int f(float*p){return (int)*p;} is l.s $f0,0($4) immediately followed by cvt.w.s $f1,$f0, then j $31 with mfc1 $2,$f1. float f(float*p){return *p;} puts l.s in the delay slot of j $31. A float comparison is l.s followed directly by mtc1/c.lt.s. Counting nops over five floating-point shapes (including a loop accumulation and a 64-bit double load) at all three levels gives zero in every case. The same compiles show the four loads of p[0]*p[1]+p[2]*p[3] reordered to offsets 0, 4, 12, 8, and the FP accumulation loop ordered differently at -O2 (mtc1 $0,$f1) than at -Os (mtc1 $0,$f0 plus mov.s $f1,$f0).",
+      "falsifies": "the expectation that a load-delay or COP1-latency nop should appear between a floating-point load and its first use",
+      "scope": "ee-gcc 3.2-ee-040921 at -O1/-O2/-Os with -G0, five floating-point shapes plus a double load; integer load delays and the 2.96 compiler were not measured here",
+      "evidence": [
+        "private:out/evidence/ee_gcc_no_latency_nops.txt"
+      ]
     }
   ],
   "verification": {
