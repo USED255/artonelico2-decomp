@@ -1923,6 +1923,56 @@
       "evidence": [
         "private:out/evidence/ee_gcc_bool_idioms.txt"
       ]
+    },
+    {
+      "id": "L-EE-041",
+      "title": "A 128-bit vector type compiles to lq/sq, is passed in a register pair, cannot be returned by value, and is the way to tell a 16-byte vector copy from a struct copy",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips5900.md",
+        "line": 0,
+        "note": "The lq/sq patterns are EE-specific; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "lq",
+            "at": "128-bit load",
+            "means": "a 128-bit container is loaded with the MMI instruction"
+          },
+          {
+            "kind": "string",
+            "value": "sq",
+            "at": "128-bit store",
+            "means": "...and stored with sq"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "16.life"
+      ],
+      "symptom": [
+        "the target moves 16 bytes with lq/sq where your reconstruction uses lw/sw pairs",
+        "you are reconstructing a 16-byte value as a vector and the compiler rejects the return"
+      ],
+      "lever": [
+        "a mode(V4SI)/s128 value is loaded and stored with lq and sq, so lq/sq in the target means the source used a 128-bit type there, not a plain structure",
+        "the discriminator: the same 16 bytes copied as a struct unrolls into lw/sw pairs, copied as a vector becomes one lq plus one sq",
+        "a 128-bit parameter travels in a register pair from $4, its first element is extracted with dsll/dsra and later elements need the whole value spilled with sq and reloaded with lw",
+        "a 128-bit value cannot be returned by value - the compiler errors with 'output_operand: invalid expression as operand' - so a target function returning 16 bytes by value is a struct with a hidden pointer, never a vector",
+        "vector arithmetic is not supported in 3.2 (a + b on two vectors is an error), so these types are opaque 128-bit containers"
+      ],
+      "receipt": "At -O2 and -Os with -G0, identical. With typedef int v4si __attribute__((mode(V4SI))): v4si x = *p loads with lq $2,0($4); *p = v stores with sq $5,0($4); *d = *s copies with one lq and one sq; ((int*)p)[i] is sll/addu/lw and the store form is sll/addu/sw; element 0 is extracted with dsll $4,$4,32 then dsra $4,$4,32 while elements 1 and 3 require sq $4,0($sp) followed by lw $2,4($sp) or lw $2,12($sp). A 16-byte struct copy of the same size is lw/sw pairs instead, so lq/sq is the discriminator. Returning a v4si by value fails to compile with 'output_operand: invalid expression as operand', and adding two v4si values fails with 'invalid operands to binary +'. In this project 1141 of the reconstructed source files use mode(V4SI) types.",
+      "falsifies": "the assumption that a 16-byte copy always unrolls into lw/sw pairs (a vector type uses lq/sq), and that a 128-bit value can be returned by value like a structure",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 and -Os with -G0, synthetic mode(V4SI) functions for load, store, copy, element access and parameter passing; the ABI slots beyond the first pair and unaligned lq/sq were not measured",
+      "evidence": [
+        "private:out/evidence/ee_gcc_v4si.txt"
+      ]
     }
   ],
   "verification": {

@@ -1176,6 +1176,48 @@ Three things that look "almost right" in a diff:
 
 ---
 
+## L-EE-041 · 128-bit containers: `lq`/`sq`, a register pair, and no by-value return
+
+**1141 reconstructed source files in this project use `mode(V4SI)`** (`s128`/`u128`) — about a third of them —
+so this is the codegen those types produce. `-O2` and `-Os` are identical.
+
+| operation | code |
+| --- | --- |
+| `v4si x = *p;` | **`lq $2,0($4)`** — 128-bit load |
+| `*p = v;` | **`sq $5,0($4)`** — 128-bit store |
+| `*d = *s;` (16 bytes) | **`lq $15,0($5)` + `sq $15,0($4)`** — one 128-bit move |
+| `((int*)p)[i]` / `… = v` | `sll` + `addu` + **`lw`** / **`sw`** |
+| element 0 | `dsll $4,$4,32` + `dsra $4,$4,32` (sign-extract from the 64-bit register) |
+| elements 1 or 3 | **`sq $4,0($sp)`** then `lw $2,4($sp)` / `lw $2,12($sp)` |
+| passing a `v4si` | in a **register pair** from `$4`; forwarding it needs no work |
+
+**The discriminator** — the same 16 bytes:
+
+| source | code |
+| --- | --- |
+| `struct S16 { int a,b,c,d; } *d = *s;` | unrolled `lw`/`sw` pairs ([L-EE-038](LAWS.md#l-ee-038--aggregate-copies-unrolled-to-32-bytes-then-an-inline-ldlldr-loop--never-memcpy)) |
+| `v4si *d = *s;` | **`lq` + `sq`** |
+
+So `lq`/`sq` in the target means the source used a **128-bit type** at that spot — which is exactly why m2c
+emits `V4SI` for these positions.
+
+**Two hard limits.** A 128-bit value **cannot be returned by value**: the compiler errors with
+`output_operand: invalid expression as operand`, so a target function returning 16 bytes by value must be a
+**structure** with a hidden pointer ([L-EE-030](LAWS.md#l-ee-030--aggregates-8-bytes-by-value-larger-by-reference-returns-use-a-hidden-pointer)), never a vector. And **vector
+arithmetic does not exist in 3.2** (`a + b` on two vectors is an error) — these types are opaque 128-bit
+containers.
+
+* **Tier T2** · **Source anchor** the EE-specific `lq`/`sq` patterns (no line read from the shipped tree) ·
+  **Constants** the mnemonics `lq` and `sq`
+* **Falsifies** the assumption that a 16-byte copy always unrolls into `lw`/`sw` pairs, and that a 128-bit
+  value can be returned by value like a structure
+* **Lever** `lq`/`sq` in the target ⇒ a 128-bit type at that spot; and if you reconstruct a 16-byte return as
+  a vector the compiler will refuse — use a structure
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2`/`-Os` with `-G0`, synthetic `mode(V4SI)` load/store/copy/element
+  and parameter cases; ABI slots beyond the first pair and unaligned `lq`/`sq` were not measured
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).
