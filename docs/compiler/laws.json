@@ -592,9 +592,9 @@
         "match the -G value to the target build before comparing globals: the project passes no -G, so the default 8 applies",
         "objects up to 8 bytes (and not constants) become gp_rel; larger objects and every constant stay absolute"
       ],
-      "receipt": "One fixture with 4 B globals, an 8 B double, a 32 B array, a static const and a float constant, built at -G0/-G4/-G8/no flag: 4 B objects are absolute at -G0 and small-data at -G4/-G8/default; the 8 B double is absolute up to -G4 and small-data at -G8/default; the 32 B array is absolute everywhere; a static const read folds to an immediate; the float constant is absolute (%hi/%lo($LCn)) in every setting.",
+      "receipt": "One fixture with 4 B globals, an 8 B double, a 32 B array, a static const and a float constant, built at -G0/-G4/-G8/no flag: 4 B objects are absolute at -G0 and small-data at -G4/-G8/default; the 8 B double is absolute up to -G4 and small-data at -G8/default; the 32 B array is absolute everywhere; a static const read folds to an immediate; the float constant is absolute (%hi/%lo($LCn)) in every setting. The boundary is inclusive and the default was measured rather than assumed: objects of size 4, 8, 9, 12 and 16 bytes at -G0/-G4/-G8/-G9/-G16 show that an object qualifies when its size is <= G (4-byte objects qualify at -G4, 9-byte objects only from -G9), and that the default (no -G flag) behaves exactly like -G8. Uninitialised small objects land in .scommon (merged into .sbss at link time) and initialised ones in .sdata.",
       "falsifies": "the implicit assumption that measurements taken at -G0 describe the project build: the project passes no -G, so its default is 8 and its small-data behaviour differs",
-      "scope": "ee-gcc 3.2-ee-040921; one fixture per setting. The build flags come from the project's MATCHED_CFLAGS (no -G).",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2; the boundary was measured with 4/8/9/12/16-byte objects and the default against -G8. See L-EE-021 for which declarations qualify at -G0.",
       "evidence": [
         "private:out/evidence/ee_gcc_small_data.txt"
       ]

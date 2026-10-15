@@ -312,6 +312,11 @@ otherwise                                    -> compare chain
   constants) become `gp_rel`; larger objects and every constant stay absolute.
 * **Scope** `ee-gcc 3.2-ee-040921`; one fixture per setting.
 
+**The boundary, measured.** An object qualifies when its size is **≤ G (inclusive)**: 4-byte objects qualify
+at `-G4`, 9-byte objects only from `-G9`, and the **default (no `-G`) behaves exactly like `-G8`**.
+Uninitialised small objects land in `.scommon` (merged into `.sbss` at link time); initialised ones in
+`.sdata`. Which *declarations* qualify at `-G0` is [L-EE-021](LAWS.md#l-ee-021--gp_rel-needs-a-definition-in-this-unit-placed-in-sdatasbss).
+
 ## L-EE-015 · The outgoing argument area doubles as storage for a value used after the call
 
 | what is passed | after the call | frame cost |
