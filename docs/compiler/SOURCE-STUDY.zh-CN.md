@@ -80,4 +80,11 @@ python3 tools/compiler/ee-gcc-anchor.py --cc1 "$CC1" const 0x821e360 --bytes 8
 | Internet Archive：**PS2 Linux Kit 两张 DVD** | 已定位并**远读**（用 ISO9660 目录表 + HTTP Range，不下载整盘）。Disc 1 = 安装盘；Disc 2 = 软件树。`/SCEI/RPMS` 里是 **EE 工具链二进制**（`GCC-29`、`GCC-C++`、`GCC-G77`、`GCC-OBJ`、`BINUTILS`）；`/SCEI` 下**没有 SRPMS**，根级 `/SRPMS`、`/SOURCES` 属发行版。**套件盘不含 EE 编译器源码。**（`SOURCES/EE-031_1.GZ` 是 `ee` 文本编辑器，不是 Emotion Engine。） |
 | `mips5900.c` / `ee-gcc 3.2-ee-040921` 源码（常规检索） | 无命中 |
 
+**2.9 代确实有 Sony 的官方发布**：GitHub 的 [`GirianSeed/ee-gcc`](https://github.com/GirianSeed/ee-gcc/releases) 放出了 4 个 Sony `ee-gcc` 源码包（全为 2.9 代，1999）。
+其打包形态就是要找的目标形态：`config.sh` 里 `--prefix=/usr/local/sce/ee/gcc --target=ee`（**与本工具链 DWARF 里报告的前缀与 target 完全一致**）、
+`COPYING`/`COPYING.LIB`/`COPYING.NEWLIB`、`sce-patch/patch`（Sony 的 context diff）、`src/src.tar.gz`。⇒ Sony **确实**以 GPL 发布过 EE GCC 源码。
+
+但那不是出厂 3.2 树：该补丁**没有改** `config/mips/mips.md`，也没有 `mips5900.c`、没有 `mips5900_*` 模式名、没有 VU0/COP0/ACC 寄存器类。
+EE 的**代码生成**是 3.x 代才做进去的——那正是仍缺的部分。
+
 **阶段性结论：没有任何公开源码包含 EE 寄存器模型**（192 位 `HARD_REG_SET`、`VU0_*`、`COP0_AND_GR_REGS`、`FP_ACC_REG`、`HILO_REGS`）。找到的公开 EE 补丁寄存器文件都**更小且不同**。这就是寄存器类与着色类条目是 `T2`/`T3` 的原因，也是「直接读运行时表」这条路的依据。

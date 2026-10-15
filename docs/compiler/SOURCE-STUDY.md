@@ -94,6 +94,17 @@ why the colouring model is still open (see [LAWS.md](LAWS.md) open items).
 | Internet Archive: **PS2 Linux Kit DVDs** | discs located and read **remotely** (ISO9660 directory tables over HTTP Range, no full download). Disc 1 = installer; disc 2 = the software tree. `/SCEI/RPMS` holds the **EE toolchain binaries** (`GCC-29`, `GCC-C++`, `GCC-G77`, `GCC-OBJ`, `BINUTILS`); `/SCEI` has **no SRPMS** and the root-level `/SRPMS` + `/SOURCES` are the i386 distribution's. **The kit ships no EE compiler source.** (`SOURCES/EE-031_1.GZ` is the `ee` text editor, not the Emotion Engine.) |
 | `mips5900.c` / `ee-gcc 3.2-ee-040921` source, general web | no hit |
 
+**A Sony release does exist for the 2.9 era.** The GitHub repository
+[`GirianSeed/ee-gcc`](https://github.com/GirianSeed/ee-gcc/releases) publishes four Sony `ee-gcc` source
+packages (all 2.9-generation, 1999). Their shape is the packaging to look for: a `config.sh` with
+`--prefix=/usr/local/sce/ee/gcc --target=ee` — **the same prefix and target this toolchain reports in its
+DWARF** — plus `COPYING`/`COPYING.LIB`/`COPYING.NEWLIB`, a `sce-patch/patch` context diff and
+`src/src.tar.gz`. Sony therefore did ship EE GCC source under the GPL.
+
+That 2.9 release is **not** the shipped 3.2 tree: its patch leaves `config/mips/mips.md` untouched, and
+it has no `mips5900.c`, no `mips5900_*` pattern names and none of the VU0/COP0/ACC register classes. The
+EE **code generation** arrived in the 3.x line — which is exactly the part still missing.
+
 **Conclusion so far: no public source contains the EE register model** (192-bit `HARD_REG_SET`, `VU0_*`,
 `COP0_AND_GR_REGS`, `FP_ACC_REG`, `HILO_REGS`). Every public EE patch found so far has a *smaller*,
 different register file. That is why the register-class and colouring laws are `T2`/`T3`, and why the
