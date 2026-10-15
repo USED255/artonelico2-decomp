@@ -86,6 +86,7 @@ func_00112918	-O2
 func_00112e30	-Os
 func_00113724	-Os
 func_001139b0	-Os
+func_00114770	-Os
 func_001155f8	-O1
 func_00115638	-O2
 func_00115668	-Os
@@ -432,6 +433,8 @@ func_001abc5c	-Os
 func_001acc80	-Os
 func_001b04b0	-Os
 func_001b0738	-Os
+func_001b0854	-Os
+func_001b0b18	-Os
 func_001b0cac	-Os
 func_001b0d10	-Os
 func_001b30c8	-O2 -mno-split-addresses
