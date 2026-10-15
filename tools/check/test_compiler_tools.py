@@ -134,7 +134,9 @@ def tier_toolchain(tmp: Path) -> None:
 
     # 手册的 10 组合成夹具：把手册里的规则变成可执行断言（`--selftest`）
     out = run([str(OBSERVE), "--cc", str(DEFAULT_EE_GCC), "--selftest", "--work", str(tmp / "observe")])
-    check("ee-gcc-observe selftest (10 fixtures)", out.returncode == 0 and "10 passed" in out.stdout,
+    # 不硬编码夹具数量：加夹具时不该红，只要求「0 failed」
+    check("ee-gcc-observe selftest (all fixtures pass)",
+          out.returncode == 0 and "0 failed" in out.stdout,
           (out.stdout + out.stderr).strip()[-160:])
 
     a = tmp / "a.c"
