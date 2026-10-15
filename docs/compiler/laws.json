@@ -1232,6 +1232,54 @@
       "evidence": [
         "private:out/evidence/ee_gcc_const_pool.txt"
       ]
+    },
+    {
+      "id": "L-EE-027",
+      "title": "String literals are merged across the whole translation unit at every optimisation level, and the assembly's .rdata is the object's .rodata",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "varasm.c",
+        "line": 0,
+        "note": "String pooling runs through const_str_htab in varasm.c; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 1,
+            "at": ".ascii \"hello\" occurrences with two callers",
+            "means": "strings are shared, not duplicated"
+          },
+          {
+            "kind": "string",
+            "value": ".rodata",
+            "at": "objdump -h",
+            "means": "the section the assembly calls .rdata"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "you expected the constant-pool behaviour (per function) to apply to strings as well",
+        "you are grepping an object or a dump for a .rdata section and cannot find it"
+      ],
+      "lever": [
+        "strings are pooled per translation unit and merged even at -O0, unlike float constants which are per function (L-EE-026)",
+        "look for the read-only data in .rodata in the object; .rdata is only the assembly directive",
+        "expect no suffix sharing: 'world' and 'hello world' are two separate entries"
+      ],
+      "receipt": "At -G0. Two functions each returning \"hello\" produce exactly one .ascii \"hello\\000\" at -O0, -O1, -O2 and -Os, and the object's relocations show both functions referencing the same place, so strings are merged across the translation unit regardless of optimisation; the float constants in the same situation are NOT merged (L-EE-026). The assembly emits .rdata plus .align 3 with an explicit \\000 terminator, while objdump -h reports the section as .rodata (size 0x28, alignment 2**3) - so .rdata is the assembler's name, not a section you will find in the object. \"world\" and \"hello world\" are emitted as two independent entries, so there is no suffix sharing.",
+      "falsifies": "generalising the per-function constant-pool rule to string literals, and expecting a .rdata section in the object",
+      "scope": "ee-gcc 3.2-ee-040921 at -G0 with -O0/-O1/-O2/-Os, synthetic units with repeated and overlapping strings",
+      "evidence": [
+        "private:out/evidence/ee_gcc_strings.txt"
+      ]
     }
   ],
   "verification": {

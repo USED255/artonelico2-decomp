@@ -707,6 +707,31 @@ Entries follow **first-use order**: `if (k) return 2.5f; return 0.5f;` numbers t
 
 ---
 
+## L-EE-027 · Strings are pooled per translation unit, not per function
+
+Two functions each returning `"hello"` produce exactly **one** `.ascii "hello\000"` — at `-O0`, `-O1`, `-O2`
+and `-Os` alike — and the object's relocations show both referencing the same place. So string pooling is
+**unconditional**, and it is the opposite of the constant pool, where the same float in two functions gets
+two entries ([L-EE-026](LAWS.md#l-ee-026--the-constant-pool-is-per-function)).
+
+Two more things the assembly misleads about:
+
+* it writes `.rdata` with `.align 3` (8-byte) and an explicit `\000`, while the **object's section is
+  `.rodata`** (`objdump -h`: size 0x28, alignment `2**3`). If you are looking for a `.rdata` section in an
+  object or a dump, you will not find one;
+* there is **no suffix sharing**: `"world"` and `"hello world"` are two independent entries.
+
+* **Tier T2** · **Source anchor** `varasm.c` (`const_str_htab`; no line read from the shipped tree) ·
+  **Constants** one `.ascii` occurrence, section `.rodata`
+* **Falsifies** generalising the per-function constant-pool rule to strings, and expecting a `.rdata`
+  section in the object
+* **Lever** when two functions disagree about a string, look at the translation-unit boundary (strings never
+  merge across units); when reading data offsets, read `.rodata`
+* **Scope** `ee-gcc 3.2-ee-040921` at `-G0` with `-O0`–`-Os`, synthetic units with repeated and overlapping
+  strings
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).
