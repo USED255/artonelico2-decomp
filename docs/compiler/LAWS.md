@@ -732,6 +732,31 @@ Two more things the assembly misleads about:
 
 ---
 
+## L-EE-028 · Eight arguments in registers, the rest in 8-byte stack slots
+
+Sixteen callers, one to sixteen `int` arguments, `-O2 -G0`:
+
+* arguments **1–8 go in `$4`–`$11`** — none of them touches the stack;
+* from the **ninth** each argument is stored on the stack at an **8-byte stride**: `0($sp)`, `8($sp)`,
+  `16($sp)` … in source order (not 4 bytes, even for `int`);
+* the frame's `args=` is that area **rounded up to 16 bytes**: 9–10 arguments → 16, 11–12 → 32, 13–14 → 48,
+  15–16 → 64, i.e. `args = round16(8 × max(0, n − 8))`.
+
+The **whole frame** is `round16(vars + 8 × regs + args)`
+([L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers)):
+a caller with nine arguments has a sum of 24 and a frame of 32.
+
+* **Tier T2** · **Source anchor** the MIPS backend's EABI argument layout (`config/mips/mips.c`; no line read
+  from the shipped tree) · **Constants** 8 register arguments, 8-byte slots, 16-byte rounding
+* **Falsifies** the assumption that outgoing stack arguments are 4-byte slots, and that `args=` is only
+  4-byte aligned
+* **Lever** read the call shape out of `args=`: 16 means nine or ten arguments, 32 means eleven or twelve;
+  and when a frame differs by 8 or 24 bytes, check the 16-byte rounding before adding a variable
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`, integer arguments only; floating-point and structure
+  arguments were not measured
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).

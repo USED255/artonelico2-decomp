@@ -11,6 +11,7 @@
 | `.frame $sp,N` **且**保存了 `$fp` | [L-EE-024](LAWS.md#l-ee-024--a-saved-fp-is-not-a-frame-pointer) —— 那个 `$fp` 是第 10 个被调用者保存寄存器，不是帧指针 |
 | `.frame $fp,N` | [L-EE-024](LAWS.md#l-ee-024--a-saved-fp-is-not-a-frame-pointer) —— 源码里有 `alloca`/VLA，或用了 `-fno-omit-frame-pointer` |
 | 同样保存槽下，目标帧**正好大 16 字节** | [L-EE-024](LAWS.md#l-ee-024--a-saved-fp-is-not-a-frame-pointer) |
+| 实参被放在 `8($sp)` 而不是 `4($sp)` | [L-EE-028](LAWS.md#l-ee-028--eight-arguments-in-registers-the-rest-in-8-byte-stack-slots) —— 第 9 个实参起按 8 字节槽入栈 |
 | 你在数保存槽 | [L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers) —— 每个 8 B，上限 10 |
 | 保存超过 10 个值但帧不再涨 | [L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers) —— 多出的进 `vars` |
 
