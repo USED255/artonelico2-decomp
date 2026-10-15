@@ -86,6 +86,12 @@ objdump -d "$CC1" | grep 'call .*<global_alloc>'
 （[L-EE-024](LAWS.md#l-ee-024--a-saved-fp-is-not-a-frame-pointer)）。
 目标帧在同样保存槽下**正好大 16 字节**时，先查这一条。
 
+## 5. 目标里是内联汇编时就停手
+
+如果目标含有 COP2/VU0 助记符（`lqc2`、`sqc2`、`qmtc2`、`qmfc2`、`cfc2`、`ctc2`，或任何 `v*` 向量指令），
+那么**任何 C 写法都复现不出来**：本编译器只从内联汇编发出这些指令（[L-EE-048](LAWS.md#l-ee-048--cop2vu0-instructions-cannot-come-from-c)）。
+把该区域当作手写汇编——要么在重建里以**内联汇编**承载，要么把该函数放到一边；**不要**在它上面耗诊断流程。
+
 ## 4. 两个假信号
 
 这两件事都会给出**干净、自信、错误**的答案：

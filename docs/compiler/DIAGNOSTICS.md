@@ -99,6 +99,13 @@ tenth callee-saved register, not evidence of one. `$fp` means a real frame point
 ([L-EE-024](LAWS.md#l-ee-024--a-saved-fp-is-not-a-frame-pointer)).
 If the target frame is exactly 16 bytes larger with the same callee saves, this is the first thing to check.
 
+## 5. Stop when the target is inline assembly
+
+If the target contains COP2/VU0 mnemonics (`lqc2`, `sqc2`, `qmtc2`, `qmfc2`, `cfc2`, `ctc2`, or any `v*` vector
+instruction) then **no C spelling will ever reproduce it**: this compiler emits those only from inline assembly
+([L-EE-048](LAWS.md#l-ee-048--cop2vu0-instructions-cannot-come-from-c)). Treat the region as hand-written assembly — either carry it as inline
+assembly in the reconstruction or set the function aside; do not spend the diagnostic loop on it.
+
 ## 4. Two false signals
 
 Both of these produce a *clean, confident, wrong* answer. They are the reason a first-divergence

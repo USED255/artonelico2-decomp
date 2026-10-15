@@ -2276,6 +2276,69 @@
       "evidence": [
         "private:out/evidence/ee_gcc_aliases.txt"
       ]
+    },
+    {
+      "id": "L-EE-048",
+      "title": "COP2/VU0 instructions cannot be produced from C by this compiler: vector types use lq/sq in general registers, vector arithmetic and by-value returns fail to compile, and only inline assembly emits lqc2/sqc2",
+      "tier": "T1",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips5900.md",
+        "line": 0,
+        "note": "The backend carries VU0 operand predicates and a -mvu0-use- flag, so the patterns exist; no C construct was found that reaches them, and the negative results are measured."
+      },
+      "binary_anchor": {
+        "symbol": "vu0_register_operand",
+        "addr": "0x081723b0",
+        "related": [
+          {
+            "symbol": "vu0_dest_operand",
+            "addr": "0x08172460"
+          },
+          {
+            "symbol": "vu0_field_operand",
+            "addr": "0x08172490"
+          },
+          {
+            "symbol": "mips_vu0_use_range",
+            "addr": "0x0830fb98"
+          }
+        ],
+        "constants": [
+          {
+            "kind": "string",
+            "value": "-mvu0-use-",
+            "at": "--target-help",
+            "means": "the flag restricts which VU0 registers may be used"
+          },
+          {
+            "kind": "string",
+            "value": "lqc2",
+            "at": "inline asm output",
+            "means": "only inline assembly emits COP2 loads"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "the target contains lqc2, sqc2, qmtc2, qmfc2, cfc2, ctc2 or v* instructions and your C reconstruction cannot produce them",
+        "you are trying to express a VU0 operation with a vector type"
+      ],
+      "lever": [
+        "this compiler never emits COP2 from C: mode(V4SI) and mode(V4SF) loads, stores and copies use lq/sq in general registers, adding two vectors is a compile error, and returning one by value is a compile error too",
+        "the backend does carry VU0 machinery (vu0_register_operand and friends, plus the -mvu0-use-REG1-REG2 flag) but no builtin reaches it, and the v constraint is 'impossible' for a vector value",
+        "the one working path is inline assembly: asm volatile(\"lqc2 $vf1,0(%0)\" :: \"r\"(p)) compiles and emits lqc2, so any COP2 instruction in a binary came from hand-written assembly in the original source",
+        "consequence for reconstruction: such sites cannot be matched by C alone - write inline assembly there, or accept that the function cannot be reproduced in C"
+      ],
+      "receipt": "Measured on this machine at -O2 -G0. mode(V4SI) and mode(V4SF) loads, stores and copies compile to lq/sq in general registers, never to lqc2/sqc2; a + b on two vectors fails with 'invalid operands to binary +'; returning a vector by value fails with 'output_operand: invalid expression as operand' (V4SI) or 'unrecognizable insn' (V4SF); and using the v constraint on a vector value fails with 'impossible register constraint in asm'. The compiler does have VU0 support: --target-help lists -mvu0-use-REG1-REG2 and cc1 exports vu0_register_operand, vu0_dest_operand, vu0_field_operand, vu0_float_operand, vu0_int_register_operand, vu0_reg_imm5_operand and mips_vu0_use_range. Inline assembly works: asm volatile(\"lqc2 $vf1,0(%0)\" :: \"r\"(&v)) emits lqc2, and the same with sqc2 emits sqc2.",
+      "falsifies": "the expectation that a 128-bit or float-vector C type makes the compiler use the VU0, and that COP2 instructions in a binary could come from ordinary C",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0 with mode(V4SI) and mode(V4SF) types and inline assembly; the -mvu0-use- flag and the VU0 operand predicates are recorded but not exercised, and no attempt was made to reach COP2 through them",
+      "evidence": [
+        "private:out/evidence/ee_gcc_cop2_from_c.txt"
+      ]
     }
   ],
   "verification": {

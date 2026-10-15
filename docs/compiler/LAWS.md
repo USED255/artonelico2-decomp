@@ -1447,6 +1447,46 @@ handbook:
 
 ---
 
+## L-EE-048 · COP2/VU0 instructions cannot come from C
+
+**The single most important limitation for reconstruction**: this compiler never emits COP2/VU0 code from C.
+
+| probe | result |
+| --- | --- |
+| `mode(V4SI)` / `mode(V4SF)` load, store, copy | **`lq`/`sq` in general registers** — never `lqc2`/`sqc2` |
+| `a + b` on two vectors | **compile error** (`invalid operands to binary +`) |
+| returning a vector by value | **compile error** (`output_operand: invalid expression as operand`) |
+| `asm` with the `"v"` constraint on a vector | `impossible register constraint in 'asm'` |
+
+The backend **does** carry VU0 machinery — `--target-help` lists **`-mvu0-use-REG1-REG2`**, and cc1 exports
+`vu0_register_operand` (`0x081723b0`), `vu0_dest_operand` (`0x08172460`), `vu0_field_operand` (`0x08172490`),
+`vu0_float_operand`, `vu0_int_register_operand`, `vu0_reg_imm5_operand` and `mips_vu0_use_range`
+(`0x0830fb98`) — but **no C construct reaches it**, and there are no `__builtin_ee_*`/`__builtin_vu*` builtins.
+
+**The one working path is inline assembly**:
+
+```c
+int v[4], w[4];
+asm volatile("lqc2 $vf1,0(%0)" :: "r"(v));     /* emits lqc2 */
+asm volatile("sqc2 $vf2,0(%0)" :: "r"(w));     /* emits sqc2 */
+```
+
+So **every COP2 instruction in a binary was hand-written assembly in the original source** — `lqc2`, `sqc2`,
+`qmtc2`, `qmfc2`, `cfc2`, `ctc2` and the whole `v*` vector family. **Such sites cannot be matched by a C
+reconstruction at all**; the reconstruction has to carry inline assembly there, or the function cannot be
+reproduced in C.
+
+* **Tier T1** · **Source anchor** the backend's VU0 operand predicates and `-mvu0-use-` (`config/mips/mips5900.md`;
+  no line read from the shipped tree) · **Binary anchors** the symbols above
+* **Falsifies** the expectation that a 128-bit or float-vector C type makes the compiler use the VU0, and that
+  COP2 instructions could come from ordinary C
+* **Lever** when a target function contains COP2 mnemonics, do not hunt for a C spelling — that region is
+  inline assembly; budget for it or skip the function
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`, `mode(V4SI)`/`mode(V4SF)` types and inline assembly; the
+  `-mvu0-use-` flag and the VU0 predicates are recorded but were not exercised
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).

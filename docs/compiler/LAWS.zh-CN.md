@@ -1072,6 +1072,39 @@ falsifies：「助记符能唯一确定编码」与「`li` 是一条真指令」
 
 ---
 
+## L-EE-048 · COP2/VU0 指令**不可能**由 C 生成
+
+**这是对重建最重要的限制**：本编译器绝不会从 C 生成 COP2/VU0 代码。
+
+| 探测 | 结果 |
+| --- | --- |
+| `mode(V4SI)` / `mode(V4SF)` 的装载/存储/拷贝 | **`lq`/`sq`（通用寄存器）**——从不是 `lqc2`/`sqc2` |
+| 两个向量相加 | **编译错误**（`invalid operands to binary +`） |
+| 按值返回向量 | **编译错误**（`output_operand: invalid expression as operand`） |
+| `asm` 对向量用 `"v"` 约束 | `impossible register constraint in 'asm'` |
+
+后端**确实**带 VU0 机制——`--target-help` 列出 **`-mvu0-use-REG1-REG2`**，cc1 导出
+`vu0_register_operand`（`0x081723b0`）、`vu0_dest_operand`（`0x08172460`）、`vu0_field_operand`（`0x08172490`）、
+`vu0_float_operand`、`vu0_int_register_operand`、`vu0_reg_imm5_operand`、`mips_vu0_use_range`（`0x0830fb98`）——
+但**没有任何 C 构造能到达它**，也没有 `__builtin_ee_*`/`__builtin_vu*` 内建。
+
+**唯一可行通路是内联汇编**：
+
+```c
+int v[4], w[4];
+asm volatile("lqc2 $vf1,0(%0)" :: "r"(v));     /* 生成 lqc2 */
+asm volatile("sqc2 $vf2,0(%0)" :: "r"(w));     /* 生成 sqc2 */
+```
+
+⇒ 二进制里**每一条 COP2 指令都来自原始源码的手写汇编**——`lqc2`、`sqc2`、`qmtc2`、`qmfc2`、`cfc2`、`ctc2`
+以及整个 `v*` 向量家族。**这些位置用 C 重建永远匹配不上**；重建必须在那里写内联汇编，否则该函数无法用 C 复现。
+
+**T1**｜源码锚点：后端的 VU0 操作数谓词与 `-mvu0-use-`（`config/mips/mips5900.md`；未从出厂树读到行号）｜二进制锚点：上列符号｜
+falsifies：「128 位/浮点向量类型会让编译器使用 VU0」与「COP2 指令可能来自普通 C」。
+**杠杆**：目标函数里出现 COP2 助记符时，别去找 C 写法——那是**内联汇编**区域；要么为它预留预算，要么跳过该函数。
+
+---
+
 ## 仍未解决
 
 * `$L` 计数器精确公式（多标签函数）。
