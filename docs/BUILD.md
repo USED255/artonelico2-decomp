@@ -145,10 +145,18 @@ The tool refuses to publish unless the provenance record says the payload sha1 w
 matches, every C unit reached 100 percent, the tree was clean, and the run was not a `--limit`
 smoke test. It then writes `progress/SLPS_258.19_report.json` and updates `PUBLISHED.json`, and it
 checks the numbers (including the denominators) against the baseline. Use `--force --reason "..."`
-to override the gate; the reason is recorded in `PUBLISHED.json`. Use `--freeze-baseline` to make
-the provenance record the new baseline; that is a separate, explicit decision, because
-`progress/baseline.json` is the frozen reference. Use `--refresh` after a change to
-`toolchain.lock.json`.
+to override the gate; the reason is recorded in `PUBLISHED.json`.
+
+**Pass `--freeze-baseline` whenever the report content changes.** `progress/baseline.json` is the
+frozen reference, and the publication gate refuses a pull request whose baseline does not describe
+the report being published (`the baseline provenance does not describe the published report`). The
+flag writes the *provenance record* there — what was verified, not a copy of the report — so
+"no regression" keeps meaning something. It is not optional, and omitting it is the usual reason a
+publication pull request goes red on its first push.
+
+The record's `source_revision` is the commit the *verified run* built (the provenance's
+`source_commit`, not the commit that publishes), and the gate checks that too. Use `--refresh`
+after a change to `toolchain.lock.json`; it only recomputes hashes and keeps the recorded revision.
 
 `main` is protected by a repository ruleset, so a maintainer lands the result through a pull
 request too:
