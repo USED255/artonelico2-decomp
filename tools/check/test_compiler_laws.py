@@ -187,6 +187,16 @@ def check_build_flags(data: dict) -> None:
         dumps = sorted(p.name.split("t.c.", 1)[1] for p in work.glob("t.c.[0-9]*"))
     check("2.96/3.2 dump inventory (26 for 3.2)", len(dumps) == 26, f"{len(dumps)} dumps: {dumps[:6]}")
 
+    with tempfile.TemporaryDirectory(prefix="dumpcount-o1-") as td:
+        work = Path(td)
+        (work / "t.c").write_text("int f(int a, int b) { int s = 0; int i; for (i = 0; i < 4; i++) s += a * i + b; return s; }\n",
+                                 encoding="utf-8")
+        subprocess.run([str(gcc), "-O1", "-G0", "-da", "-c", "-o", "/dev/null", str(work / "t.c")],
+                       capture_output=True, cwd=work, check=False)
+        dumps_o1 = sorted(p.name.split("t.c.", 1)[1] for p in work.glob("t.c.[0-9]*"))
+    check("-O1 dump inventory (20, six fewer than -O2)", len(dumps_o1) == 20,
+          f"{len(dumps_o1)} dumps; missing {sorted(set(dumps) - set(dumps_o1))}")
+
 
 def _gh_slug(heading: str) -> str:
     """GitHub 的标题锚点算法：小写、去标点（保留空格）、每个空格→连字符（**不折叠**）。"""

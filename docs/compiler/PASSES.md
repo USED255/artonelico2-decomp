@@ -15,6 +15,22 @@ table is only valid **inside one compiler**. Compare by pass **name**, never by 
 The numbering says "pass N of 3.2"; `03.jump` in 3.2 is `02.jump` in 2.96. A rule anchored in one
 dump must be re-measured in the other compiler.
 
+## The inventory depends on the optimisation level
+
+`-da` writes one dump per pass that runs, and which passes run depends on `-O`
+([L-EE-020](LAWS.md#l-ee-020--the-pass-pipeline-is--o-sensitive)). On one loop fixture:
+
+| level | dumps | missing relative to `-O2` |
+| --- | ---: | --- |
+| `-O0` | 9 | everything except 00.rtl, 03.jump, 10.addressof, 13.cfg, 16.life, 22.lreg, 23.greg, 24.postreload, 25.flow2 |
+| `-O1` | 20 | **01.sibling, 11.gcse, 19.regmove, 20.sched, 21.range, 29.sched2** |
+| `-O2` | 26 | — |
+| `-Os` | 26 | same set as `-O2` |
+
+This is why a function can match at `-O1` and not at `-O2`: **scheduling and register moves do not run at
+`-O1`**, so the instruction order differs even when every decision rule agrees. Count the dumps only for a
+compile that succeeded — a rejected source leaves a partial set.
+
 ## Which source file owns which dump
 
 Compiled from: the dump's own text, the symbols in the shipped `cc1` resolved through `addr2line`,

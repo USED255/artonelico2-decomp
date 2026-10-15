@@ -504,6 +504,34 @@ the switch threshold
 
 ---
 
+## L-EE-020 · The pass pipeline is `-O` sensitive
+
+`ee-gcc -<level> -G0 -da -c` on one loop fixture:
+
+| level | dumps | missing relative to `-O2` |
+| --- | ---: | --- |
+| `-O0` | **9** | 01.sibling, 08.null, 09.cse, 11.gcse, 12.loop, 14.bp, 15.cse2, 17.combine, 18.ce, 19.regmove, 20.sched, 21.range, 27.rnreg, 28.ce2, 29.sched2, 31.bbro, 33.dbr |
+| `-O1` | **20** | **01.sibling, 11.gcse, 19.regmove, 20.sched, 21.range, 29.sched2** |
+| `-O2` | **26** | — |
+| `-Os` | **26** | same set as `-O2` |
+
+The **decision rules do not change** with the level: at `-O1` a `0.5f` constant still loads from the pool, a
+low-word-zero `double` is still built with `li` + `dsll32`, and a dense six-case switch still becomes a
+table — only the instruction order and the register moves differ, which is what the six missing passes do.
+That is why some functions in this project match only at `-O1`.
+
+* **Tier T1** · **Source anchor** `toplev.c:3316` (the pipeline driver) · **Binary anchors**
+  `global_alloc @ 0x081aa2c4`, `rest_of_compilation @ 0x0815a854`
+* **Receipt** the inventory above, plus the four rule checks at `-O1` and `-O2`
+* **Falsifies** the assumption that one pass inventory describes this compiler
+* **Lever** check the `-O` level before comparing code shape — and count `-da` dumps only for a compile
+  that **succeeded**: a rejected source (for example a C99 `for`-declaration under C89) leaves just two
+  dumps, so a missing dump may mean the compile stopped, not that the pass did not run
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O0/-O1/-O2/-Os`, one loop fixture for the inventory and four
+  synthetic fixtures for the rules
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).

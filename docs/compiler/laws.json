@@ -886,6 +886,65 @@
       "evidence": [
         "private:out/evidence/ee_gcc_cross_296.txt"
       ]
+    },
+    {
+      "id": "L-EE-020",
+      "title": "The pass pipeline is -O sensitive: -O1 runs 20 of the 26 dumps and skips sibling-call, gcse, regmove, both schedulers and range; -O0 runs 9",
+      "tier": "T1",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "toplev.c",
+        "line": 3316,
+        "note": "The pipeline is driven from toplev.c (the same file that calls global_alloc at line 3316). The pass set per level is measured with -da rather than read from the shipped source."
+      },
+      "binary_anchor": {
+        "symbol": "global_alloc",
+        "addr": "0x081aa2c4",
+        "related": [
+          {
+            "symbol": "rest_of_compilation",
+            "addr": "0x0815a854"
+          }
+        ],
+        "constants": [
+          {
+            "kind": "int",
+            "value": 26,
+            "at": "-O2 dumps",
+            "means": "passes run at -O2"
+          },
+          {
+            "kind": "int",
+            "value": 20,
+            "at": "-O1 dumps",
+            "means": "passes run at -O1, six fewer"
+          },
+          {
+            "kind": "int",
+            "value": 9,
+            "at": "-O0 dumps",
+            "means": "passes run without optimisation"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "a function only matches at -O1 and you are looking for a source-level difference",
+        "a pass dump you expected is missing"
+      ],
+      "lever": [
+        "check the -O level before comparing code shape: at -O1 there is no 19.regmove, 20.sched, 21.range, 29.sched2, 11.gcse or 01.sibling, so expect scheduling and instruction-order differences",
+        "count the -da dumps only for a compile that succeeded: a rejected source leaves a partial set"
+      ],
+      "receipt": "`ee-gcc -<level> -G0 -da -c` on one loop fixture yields 9 dumps at -O0, 20 at -O1, 26 at -O2 and 26 at -Os. The six missing at -O1 are 01.sibling, 11.gcse, 19.regmove, 20.sched, 21.range and 29.sched2. The decision rules themselves do not change: at -O1 a 0.5f constant still loads from the pool, a low-word-zero double is still built with li + dsll32, and a dense six-case switch still becomes a table - only the instruction order and the register moves differ. A source that fails to compile (for example a C99 for-loop declaration under C89) leaves just two dumps, so a dump count is only meaningful for a successful compile.",
+      "falsifies": "the assumption that one pass inventory describes the compiler: at -O1 six passes do not run, which is why some project functions match only at that level",
+      "scope": "ee-gcc 3.2-ee-040921 at -O0/-O1/-O2/-Os on this machine; the inventory was counted on one loop fixture and the rule checks on four synthetic fixtures",
+      "evidence": [
+        "private:out/evidence/ee_gcc_o1_pipeline.txt"
+      ]
     }
   ],
   "verification": {
