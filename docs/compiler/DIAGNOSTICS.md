@@ -86,7 +86,7 @@ If the instructions agree but objdiff reports a different size, or function symb
 offsets, check the alignment flags before rewriting anything. The default function alignment is **8 bytes**,
 so a 12-byte function is padded to 16; `-falign-functions=4` lowers it to 4 and removes the padding, and
 `-ffunction-sections` alone does not
-([L-EE-022](LAWS.md#l-ee-022--functions-are-8-byte-aligned-by-default--falign-functions4-removes-the-padding-between-small-functions-and--ffunction-sections-alone-does-not)).
+([L-EE-022](LAWS.md#l-ee-022--function-alignment-8-bytes-by-default-4-with--falign-functions4)).
 This project builds with `-O2 -falign-functions=4 -ffunction-sections`, so every function section should be
 exactly the function's size.
 
