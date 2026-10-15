@@ -69,6 +69,11 @@ tell you which one produced a function:
 * a 16-byte copy as `ldl`/`ldr` pairs ⇒ **2.96** (3.2 uses `lw`/`sw` at that size);
 * `mode(V4SI)`/`mode(V4SF)` source that compiles at all ⇒ **3.2**.
 
+**The ABI is not one of the differences.** An early look at the 9th argument suggested otherwise — but that was a
+measurement artefact (3.2 materialises the incoming stack address with `addu $15,$sp,0` before loading, which
+looks different from 2.96's direct `lw`). Checked properly, the stack layout is identical on both, so every
+convention in [ABI](ABI.md) can be used for middleware and game code alike.
+
 ## Reproducing
 
 `tools/compiler/ee-gcc-observe.py` takes any compiler and its fixtures assert **3.2** behaviour, so running

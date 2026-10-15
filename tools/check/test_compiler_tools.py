@@ -151,6 +151,26 @@ def tier_cross296(tmp: Path) -> None:
               and bool(re.search(pat296, seen["2.96"])),
               f"3.2 has {pat32}: {bool(re.search(pat32, seen['3.2']))}; "
               f"2.96 has {pat32}: {bool(re.search(pat32, seen['2.96']))}")
+
+    # ABI 交叉校验：第 9-12 个 int 实参在两边都必须落在 8 字节槽 0/8/16/24
+    abi_src = ("int twelve(int a,int b,int c,int d,int e,int g,int h,int k,int m,int n,int o,int p)"
+               "{ return m+n+o+p; }\n")
+    c = tmp / "abi.c"
+    c.write_text(abi_src, encoding="utf-8")
+    seen = {}
+    for label, cc in (("3.2", DEFAULT_EE_GCC), ("2.96", DEFAULT_EE_GCC_296)):
+        asm = tmp / f"abi-{label.replace('.', '')}.s"
+        made = subprocess.run([str(cc), "-O2", "-G0", "-S", "-o", str(asm), str(c)],
+                              capture_output=True, cwd=tmp, check=False)
+        text = asm.read_text(encoding="utf-8") if made.returncode == 0 else ""
+        # 3.2 may materialise the incoming stack address first (`addu $r,$sp,N` then `lw ...,0($r)`),
+        # so count both spellings; what matters is which 8-byte slots the arguments occupy.
+        offs = {int(o) for o in re.findall(r"lw\s+\$\d+,(\d+)\(\$sp\)", text)}
+        offs |= {int(o) for o in re.findall(r"addu\s+\$\d+,\$sp,(\d+)", text)}
+        seen[label] = sorted(offs)
+    check("cross-check: the stack argument layout is identical (8-byte slots)",
+          seen.get("3.2") == [0, 8, 16, 24] and seen.get("2.96") == [0, 8, 16, 24],
+          f"3.2 offsets {seen.get('3.2')}, 2.96 offsets {seen.get('2.96')}")
     # 向量类型在 2.96 上不存在
     c = tmp / "vec.c"
     c.write_text("typedef float v4sf __attribute__((mode(V4SF)));\nv4sf g; v4sf f(void){ return g; }\n",
