@@ -1288,6 +1288,42 @@ value is being reduced to `int`.
 
 ---
 
+## L-EE-044 · Unaligned access: three sources, and `ulw`/`usw` do not exist in the object
+
+| source | assembly | **object** |
+| --- | --- | --- |
+| pointer cast `*(int*)(p+1)` | `lw $2,1($4)` | **a plain `lw` at offset 1** — the cast is trusted, nothing is synthesised |
+| `memcpy(d,s,4)` | `lwl $12,3($5)` + `lwr $12,0($5)` | `lwl`+`lwr`; stored with `swl`+`swr` |
+| `memcpy(d,s,8)` | `ldl`+`ldr` | `ldl`+`ldr`; stored with `sdl`+`sdr` |
+| `__attribute__((packed))` member | **`ulw $2,1($4)`** / **`usw $5,1($4)`** | **`lwr`+`lwl` / `swr`+`swl` pair** |
+
+**The trap**: `ulw`/`usw` are **assembler pseudo-instructions**. The assembly writes `ulw $2,1($4)`, but the
+object contains
+
+```asm
+lwr     v0,1(a0)
+jr      ra
+lwl     v0,4(a0)      # note the +3 offset
+```
+
+so **grepping a disassembly for `ulw`/`usw` finds nothing** — you only ever see the `lwl`/`lwr` pair. (Same
+family of traps as 2.96's `li.s`, `beql` printed as `beqzl`, and `jalr` written as `jal $31,$reg`.)
+
+Constant-size `memcpy` forms a ladder: 1 → `lbu`/`sb`; 2 → `lb`/`sb` twice; 4 → `lwl`/`lwr` + `swl`/`swr`;
+8 → `ldl`/`ldr` + `sdl`/`sdr`; 16 → two of each.
+
+* **Tier T2** · **Source anchor** the EE-specific unaligned patterns (no line read from the shipped tree) ·
+  **Constants** `lwl` and the pseudo-instruction `ulw`
+* **Falsifies** the expectation that an unaligned pointer cast is handled by the compiler, and that `ulw`/`usw`
+  exist in the object
+* **Lever** an `lwl`+`lwr` (or `swl`+`swr`) pair ⇒ a 4-byte unaligned access, from either a constant-size
+  `memcpy` **or** a packed member — they are the same shape in the object, so use the base and offset pattern to
+  tell them apart; a plain `lw` at a non-multiple-of-4 offset ⇒ the source cast a pointer
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O1`/`-O2`/`-Os` with `-G0`, synthetic pointer-cast, constant-`memcpy`
+  and packed-structure functions; unaligned `double` and 128-bit accesses were not measured
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).

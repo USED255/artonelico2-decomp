@@ -2082,6 +2082,54 @@
       "evidence": [
         "private:out/evidence/ee_gcc_int64.txt"
       ]
+    },
+    {
+      "id": "L-EE-044",
+      "title": "Unaligned access: a pointer cast emits a plain lw, a constant-size memcpy emits lwl/lwr or ldl/ldr pairs, and packed members emit ulw/usw - which are assembler pseudo-instructions",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips5900.md",
+        "line": 0,
+        "note": "The unaligned patterns are EE-specific; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "lwl",
+            "at": "unaligned word load (low half)",
+            "means": "half of an unaligned word access"
+          },
+          {
+            "kind": "string",
+            "value": "ulw",
+            "at": "the assembly pseudo-instruction",
+            "means": "expands to lwr plus lwl, so the object never contains ulw"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "17.combine"
+      ],
+      "symptom": [
+        "you see an lwl/lwr pair and cannot tell whether it is a copy or a packed member",
+        "you are grepping a disassembly for ulw or usw and cannot find them"
+      ],
+      "lever": [
+        "a pointer cast writes the plain instruction with the unaligned offset (lw $2,1($4)) - the compiler trusts the cast and synthesises nothing",
+        "a constant-size memcpy is expanded: 1 byte lbu/sb, 2 bytes lb/sb twice, 4 bytes an lwl/lwr pair stored with swl/swr, 8 bytes ldl/ldr stored with sdl/sdr",
+        "a packed structure member is written as the pseudo-instruction ulw/usw in the assembly, which the assembler expands into an lwr plus lwl (or swr plus swl) pair - so the object never contains ulw or usw and a packed access looks like any other unaligned word access"
+      ],
+      "receipt": "At -O1, -O2 and -Os with -G0, identical. *(int*)(p+1) becomes lw $2,1($4) - a plain word load at an unaligned offset. memcpy(d,s,4) becomes lwl t4,3(a1), lwr t4,0(a1), swl t4,3(a0), swr t4,0(a0); the 8-byte form uses ldl/ldr and sdl/sdr; 2 bytes are lb twice plus sb twice; 1 byte is lbu plus sb. A member of a packed structure read as p->b is written ulw $2,1($4) in the assembly, and the object shows lwr v0,1(a0) followed by lwl v0,4(a0) - the pseudo-instruction expands to a pair, so grepping an object or a disassembly for ulw or usw finds nothing.",
+      "falsifies": "the expectation that an unaligned pointer cast is handled by the compiler (it emits a plain instruction), and that ulw/usw exist in the object",
+      "scope": "ee-gcc 3.2-ee-040921 at -O1/-O2/-Os with -G0, synthetic functions using pointer casts, constant-size memcpy and a packed structure; unaligned double and 128-bit accesses were not measured",
+      "evidence": [
+        "private:out/evidence/ee_gcc_unaligned.txt"
+      ]
     }
   ],
   "verification": {
