@@ -1031,6 +1031,34 @@ Every tail position tested becomes a jump at `-O2`: `return g(a)`; with a local 
 
 ---
 
+## L-EE-037 · `volatile` is visible as unmerged accesses
+
+| source | without `volatile` | with `volatile` |
+| --- | --- | --- |
+| `*p = *p + 1; *p = *p + 1;` | **one** `lw`, `addu …,2`, one `sw` | **two** `lw` / `addu …,1` / `sw` triples |
+| `int a = *p; int b = *p; return a+b;` | **one** `lw` (CSE) | **two** `lw` |
+| `gi = gi + 1;` | `lw`, `addu 1`, **`j $31`**, `sw` — store sunk into the delay slot | `lw`, `addu 1`, **`sw`**, `j $31` — order kept |
+
+Two usable judgements:
+
+1. **How many loads**: two `lw` from the same address in the target ⇒ the source read it twice through a
+   `volatile` pointer (or a call sits between the reads). Without `volatile` the compiler merges them.
+2. **Where the store sits**: without `volatile` a store is often sunk into the following `j $31` delay slot;
+   with it, the `sw` stays **before** the jump.
+
+`-Os` produces exactly the same shapes.
+
+* **Tier T2** · **Source anchor** volatility is honoured across the RTL passes (no line read from the shipped
+  tree) · **Constants** the merged `addu …,2` against two `addu …,1`
+* **Falsifies** the assumption that repeated reads are always separate instructions, and that `volatile` only
+  reorders accesses rather than changing how many there are
+* **Lever** when your reconstruction has one fewer load than the target, suspect a missing `volatile`; adding
+  one wrongly adds a load and shifts every following instruction
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2`/`-Os` with `-G0`; volatile bitfields and atomic builtins were not
+  measured
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).

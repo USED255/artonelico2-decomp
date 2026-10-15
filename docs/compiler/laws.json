@@ -1728,6 +1728,54 @@
       "evidence": [
         "private:out/evidence/ee_gcc_tail_calls.txt"
       ]
+    },
+    {
+      "id": "L-EE-037",
+      "title": "volatile is visible as unmerged accesses: the same address is loaded once without it and once per mention with it, and a store stops being sunk into the return jump's delay slot",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "expr.c",
+        "line": 0,
+        "note": "Volatility is honoured throughout the RTL passes rather than at one site; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 2,
+            "at": "addu ...,2 for two increments",
+            "means": "the two non-volatile read-modify-writes merged"
+          },
+          {
+            "kind": "int",
+            "value": 1,
+            "at": "addu ...,1 twice",
+            "means": "the volatile form keeps both"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "17.combine"
+      ],
+      "symptom": [
+        "the target loads the same address twice where your reconstruction loads it once",
+        "the target stores to a pointer before the final j $31 where your build puts the store in its delay slot"
+      ],
+      "lever": [
+        "without volatile the compiler merges repeated accesses: *p = *p + 1 twice becomes one lw, addu ...,2 and one sw; with volatile each mention is its own lw/addu/sw",
+        "without volatile a store can be sunk into the delay slot of the following j $31; with volatile the sw stays before the jump",
+        "two loads from the same address in the target therefore mean the source read it twice through a volatile pointer, or that a call sits between the reads"
+      ],
+      "receipt": "At -O2 and -Os on this machine, with the same shapes at both levels. void f(int *p){*p = *p + 1; *p = *p + 1;} becomes one lw, addu $15,$15,2 and one sw, while the volatile version becomes two lw/addu $15,$15,1/sw triples. int g(void){int a=*p; int b=*p; return a+b;} loads once without volatile and twice with it. For a global, gi = gi + 1 emits lw, addu 1, j $31, sw (the store is in the jump's delay slot) while the volatile version emits lw, addu 1, sw, j $31.",
+      "falsifies": "the assumption that repeated reads are always separate instructions (the compiler merges them) and that volatile only reorders accesses rather than changing how many there are",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 and -Os with -G0, synthetic functions reading and writing the same address twice; atomic builtins and volatile bitfields were not measured",
+      "evidence": [
+        "private:out/evidence/ee_gcc_volatile.txt"
+      ]
     }
   ],
   "verification": {
