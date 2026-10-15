@@ -505,6 +505,28 @@ falsifies：「出参栈槽是 4 字节」与「`args=` 只按 4 字节对齐」
 
 ---
 
+## L-EE-029 · 单精度走硬件，双精度走软浮点
+
+| 运算 | 生成 |
+| --- | --- |
+| `float` `+`/`*` | `add.s` / `mul.s` —— COP1 |
+| `float` 转换 | `mtc1` + `cvt.s.w`、`trunc.w.s` + `mfc1` |
+| `double` `+`/`-`/`*`/`/` | **`jal dpadd` / `dpsub` / `dpmul` / `dpdiv`** |
+| `double` 比较 | `jal dpcmp` |
+| `double` → `int`/`unsigned` | `jal dptoli` / `dptoul` |
+| `int`/`float` → `double` | `jal litodp` / `fptodp` |
+| `double` → `float` | `jal dptofp` |
+
+以上全是**线下 libgcc 调用** ⇒ 做 `double` 运算的目标里出现的是 `jal dpadd` 这类调用，**不会出现 `add.d`**。
+`-mhard-float` **不改变**这一点；`-msoft-float` 会连单精度也变成软浮点；`-O3` 与 `-O2` 相同。
+
+**T2**｜源码锚点：该 port 的 `TARGET_` 宏与 libgcc（`config/mips/mips.h`；未从出厂树读到行号）｜常量：重定位名 `dpadd`、`add.s`｜
+falsifies：「这个构建里会出现 `add.d`」与「`-mhard-float` 能启用硬件双精度」。
+**杠杆**：`float`/`double` 写错类型的最灵敏指纹——目标 `jal dpadd` 而你 `add.s`（或反之），
+通常是字面量 `2.0` 应为 `2.0f`，或变量被声明成了 `double`。
+
+---
+
 ## 仍未解决
 
 * `$L` 计数器精确公式（多标签函数）。

@@ -28,6 +28,7 @@
 | `sltu`/`beqz` 后接 `lw` + `jr $reg` | [L-EE-010](LAWS.md#l-ee-010--a-switch-becomes-a-jump-table-only-when-count--5-and-range--10--count) —— 稠密 switch 成了跳转表 |
 | 目标读裸符号，你在用 `lui %hi(sym)` | [L-EE-014](LAWS.md#l-ee-014--small-data-addressing-follows--g) 与 [L-EE-021](LAWS.md#l-ee-021--gp_rel-needs-a-definition-in-this-unit-placed-in-sdatasbss) —— gp_rel 需要**在本单元**定义在 `.sdata`/`.sbss` |
 | `lwc1` 装载浮点 | 3.2 见 [L-EE-011](LAWS.md#l-ee-011--float-constants-come-from-the-pool-a-double-is-inline-when-its-low-32-bits-are-zero)；2.96 见 [L-EE-019](LAWS.md#l-ee-019--the-float-rule-is-version-specific-296-inlines-32-uses-the-pool) |
+| `jal dpadd` / `dpmul` / `dpcmp` | [L-EE-029](LAWS.md#l-ee-029--single-precision-is-hardware-double-precision-is-soft-float) —— 源码在用 `double`；本构建里没有 `add.d` |
 | `lui`/`ori` 后接 `mtc1` | [L-EE-019](LAWS.md#l-ee-019--the-float-rule-is-version-specific-296-inlines-32-uses-the-pool) —— 2.96 把每个 float 内联构造 |
 | 12 字节函数之间隔了 16 字节 | [L-EE-022](LAWS.md#l-ee-022--function-alignment-8-bytes-by-default-4-with--falign-functions4) —— 默认 8 字节对齐 |
 

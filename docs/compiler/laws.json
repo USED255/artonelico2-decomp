@@ -1334,6 +1334,53 @@
       "evidence": [
         "private:out/evidence/ee_gcc_args_abi.txt"
       ]
+    },
+    {
+      "id": "L-EE-029",
+      "title": "Single precision is hardware COP1, but every double-precision operation is a libgcc soft-float call (dpadd, dpmul, dpcmp, ...) and -mhard-float does not change that",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips.h",
+        "line": 0,
+        "note": "Whether a mode is hardware or libgcc is decided by the port's TARGET_ macros and its libgcc; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "dpadd",
+            "at": "R_MIPS_26 relocation",
+            "means": "double addition is an out-of-line call"
+          },
+          {
+            "kind": "string",
+            "value": "add.s",
+            "at": "float addition",
+            "means": "single precision is a COP1 instruction"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "you are looking for add.d/mul.d in a target that does double arithmetic",
+        "your candidate emits jal dpadd where the target uses add.s, or the reverse"
+      ],
+      "lever": [
+        "double arithmetic, comparison and conversion are libgcc calls: dpadd/dpsub/dpmul/dpdiv, dpcmp, dptoli/dptoul, dptofp, litodp, fptodp - so a call site here means the source is using double",
+        "float arithmetic is COP1: add.s/mul.s plus mtc1/cvt.s.w - so add.s in the target means single precision, and a 2.0 literal where the source wanted 2.0f is a common cause of the mismatch"
+      ],
+      "receipt": "At -O2 -G0 on this machine. A function of sfloat form a+b compiles to add.s, and float conversion to mtc1 plus cvt.s.w. Every double operation is an out-of-line call instead: a+b to dpadd, a-b to dpsub, a*b to dpmul, a/b to dpdiv, a<b to dpcmp, (int)a to dptoli, (unsigned)a to dptoul, (double)a to litodp, (float)a to dptofp and (double) a float to fptodp - the relocations name exactly these routines. Adding -mhard-float does not change any of it (dpadd remains), while -msoft-float removes the hardware single-precision instructions as well. -O3 behaves like -O2. The default is therefore hardware single precision plus software double precision.",
+      "falsifies": "the expectation that a MIPS COP1 double instruction (add.d) can appear in this build, and that -mhard-float enables hardware doubles",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0 plus -mhard-float/-msoft-float/-O3, synthetic one-operation functions covering add/sub/mul/div/compare/conversions",
+      "evidence": [
+        "private:out/evidence/ee_gcc_double_softfloat.txt"
+      ]
     }
   ],
   "verification": {

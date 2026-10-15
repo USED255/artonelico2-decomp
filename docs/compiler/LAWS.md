@@ -757,6 +757,34 @@ a caller with nine arguments has a sum of 24 and a frame of 32.
 
 ---
 
+## L-EE-029 · Single precision is hardware, double precision is soft-float
+
+| operation | code |
+| --- | --- |
+| `float` `+`/`*` | `add.s` / `mul.s` — COP1 |
+| `float` conversion | `mtc1` + `cvt.s.w`, `trunc.w.s` + `mfc1` |
+| `double` `+`/`-`/`*`/`/` | **`jal dpadd` / `dpsub` / `dpmul` / `dpdiv`** |
+| `double` compare | `jal dpcmp` |
+| `double` → `int`/`unsigned` | `jal dptoli` / `dptoul` |
+| `int`/`float` → `double` | `jal litodp` / `fptodp` |
+| `double` → `float` | `jal dptofp` |
+
+Every one of those is an **out-of-line libgcc call**, so a target that does `double` arithmetic contains `jal
+dpadd`-style calls and **no `add.d`**. `-mhard-float` does not change it; `-msoft-float` additionally moves
+single precision to software; `-O3` behaves like `-O2`.
+
+* **Tier T2** · **Source anchor** the port's `TARGET_` macros and libgcc (`config/mips/mips.h`; no line read
+  from the shipped tree) · **Constants** the relocation names `dpadd`, `add.s`
+* **Falsifies** the expectation that `add.d` can appear in this build, and that `-mhard-float` gives hardware
+  doubles
+* **Lever** this is the sharpest fingerprint for a `float`/`double` mix-up: if the target has `jal dpadd` and
+  your candidate has `add.s`, a literal like `2.0` that should be `2.0f` (or a variable typed `double`) is the
+  usual cause — and the reverse
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0` plus `-mhard-float`/`-msoft-float`/`-O3`, one-operation
+  synthetic functions
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).
