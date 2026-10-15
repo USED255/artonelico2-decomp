@@ -2,8 +2,8 @@
  "schema": "at2-published/2",
  "project": "Ar tonelico II: Melody of Metafalica — matching decompilation",
  "target": "SLPS_258.19",
- "published_at": "2026-10-15T10:04:04+0800",
- "source_revision": "a097cdc40873f89aa6bbf136b658bd281276c53e",
+ "published_at": "2026-10-15T21:12:19+0800",
+ "source_revision": "0b397725cad02ba787be4d31ce3dde0ee526870a",
  "payload_sha1": "7cc42d275750600d1f232b2632447f77205f3fc0",
  "payload_verified": true,
  "report": {
