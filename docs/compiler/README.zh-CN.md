@@ -24,6 +24,18 @@
 | [AGENT-SKILL.md](AGENT-SKILL.zh-CN.md) | agent（或赶时间的人）跑的循环：测量 → 定位 pass → 查 law → 用杠杆 → 复测 |
 | [`laws.json`](laws.json) | 同一批 law 的机器可读版本，供工具与 agent 查询 |
 
+## 工具
+
+| 工具 | 作用 |
+| --- | --- |
+| `tools/compiler/laws-query.py` | 按 id、pass、症状、杠杆或自由文本查询 law（`--json` 供工具使用） |
+| `tools/compiler/ee-gcc-anchor.py` | 在出厂 `cc1` 里解析符号、地址、结构体或常量；`selftest` 复核本机能验证的锚点 |
+| `tools/compiler/ee-gcc-passdiff.py` | 编译同一函数的两种写法，报出第一个分叉的 pass |
+| `tools/compiler/ee-gcc-spill-map.py` | 把过大的帧映射到区块与源码行，并把每次溢出溯源到定义该值的那一行 |
+| `tools/compiler/ee-gcc-observe.py` | 编译 10 组合成夹具并断言「本手册说必须出现的东西」（`--selftest`），或对你自己的文件打印帧/常量池/助记符观测 |
+
+`make check` 会跑 law 数据校验、二进制锚点复核，以及上述每条命令的冒烟测试。
+
 ## 证据分级
 
 匹配社区里最常见的问题，是**自信、合理、但错误**的规则。分级就是为了让这种事可见：

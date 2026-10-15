@@ -438,7 +438,7 @@
         "count the distinct cases and the (max - min) span before choosing a spelling: a table needs at least 5 cases and a span of at most 10 per case",
         "moving case values closer together (or adding a range check before the switch) changes the decision"
       ],
-      "receipt": "11 synthetic switches at -O2 -G0: dense 3 and 4 cases -> compare chain; dense 5, 6, 7, 8, 10, 16 -> table, table size exactly equal to the case count; cases {0,1,2,100,1000} (count 5, range 1000) -> chain; {0,10,20,30,40} (count 5, range 40 <= 50) -> table with 41 entries; {0,1,2,3,4,100,200,300} (count 8, range 300 > 80) -> chain. All 11 rows match the source rule.",
+      "receipt": "11 synthetic switches at -O2 -G0: dense 3 and 4 cases -> compare chain; dense 5, 6, 7, 8, 10, 16 -> table, table size exactly equal to the case count; cases {0,1,2,100,1000} (count 5, range 1000) -> chain; {0,10,20,30,40} (count 5, range 40 <= 50) -> table with 41 entries; {0,1,2,3,4,100,200,300} (count 8, range 300 > 80) -> chain. All 11 rows match the source rule. The table is emitted in section .rdata and referenced through a local label ($L9 in the synthetic fixture), jumped to with `jr $reg`; tools/compiler/ee-gcc-observe.py --selftest asserts this.",
       "falsifies": "the external claim that five distinct cases are enough for a jump table (dds-decomp, ee-gcc 2.96, no licence): five cases are necessary but not sufficient, the span must also satisfy range <= 10 * count",
       "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0; 11 synthetic switches, no game code",
       "evidence": [

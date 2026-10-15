@@ -40,6 +40,7 @@ LAWS_QUERY = ROOT / "tools" / "compiler" / "laws-query.py"
 ANCHOR = ROOT / "tools" / "compiler" / "ee-gcc-anchor.py"
 PASSDIFF = ROOT / "tools" / "compiler" / "ee-gcc-passdiff.py"
 SPILLMAP = ROOT / "tools" / "compiler" / "ee-gcc-spill-map.py"
+OBSERVE = ROOT / "tools" / "compiler" / "ee-gcc-observe.py"
 
 DEFAULT_CC1 = Path.home() / "eecc" / "ee-gcc3.2-040921" / "lib" / "gcc-lib" / "ee" / "3.2-ee-040921" / "cc1"
 DEFAULT_EE_GCC = Path.home() / "eecc" / "ee-gcc3.2-040921" / "bin" / "ee-gcc"
@@ -128,7 +129,13 @@ def tier_toolchain(tmp: Path) -> None:
     if not DEFAULT_EE_GCC.exists():
         skip("ee-gcc-passdiff", f"no compiler at {DEFAULT_EE_GCC}")
         skip("ee-gcc-spill-map", f"no compiler at {DEFAULT_EE_GCC}")
+        skip("ee-gcc-observe selftest", f"no compiler at {DEFAULT_EE_GCC}")
         return
+
+    # 手册的 10 组合成夹具：把手册里的规则变成可执行断言（`--selftest`）
+    out = run([str(OBSERVE), "--cc", str(DEFAULT_EE_GCC), "--selftest", "--work", str(tmp / "observe")])
+    check("ee-gcc-observe selftest (10 fixtures)", out.returncode == 0 and "10 passed" in out.stdout,
+          (out.stdout + out.stderr).strip()[-160:])
 
     a = tmp / "a.c"
     b = tmp / "b.c"
