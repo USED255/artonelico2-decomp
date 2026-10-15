@@ -1184,6 +1184,54 @@
       "evidence": [
         "private:out/evidence/ee_gcc_loops.txt"
       ]
+    },
+    {
+      "id": "L-EE-026",
+      "title": "The constant pool is per function: entries are emitted in first-use order, deduplicated inside a function but never across functions",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "varasm.c",
+        "line": 0,
+        "note": "Constant-pool emission is driven from output_constant_pool in varasm.c; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 1056964608,
+            "at": ".word for 0.5f",
+            "means": "two functions returning 0.5f produce two entries with this value"
+          },
+          {
+            "kind": "int",
+            "value": 1075838976,
+            "at": ".word for 2.5f",
+            "means": "the first-used constant takes $LC0"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "objdiff reports a data offset difference while the code matches",
+        "the target shares one constant between two functions and your candidate has one per function, or the reverse"
+      ],
+      "lever": [
+        "expect one .rdata block per function with its own labels: the same value used in two functions is emitted twice, so a shared entry in the target points at a source-level difference",
+        "within one function a repeated constant is one entry",
+        "entries follow first-use order, and a double inserts .align 3 among 4-byte entries, so any reordering shifts the offsets"
+      ],
+      "receipt": "At -O2 -G0 on this machine. Two functions each returning 0.5f produce two separate .rdata blocks with .align 2 and labels $LC0 and $LC1, both .word 1056964608 - so the same value is not deduplicated across functions. Inside one function the same constant used three times yields a single entry. A function written as if(k) return 2.5f; return 0.5f; numbers its entries $LC0 = 1075838976 (2.5f) and $LC1 = 1056964608 (0.5f), i.e. first-use order rather than sorted by value. A double entry is preceded by .align 3 where float entries use .align 2.",
+      "falsifies": "the assumption that the compiler shares identical constants across the whole translation unit, and that the pool is sorted by value",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0 and -O1 on this machine; synthetic units mixing floats, a double and string literals",
+      "evidence": [
+        "private:out/evidence/ee_gcc_const_pool.txt"
+      ]
     }
   ],
   "verification": {

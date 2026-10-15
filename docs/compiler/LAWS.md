@@ -683,6 +683,30 @@ So **neither `-O2` nor `-O3` unrolls here** — unrolling needs `-funroll-loops`
 
 ---
 
+## L-EE-026 · The constant pool is per function
+
+At `-O2 -G0` the constants live in `.rdata` blocks, **one per function**, each entry aligned to its natural
+size (`.align 2` for a float/word, `.align 3` for a double).
+
+| situation | entries |
+| --- | --- |
+| `0.5f` used three times inside one function | **1** (`$LC0`) — deduplicated |
+| two functions each returning `0.5f` | **2** (`$LC0`, `$LC1`, both `.word 1056964608`) — **not** shared |
+
+Entries follow **first-use order**: `if (k) return 2.5f; return 0.5f;` numbers them `$LC0` = 2.5f,
+`$LC1` = 0.5f — not sorted by value.
+
+* **Tier T2** · **Source anchor** `varasm.c` (constant-pool emission; no line read from the shipped tree) ·
+  **Constants** the two `.word`s above
+* **Falsifies** the assumption that identical constants are shared across the translation unit, and that the
+  pool is sorted by value
+* **Lever** if the target shares a constant between two functions (or your candidate does and the target does
+  not), the difference is in the source's function boundaries, not the constant; if the *order* differs,
+  compare first-use order — and remember a double shifts the following offsets with `.align 3`
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`/`-O1`, synthetic units with floats, a double and strings
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).
