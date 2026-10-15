@@ -2339,6 +2339,61 @@
       "evidence": [
         "private:out/evidence/ee_gcc_cop2_from_c.txt"
       ]
+    },
+    {
+      "id": "L-EE-049",
+      "title": "Variable shifts are sllv/srav/srlv and integer negation is negu (two more alias pairs), float copy/negate/compare are mov.s/neg.s/c.le.s plus bc1t, and the second multiplier mult1 appears at -O2/-O3 but not at -O1/-Os",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips.md",
+        "line": 0,
+        "note": "The operator patterns and the two multiplier units are backend- and EE-specific; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "sllv",
+            "at": "register shift in the object",
+            "means": "the assembly writes sll $d,$s,$t"
+          },
+          {
+            "kind": "string",
+            "value": "negu",
+            "at": "integer negation in the object",
+            "means": "the assembly writes subu $d,$0,$s"
+          },
+          {
+            "kind": "string",
+            "value": "mult1",
+            "at": "second multiplier",
+            "means": "the scheduler uses the EE's second integer multiply unit"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "20.sched"
+      ],
+      "symptom": [
+        "the target has sllv, srlv or negu where your reconstruction expects sll, srl or subu",
+        "the target uses mult1 and you cannot produce it from C"
+      ],
+      "lever": [
+        "a shift by a variable amount is a register shift: the assembly writes sll/sra/srl $d,$s,$t but the object contains sllv/srav/srlv, so these are ordinary C expressions and not inline assembly",
+        "integer negation is nego in the object (the assembly writes subu $d,$0,$s); float copy is mov.s, float negation is neg.s, and float comparisons are c.lt.s/c.le.s/c.eq.s followed by bc1t (bc1f for the inverted test)",
+        "mult and mult1 are the EE's two integer multiplier units: at -O2 and -O3 the scheduler moves one multiply to mult1 when two can overlap (three independent multiplies, or a dependent chain), while -O1 and -Os use mult throughout - so mult1 in a target is a scheduling signal and also a level hint",
+        "madd.s appears in binaries but no ordinary C float expression produced it in this measurement - treat it as an open question"
+      ],
+      "receipt": "At -O2 -G0 on this machine. a<<n gives sllv a0,a0,a1 in the object (sll $4,$4,$5 in the assembly), a>>n gives srav or srlv, and -a gives negu a0,a0 (subu $4,$0,$4); float negation is neg.s $f0,$f12, a float copy is mov.s, and a<=b is c.le.s $f12,$f13 followed by bc1t, with c.lt.s and c.eq.s for the other comparisons. The second multiplier: one multiply uses mult only; two independent multiplies still use mult only; three independent multiplies produce mult plus mult1; a dependent pair (x=a*b; return x*b;) also produces mult plus mult1; and the second multiplier is level-dependent (see below). No C spelling tried for a*b+c produced madd.s - it always compiled to mul.s plus add.s. The second multiplier is level-dependent: the same three-multiply fixture compiles to mult three times at -O1 and -Os, but to mult twice plus mult1 once at -O2 and -O3. The earlier count that suggested -O2 and -Os agreed came from a different fixture (two independent multiplies), which uses mult only at every level.",
+      "falsifies": "the expectation that sllv/srlv/negu in a binary indicate hand-written assembly, and that mult1 needs inline assembly",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2/-Os with -G0, synthetic one-operator functions over int, unsigned and float; other EE multiply-unit shapes and madd.s were not resolved",
+      "evidence": [
+        "private:out/evidence/ee_gcc_ops_remaining.txt"
+      ]
     }
   ],
   "verification": {

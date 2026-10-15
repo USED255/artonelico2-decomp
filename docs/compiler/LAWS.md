@@ -1487,6 +1487,49 @@ reproduced in C.
 
 ---
 
+## L-EE-049 · Variable shifts, negation, float compare — and the second multiplier
+
+| C | assembly | **object** |
+| --- | --- | --- |
+| `a << n` (variable) | `sll $d,$s,$t` | **`sllv`** |
+| `a >> n` signed / unsigned | `sra` / `srl $d,$s,$t` | **`srav`** / **`srlv`** |
+| `-a` (int) | `subu $d,$0,$s` | **`negu`** |
+| `-a` (float) | — | **`neg.s`** |
+| float copy | — | **`mov.s`** |
+| `a <= b` / `a < b` / `a == b` (float) | — | **`c.le.s`** / `c.lt.s` / `c.eq.s` + `bc1t` |
+| `a + b` (float) | — | `add.s` |
+
+**Two more alias pairs** for the table in [L-EE-047](LAWS.md#l-ee-047--the-printed-mnemonic-is-an-alias--compare-encodings-not-spellings): the assembly's `sll`/`sra`/`srl
+$d,$s,$t` become **`sllv`/`srav`/`srlv`** in the object, and `subu $d,$0,$s` becomes **`negu`**. So those
+mnemonics in a binary are **ordinary C expressions**, not hand-written assembly.
+
+### The EE has two integer multiplier units
+
+| shape | `mult` | `mult1` |
+| --- | ---: | ---: |
+| one multiply | 1 | 0 |
+| two independent multiplies | 1 | 0 |
+| **three independent multiplies** | 2 | **1** |
+| **dependent pair** (`x = a*b; return x*b;`) | 1 | **1** |
+
+The scheduler moves a multiply to the second unit when two can overlap — but **only at `-O2`/`-O3`**: the same
+three-multiply fixture compiles to `mult` ×3 at `-O1`/`-Os` and `mult` ×2 + `mult1` ×1 at `-O2`/`-O3`. So `mult1`
+in a target is a **scheduling signal and a level hint**, not inline assembly.
+
+**Open**: `madd.s` appears in binaries, but **no ordinary C float expression produced it** here — `a*b+c`
+always compiled to `mul.s` + `add.s`. It is recorded as unexplained rather than guessed at.
+
+* **Tier T2** · **Source anchor** the backend's operator patterns and multiplier units
+  (`config/mips/mips.md`; no line read from the shipped tree) · **Constants** `sllv`, `negu`, `mult1`
+* **Falsifies** the expectation that `sllv`/`srlv`/`negu` indicate hand-written assembly, and that `mult1`
+  needs inline assembly
+* **Lever** if a candidate uses `sll` where the target has `sllv` the shapes agree (same C); if the target has
+  `mult1` and the candidate only `mult`, the multiplication expressions differ in how far apart they sit
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2`/`-Os` with `-G0`, one-operator functions over `int`, `unsigned` and
+  `float`; other multiplier shapes and `madd.s` were not resolved
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).
