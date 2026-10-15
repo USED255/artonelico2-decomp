@@ -438,6 +438,15 @@ The rule, fitted by measurement (see the receipt):
   context), so getting the processing order and each decision right matters more than widening the pool
 * **Scope** `ee-gcc 3.2-ee-040921`, GPR allocnos, served-out split on this machine
 
+**Preference semantics, measured exactly:** of the 427 allocnos that carry a preference list, **323 pick the first entry
+that is still available** and **none picks a later entry** — "first available preference" is the whole rule. Where there
+is no preference the pick is *not* the lowest candidate (334 of 461 such cases, with the true register inside the computed
+candidate set every time), so something else decides the scan.
+
+**A rejected hypothesis — the "rotating start".** Scanning from `pseudo mod 32` lifts the corpus score from 38.9% to
+49.1%, which looks like a real rule. It is not: with the dynamic conflict set held at ground truth the rotation scores
+**60.5%** against **63.5%** without it, so it only compensates for this replay's own errors. Do not adopt it.
+
 **Addressing detail, verified live:** `allocno_order[i]` holds an **allocno index** and
 `allocno[index].reg` holds the **pseudo** register number, so the dump's `;; N regs to allocate:` list already
 prints the pseudos **in allocation order** — for one fixture the live order `[3,1,2,0,…]` maps to the printed
