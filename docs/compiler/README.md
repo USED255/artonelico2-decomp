@@ -32,6 +32,7 @@ such question with evidence, and each lever names the source spelling that moves
 | [CROSS-2.96.md](CROSS-2.96.md) · [中文](CROSS-2.96.zh-CN.md) | Which of these rules transfer to the 2.96 compiler that builds the CRI middleware, and which does not |
 | [QUICK-REFERENCE.md](QUICK-REFERENCE.md) · [中文](QUICK-REFERENCE.zh-CN.md) | Start from the shape in front of you: what you see in a frame, an instruction stream or a data section, and the law that explains it |
 | [COVERAGE.md](COVERAGE.md) · [中文](COVERAGE.zh-CN.md) | How much of a binary this handbook explains, measured: run the audit on your own disassembly and see whether anything is left |
+| [VERIFY.md](VERIFY.md) · [中文](VERIFY.zh-CN.md) | The toolchain these claims are pinned to (with hashes), what each check verifies and what it skips, and how to re-run everything |
 | [`laws.json`](laws.json) | The same laws as data, for tooling and agents |
 
 ## Tools

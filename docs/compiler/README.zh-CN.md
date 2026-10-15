@@ -27,6 +27,7 @@
 | [CROSS-2.96.zh-CN.md](CROSS-2.96.zh-CN.md) | 哪些规则能迁移到编译 CRI 中间件的 2.96，哪些不能 |
 | [QUICK-REFERENCE.zh-CN.md](QUICK-REFERENCE.zh-CN.md) | 从眼前的形状出发：帧 / 指令流 / 数据段里看到的东西对应哪条 law |
 | [COVERAGE.zh-CN.md](COVERAGE.zh-CN.md) | 本手册解释了一个二进制的多少：在你自己的反汇编上跑审计，看还剩什么 |
+| [VERIFY.zh-CN.md](VERIFY.zh-CN.md) | 这些结论钉定在哪个工具链上（含哈希）、每条校验验什么跳什么、以及怎么全部重跑 |
 | [`laws.json`](laws.json) | 同一批 law 的机器可读版本，供工具与 agent 查询 |
 
 ## 工具

@@ -315,6 +315,20 @@ def check_quick_reference(data: dict) -> None:
         check("executable law coverage floor", len(stated) >= 35,
               f"{len(stated)} laws have a fixture or a byte-level check (floor 35)")
 
+    # VERIFY 页的自校验：页里写的 cc1 sha256 必须等于本机 cc1 的哈希（缺任一则跳过）
+    import hashlib
+    verify = Path(__file__).resolve().parents[2] / "docs" / "compiler" / "VERIFY.md"
+    cc1s = {"3.2": Path.home() / "eecc" / "ee-gcc3.2-040921" / "lib" / "gcc-lib" / "ee" / "3.2-ee-040921" / "cc1",
+            "2.96": Path.home() / "eecc" / "ee-gcc2.96" / "lib" / "gcc-lib" / "ee" / "2.96-ee-001003-1" / "cc1"}
+    if verify.exists() and any(p.exists() for p in cc1s.values()):
+        text = verify.read_text(encoding="utf-8")
+        for label, cc1 in cc1s.items():
+            if not cc1.exists():
+                continue
+            digest = hashlib.sha256(cc1.read_bytes()).hexdigest()
+            check(f"VERIFY page hashes match the local cc1 ({label})", digest in text,
+                  f"{label} cc1 sha256 {digest[:16]}… is not stated in VERIFY.md")
+
 
 def _gh_slug(heading: str) -> str:
     """GitHub 的标题锚点算法：小写、去标点（保留空格）、每个空格→连字符（**不折叠**）。"""
