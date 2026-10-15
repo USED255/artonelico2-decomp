@@ -259,7 +259,12 @@ falsifies：「按 mainline 的 `find_reg` 写的重放能复现出厂决策」�
 
 **T2**｜源码锚点 `global.c:400`（[L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--it-is-a-two-step-ladder-whose-decision-is-a-side-effect) 的阶梯；规则本身是**实测**而非读出）｜二进制锚点 `reg_renumber @ 0x082ea1ec`、`allocno @ 0x082e8a54`、`allocno_order @ 0x082e8a58`｜
 falsifies：「把所有已分配的寄存器都禁掉是安全的」（掉约 6 点），以及「mainline 的两趟扫描就是出厂算法」（12.8%）。
-**杠杆**：按上面的池与禁止集预测分配；**剩余误差主要是级联**——早期一次选错会污染后面的冲突集（41.0% → 82.7%），所以把**处理顺序与每次判断**做准，比继续放宽候选集更重要。
+**杠杆**：按上面的池与禁止集预测分配；**剩余误差主要是级联**——早期一次选错会污染后面的冲突集（41.0% → 82.7%）。
+
+**地址语义（live 实测）**：`allocno_order[i]` 存的是 **allocno 下标**，`allocno[下标].reg` 是 **pseudo**，
+因此 dump 的 `;; N regs to allocate:` 列表**已经是按分配顺序打印的 pseudo**（实测 `[3,1,2,0,…]` 映射为打印的 `152 150 151 149 …`）。
+用外部代理重排（`n_refs` 降序 41.8%、`live_length` 升序 42.0%，对照打印序 38.9%）只是换了误差模式，**不是更正确的规则**：
+**顺序不是杠杆，单次判断的精确性才是。**
 
 ---
 

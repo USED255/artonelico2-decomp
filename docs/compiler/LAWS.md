@@ -438,6 +438,13 @@ The rule, fitted by measurement (see the receipt):
   context), so getting the processing order and each decision right matters more than widening the pool
 * **Scope** `ee-gcc 3.2-ee-040921`, GPR allocnos, served-out split on this machine
 
+**Addressing detail, verified live:** `allocno_order[i]` holds an **allocno index** and
+`allocno[index].reg` holds the **pseudo** register number, so the dump's `;; N regs to allocate:` list already
+prints the pseudos **in allocation order** — for one fixture the live order `[3,1,2,0,…]` maps to the printed
+`152 150 151 149 …`. Re-sorting that list by an external proxy (n_refs descending 41.8%, `live_length`
+ascending 42.0%, against 38.9% for the printed order) changes the error pattern but is not a better rule:
+**the order is not the lever, per-decision accuracy is.**
+
 ---
 
 ## Open items
