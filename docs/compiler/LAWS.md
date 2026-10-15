@@ -1218,6 +1218,38 @@ containers.
 
 ---
 
+## L-EE-042 · `float` lives in COP1, `double` lives in general registers
+
+**41 % of this project's reconstructed files use `f32` (1389) or `f64` (1390)**, so being able to tell the two
+apart at a glance matters.
+
+| operation | `float` | `double` |
+| --- | --- | --- |
+| global load | **`l.s $f0,%lo(gf)($15)`** | **`ld $2,%lo(gd)($15)`** — a **GPR** |
+| global store | **`s.s $f12,…`** | **`sd $4,…`** |
+| arithmetic | `add.s`/`sub.s`/`mul.s`/`div.s` — COP1 | `jal dpadd`/`dpsub`/`dpmul`/`dpdiv` |
+| compare | **`c.lt.s` + `bc1t`** | **`jal dpcmp`** + an integer compare |
+| `int` → | `mtc1` + `cvt.s.w` | `jal litodp` |
+| → `int` | `cvt.w.s` + `mfc1` | `jal dptoli` |
+| float ↔ double | `jal fptodp` / `dptofp` | same |
+| compare with 0 | `mtc1 $0,$f0` + `c.eq.s` | `dpcmp` |
+
+**The fastest way to type a value in a target**: `l.s`/`s.s`/`c.*.s`/`bc1t` ⇒ **`float`**; `ld`/`sd` into a GPR
+followed by `jal dp*` ⇒ **`double`**. And do **not** look for `l.d` or `c.lt.d` — this build has no COP1
+double-precision instructions at all ([L-EE-029](LAWS.md#l-ee-029--single-precision-is-hardware-double-precision-is-soft-float)).
+
+* **Tier T2** · **Source anchor** the port's mode patterns (no line read from the shipped tree) ·
+  **Constants** `l.s`, `dpadd`, `bc1t`
+* **Falsifies** the expectation that `double` uses COP1 like `float`, and that a double comparison is a
+  `c.lt.d` instruction
+* **Lever** this is the type discriminator for the ~40 % of files that use floating point; it complements
+  [L-EE-011](LAWS.md#l-ee-011--float-constants-come-from-the-pool-a-double-is-inline-when-its-low-32-bits-are-zero)/[L-EE-019](LAWS.md#l-ee-019--the-float-rule-is-version-specific-296-inlines-32-uses-the-pool) (constants) and
+  [L-EE-029](LAWS.md#l-ee-029--single-precision-is-hardware-double-precision-is-soft-float) (operation lowering)
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`, synthetic single-operation functions; float arrays, struct
+  members and variadic floats were not measured separately
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).

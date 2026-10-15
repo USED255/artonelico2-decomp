@@ -44,6 +44,7 @@
 | 照 mainline 写的分配循环复现不出 dump 里的 disposition | [L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--a-two-step-ladder-whose-decision-is-a-side-effect) —— 出厂 `find_reg` 是两级 `alt_regs` 阶梯，决定通过**副作用**落地 |
 | 字段读用 `lh`/`lbu` 而非 `lw`，或写之前出现负数 `li` 后接 `and`/`or` | [L-EE-035](LAWS.md#l-ee-035--bitfields-lsb-first-no-32-bit-straddling-narrowed-reads-and-masked-writes) —— 有符号位域读、或位域写 |
 | 目标对同一地址读了两次、你只读一次 | [L-EE-037](LAWS.md#l-ee-037--volatile-is-visible-as-unmerged-accesses) —— 源码用了 `volatile` 指针（或两次读之间隔着调用） |
+| 目标用 `l.s`/`s.s` 装载，或用 `ld`/`sd` 后接 `jal dp*` | [L-EE-042](LAWS.md#l-ee-042--float-lives-in-cop1-double-lives-in-general-registers) —— `float`（COP1）对 `double`（通用寄存器） |
 | 目标用 `lq`/`sq` 搬 16 字节 | [L-EE-041](LAWS.md#l-ee-041--128-bit-containers-lqsq-a-register-pair-and-no-by-value-return) —— 该处是 **128 位类型**（`mode(V4SI)`/`s128`），不是结构体 |
 | 目标是 `ldl`/`ldr`-`sdl`/`sdr` 循环、你在调 `memcpy` | [L-EE-038](LAWS.md#l-ee-038--aggregate-copies-unrolled-to-32-bytes-then-an-inline-ldlldr-loop--never-memcpy) —— 超过 32 字节的拷贝是内联循环，**从不**调 `memcpy` |
 | 目标通过寄存器调用（`jalr`）并跟着 `j $31` | [L-EE-039](LAWS.md#l-ee-039--indirect-calls-are-jalr-and-never-become-tail-jumps) —— 源码用了**函数指针**；间接调用永不变成尾跳转 |

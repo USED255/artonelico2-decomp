@@ -1973,6 +1973,60 @@
       "evidence": [
         "private:out/evidence/ee_gcc_v4si.txt"
       ]
+    },
+    {
+      "id": "L-EE-042",
+      "title": "float lives in COP1 and double lives in general registers: l.s/s.s and c.lt.s plus bc1t against ld/sd plus dpadd and dpcmp, with no l.d anywhere",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips.md",
+        "line": 0,
+        "note": "Which mode uses COP1 is decided by the port's patterns; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "l.s",
+            "at": "float load",
+            "means": "single precision uses COP1"
+          },
+          {
+            "kind": "string",
+            "value": "dpadd",
+            "at": "double addition",
+            "means": "double precision uses libgcc"
+          },
+          {
+            "kind": "string",
+            "value": "bc1t",
+            "at": "float branch",
+            "means": "float comparisons branch in COP1"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "17.combine"
+      ],
+      "symptom": [
+        "you cannot tell whether a target value is float or double",
+        "you are looking for l.d or c.lt.d in a target that does double arithmetic"
+      ],
+      "lever": [
+        "float lives in the COP1 registers: l.s/s.s to load and store, add.s/mul.s to compute, c.lt.s plus bc1t to compare, mtc1/cvt.s.w and cvt.w.s/mfc1 to convert",
+        "double lives in general registers: ld/sd move it, dpadd/dpsub/dpmul/dpdiv compute it, dpcmp compares it against an integer compare, and litodp/dptoli/fptodp/dptofp convert it",
+        "l.s/s.s/c.*.s/bc1t in the target means float; ld/sd into a GPR followed by jal dp* means double; there is no l.d or c.lt.d in this build at all"
+      ],
+      "receipt": "At -O2 -G0 on this machine, with float and double globals and one operation per function. A float global is loaded with l.s $f0,%lo(gf)($15) and stored with s.s $f12,%lo(gf)($15); a double global is loaded with ld $2,%lo(gd)($15) and stored with sd $4,%lo(gd)($15), i.e. into general registers. float a+b is add.s $f0,$f12,$f13 while double a+b is jal dpadd; a float comparison is c.lt.s $f12,$f13 followed by bc1t while a double comparison is jal dpcmp followed by an integer compare and movn/movz. Conversions follow the same split: int to float is mtc1 plus cvt.s.w, float to int is cvt.w.s plus mfc1, int to double is jal litodp, double to float is jal dptofp, float to double is jal fptodp. Comparing against zero uses mtc1 $0,$f0 plus c.eq.s for float and dpcmp for double. The relocations in the object name dpadd, dpcmp (twice), dptofp, fptodp and litodp - and no l.d or c.lt.d appears anywhere.",
+      "falsifies": "the expectation that double uses the COP1 registers like float, and that a double comparison is a c.lt.d instruction",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0, synthetic single-operation functions over float and double globals; arrays of floats, struct members and varargs were not measured separately",
+      "evidence": [
+        "private:out/evidence/ee_gcc_float_vs_double.txt"
+      ]
     }
   ],
   "verification": {

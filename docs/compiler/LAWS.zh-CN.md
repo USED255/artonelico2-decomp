@@ -884,6 +884,30 @@ falsifies：「16 字节拷贝一定是 `lw`/`sw` 对」与「128 位值能像�
 
 ---
 
+## L-EE-042 · `float` 住在 COP1，`double` 住在通用寄存器
+
+**本项目约 41% 的重建文件用到 `f32`（1389）或 `f64`（1390）**，所以「一眼分辨两者」很实用。
+
+| 操作 | `float` | `double` |
+| --- | --- | --- |
+| 全局装载 | **`l.s $f0,%lo(gf)($15)`** | **`ld $2,%lo(gd)($15)`** —— **GPR** |
+| 全局存储 | **`s.s $f12,…`** | **`sd $4,…`** |
+| 算术 | `add.s`/`sub.s`/`mul.s`/`div.s` —— COP1 | `jal dpadd`/`dpsub`/`dpmul`/`dpdiv` |
+| 比较 | **`c.lt.s` + `bc1t`** | **`jal dpcmp`** + 整数比较 |
+| `int` → | `mtc1` + `cvt.s.w` | `jal litodp` |
+| → `int` | `cvt.w.s` + `mfc1` | `jal dptoli` |
+| float ↔ double | `jal fptodp` / `dptofp` | 同 |
+| 与 0 比较 | `mtc1 $0,$f0` + `c.eq.s` | `dpcmp` |
+
+**给目标里的值定类型最快的一条**：`l.s`/`s.s`/`c.*.s`/`bc1t` ⇒ **`float`**；`ld`/`sd` 到 GPR 后接 `jal dp*` ⇒ **`double`**。
+并且**不要去找 `l.d` 或 `c.lt.d`**——这个构建里**没有**任何 COP1 双精度指令（与 [L-EE-029](LAWS.md#l-ee-029--single-precision-is-hardware-double-precision-is-soft-float) 一致）。
+
+**T2**｜源码锚点：该 port 的模式定义（未从出厂树读到行号）｜常量：`l.s`、`dpadd`、`bc1t`｜
+falsifies：「`double` 像 `float` 一样用 COP1」与「double 比较是 `c.lt.d` 指令」。
+**杠杆**：这是那 40% 浮点文件的**类型判据**，与 L-EE-011/L-EE-019（常量）、L-EE-029（运算 lowering）互补。
+
+---
+
 ## 仍未解决
 
 * `$L` 计数器精确公式（多标签函数）。
