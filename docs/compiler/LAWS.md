@@ -1516,6 +1516,10 @@ The scheduler moves a multiply to the second unit when two can overlap — but *
 three-multiply fixture compiles to `mult` ×3 at `-O1`/`-Os` and `mult` ×2 + `mult1` ×1 at `-O2`/`-O3`. So `mult1`
 in a target is a **scheduling signal and a level hint**, not inline assembly.
 
+**Two further spellings**: `multu` is *not* a plain unsigned 32-bit multiply (that is `mult`) — it appears when
+a 32-bit unsigned multiply must produce a **64-bit result**; and the 64-bit variable shift has three object
+spellings, `dsllv`, `dsrlv` and `dsrav`.
+
 **Open**: `madd.s` appears in binaries, but **no ordinary C float expression produced it** here — `a*b+c`
 always compiled to `mul.s` + `add.s`. It is recorded as unexplained rather than guessed at.
 
@@ -1547,6 +1551,11 @@ product is `mula.s`, each further one `madd.s` (with `madda.s` when the chain ne
 and subtraction uses `msub.s`. The accumulator is hard register **71** (`FP_ACC`, [L-EE-016](LAWS.md#l-ee-016--the-ee-register-file-140-hard-registers-in-29-classes)) —
 it really is used. The **statement** form and loop accumulation do **not** use it, which makes the accumulator a
 signal that the source wrote the sum of products **as one expression**.
+
+**Subtraction uses the same accumulator machinery**: an expression that subtracts products
+(`c - a*b - d*e`) compiles to `mul.s` + **`suba.s`** + **`msub.s`** (with `msuba.s` in other shapes). So the
+family is `mula.s`/`madd.s`/`madda.s` for sums of products and `mul.s`/`suba.s`/`msub.s`/`msuba.s` for
+differences.
 
 **This resolves the open question from [L-EE-049](LAWS.md#l-ee-049--variable-shifts-negation-float-compare--and-the-second-multiplier)**: `madd.s` is ordinary C after all.
 
@@ -1599,6 +1608,11 @@ And **`sqrtf` is recognised by name and inlined**:
 extern float sqrtf(float);
 float f(float a){ return sqrtf(a); }   /* → sqrt.s $f0,$f12, no call */
 ```
+
+**Which math names are inlined is a short, closed list**: `sqrtf` → `sqrt.s` and `fabsf` → `abs.s`; every other
+libm name tried (`sinf`, `cosf`, `floorf`, `copysignf`, `fminf`, `powf`, …) becomes an ordinary **tail call**
+(`j sinf`, [L-EE-036](LAWS.md#l-ee-036--tail-calls-are-jumps--but-not-below--o2)). The likely branch spellings are `bgtzl`/`bgezl`/`bltzl`/`blezl`
+and `bc1tl`/`bc1fl`.
 
 * **Tier T2** · **Source anchor** the backend's branch and `sqrtf` patterns (no line read from the shipped
   tree) · **Constants** `blez`, `bc1f`, `sqrt.s`

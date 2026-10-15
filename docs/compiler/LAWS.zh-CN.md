@@ -1132,6 +1132,9 @@ falsifies：「128 位/浮点向量类型会让编译器使用 VU0」与「COP2 
 调度器在乘法可以重叠时把其中一个挪到第二个单元——但**只在 `-O2`/`-O3`**：同一个三乘法夹具在 `-O1`/`-Os` 生成 `mult`×3，
 在 `-O2`/`-O3` 生成 `mult`×2 + `mult1`×1。⇒ 目标里的 `mult1` 是**调度信号兼档位线索**，不是内联汇编。
 
+**另外两处拼写**：`multu` **不是**普通的无符号 32 位乘法（那是 `mult`）——它出现在**32 位无符号乘法需要 64 位结果**时；
+64 位变量移位在对象里有三种拼写：`dsllv`、`dsrlv`、`dsrav`。
+
 **未决**：`madd.s` 在二进制里存在，但**没有任何普通 C 浮点表达式**能生成它——`a*b+c` 恒为 `mul.s`+`add.s`。
 记为**未解释**，不做猜测。
 
@@ -1156,6 +1159,9 @@ falsifies：「`sllv`/`srlv`/`negu` 说明是手写汇编」与「`mult1` 需要
 ⇒ **一个表达式里求和 ≥2 个乘积**时用 **COP1 累加器**：第一个乘积 `mula.s`，后续每个 `madd.s`
 （链中需要中间值时用 `madda.s`），减法用 `msub.s`。累加器是硬寄存器 **71**（`FP_ACC`，[L-EE-016](LAWS.md#l-ee-016--the-ee-register-file-140-hard-registers-in-29-classes)）——确实被用到。
 而**语句形式**与循环累加**不用**它 ⇒ 累加器是「源码把乘积之和**写成一个表达式**」的信号。
+
+**减法用的是同一套累加器机制**：表达式中**相减乘积**（`c - a*b - d*e`）生成 `mul.s` + **`suba.s`** + **`msub.s`**
+（其他形状出现 `msuba.s`）。⇒ 该家族是：乘积**求和**用 `mula.s`/`madd.s`/`madda.s`，**求差**用 `mul.s`/`suba.s`/`msub.s`/`msuba.s`。
 
 **这也解开了 [L-EE-049](LAWS.md#l-ee-049--variable-shifts-negation-float-compare--and-the-second-multiplier) 的未决项**：`madd.s` 其实是普通 C。
 
@@ -1200,6 +1206,10 @@ falsifies：「`madd.s` 无法由 C 生成」与「浮点乘加一定用累加�
 extern float sqrtf(float);
 float f(float a){ return sqrtf(a); }   /* → sqrt.s $f0,$f12，没有调用 */
 ```
+
+**被内联的数学函数名是一张很短的封闭名单**：`sqrtf` → `sqrt.s`、`fabsf` → `abs.s`；其余试过的 libm 名
+（`sinf`、`cosf`、`floorf`、`copysignf`、`fminf`、`powf` …）都是普通的**尾调用**（`j sinf`，[L-EE-036](LAWS.md#l-ee-036--tail-calls-are-jumps--but-not-below--o2)）。
+likely 分支的拼写是 `bgtzl`/`bgezl`/`bltzl`/`blezl` 与 `bc1tl`/`bc1fl`。
 
 **T2**｜源码锚点：后端的分支与 `sqrtf` 模式（未从出厂树读到行号）｜常量：`blez`、`bc1f`、`sqrt.s`｜
 falsifies：「零比较总是物化或总是同一种分支」与「`sqrtf` 是 libm 调用」。

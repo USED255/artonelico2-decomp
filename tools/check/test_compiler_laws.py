@@ -254,6 +254,28 @@ def check_quick_reference(data: dict) -> None:
                   seen.get("small") == {0x09} and seen.get("u16") == {0x0D},
                   f"small={sorted(hex(o) for o in seen.get('small', set()))} u16={sorted(hex(o) for o in seen.get('u16', set()))}")
 
+    # 计数漂移守卫：文档里写的夹具数必须等于工具里真实的夹具数
+    observe = Path(__file__).resolve().parents[2] / "tools" / "compiler" / "ee-gcc-observe.py"
+    if observe.exists():
+        body = observe.read_text(encoding="utf-8")
+        actual = len(re.findall(r'^    \("', body, re.M))
+        words = {52: "fifty-two", 74: "seventy-four", 77: "seventy-seven"}
+        for page, pat in ((Path(__file__).resolve().parents[2] / "docs" / "compiler" / "README.md", "synthetic fixtures"),
+                          (Path(__file__).resolve().parents[2] / "tools" / "README.md", "synthetic fixtures")):
+            if page.exists():
+                text = page.read_text(encoding="utf-8")
+                m = re.search(r"([a-z-]+) " + pat, text)
+                check("fixture count in the docs matches the tool",
+                      bool(m) and m.group(1) == words.get(actual, m.group(1) if m else ""),
+                      f"docs say {m.group(1) if m else '?'}, tool has {actual}")
+        for page in (Path(__file__).resolve().parents[2] / "docs" / "compiler" / "README.zh-CN.md",
+                     Path(__file__).resolve().parents[2] / "tools" / "README.zh-CN.md"):
+            if page.exists():
+                m = re.search(r"(\d+) 组合成夹具", page.read_text(encoding="utf-8"))
+                check("fixture count in the zh docs matches the tool",
+                      bool(m) and int(m.group(1)) == actual,
+                      f"docs say {m.group(1) if m else '?'}, tool has {actual}")
+
 
 def _gh_slug(heading: str) -> str:
     """GitHub 的标题锚点算法：小写、去标点（保留空格）、每个空格→连字符（**不折叠**）。"""

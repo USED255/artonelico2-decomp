@@ -25,6 +25,7 @@
 | [ABI.zh-CN.md](ABI.zh-CN.md) | 一页看懂调用约定：实参与返回值走哪里、帧怎么算、怎么反推目标签名 |
 | [CROSS-2.96.zh-CN.md](CROSS-2.96.zh-CN.md) | 哪些规则能迁移到编译 CRI 中间件的 2.96，哪些不能 |
 | [QUICK-REFERENCE.zh-CN.md](QUICK-REFERENCE.zh-CN.md) | 从眼前的形状出发：帧 / 指令流 / 数据段里看到的东西对应哪条 law |
+| [COVERAGE.zh-CN.md](COVERAGE.zh-CN.md) | 本手册解释了一个二进制的多少：在你自己的反汇编上跑审计，看还剩什么 |
 | [`laws.json`](laws.json) | 同一批 law 的机器可读版本，供工具与 agent 查询 |
 
 ## 工具
@@ -35,7 +36,8 @@
 | `tools/compiler/ee-gcc-anchor.py` | 在出厂 `cc1` 里解析符号、地址、结构体或常量；`selftest` 复核本机能验证的锚点 |
 | `tools/compiler/ee-gcc-passdiff.py` | 编译同一函数的两种写法，报出第一个分叉的 pass |
 | `tools/compiler/ee-gcc-spill-map.py` | 把过大的帧映射到区块与源码行，并把每次溢出溯源到定义该值的那一行 |
-| `tools/compiler/ee-gcc-observe.py` | 编译 52 组合成夹具并断言「本手册说必须出现的东西」（`--selftest`），或对你自己的文件打印帧/常量池/助记符观测 |
+| `tools/compiler/ee-gcc-coverage.py` | 测量手册解释了一份反汇编的多少，并把剩下的分成「只能来自汇编」与「尚未解释」 |
+| `tools/compiler/ee-gcc-observe.py` | 编译 77 组合成夹具并断言「本手册说必须出现的东西」（`--selftest`），或对你自己的文件打印帧/常量池/助记符观测 |
 
 `make check` 会跑 law 数据校验、二进制锚点复核，以及上述每条命令的冒烟测试。
 

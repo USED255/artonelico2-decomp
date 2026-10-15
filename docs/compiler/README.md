@@ -30,6 +30,7 @@ such question with evidence, and each lever names the source spelling that moves
 | [ABI.md](ABI.md) · [中文](ABI.zh-CN.md) | The calling convention on one page: where every argument and return value travels, the frame, and how to read a target signature |
 | [CROSS-2.96.md](CROSS-2.96.md) · [中文](CROSS-2.96.zh-CN.md) | Which of these rules transfer to the 2.96 compiler that builds the CRI middleware, and which does not |
 | [QUICK-REFERENCE.md](QUICK-REFERENCE.md) · [中文](QUICK-REFERENCE.zh-CN.md) | Start from the shape in front of you: what you see in a frame, an instruction stream or a data section, and the law that explains it |
+| [COVERAGE.md](COVERAGE.md) · [中文](COVERAGE.zh-CN.md) | How much of a binary this handbook explains, measured: run the audit on your own disassembly and see whether anything is left |
 | [`laws.json`](laws.json) | The same laws as data, for tooling and agents |
 
 ## Tools
@@ -40,7 +41,8 @@ such question with evidence, and each lever names the source spelling that moves
 | `tools/compiler/ee-gcc-anchor.py` | resolve a symbol, address, struct or constant in the shipped `cc1`; `selftest` re-checks the anchors this machine can verify |
 | `tools/compiler/ee-gcc-passdiff.py` | compile two spellings of one function and report the first pass that diverges |
 | `tools/compiler/ee-gcc-spill-map.py` | map a too-large frame onto its blocks and source lines, and trace each spill to the line that defined the value |
-| `tools/compiler/ee-gcc-observe.py` | compile fifty-two synthetic fixtures and assert what this handbook says must appear (`--selftest`), or print frame/pool/mnemonic observations for your own file |
+| `tools/compiler/ee-gcc-coverage.py` | measure how much of a disassembly the handbook explains, and split what is left into assembly-only and unexplained |
+| `tools/compiler/ee-gcc-observe.py` | compile seventy-seven synthetic fixtures and assert what this handbook says must appear (`--selftest`), or print frame/pool/mnemonic observations for your own file |
 
 `make check` runs the law data check, the binary-anchor re-verification and a smoke test of every command
 above.

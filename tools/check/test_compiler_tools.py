@@ -41,6 +41,7 @@ ANCHOR = ROOT / "tools" / "compiler" / "ee-gcc-anchor.py"
 PASSDIFF = ROOT / "tools" / "compiler" / "ee-gcc-passdiff.py"
 SPILLMAP = ROOT / "tools" / "compiler" / "ee-gcc-spill-map.py"
 OBSERVE = ROOT / "tools" / "compiler" / "ee-gcc-observe.py"
+COVERAGE = ROOT / "tools" / "compiler" / "ee-gcc-coverage.py"
 
 DEFAULT_CC1 = Path.home() / "eecc" / "ee-gcc3.2-040921" / "lib" / "gcc-lib" / "ee" / "3.2-ee-040921" / "cc1"
 DEFAULT_EE_GCC = Path.home() / "eecc" / "ee-gcc3.2-040921" / "bin" / "ee-gcc"
@@ -114,6 +115,17 @@ def tier_laws_query() -> None:
             if not (ROOT / item).exists():
                 missing_ev.append(f"{law['id']}:{item}")
     check("every public evidence path exists", not missing_ev, f"{missing_ev[:3]}")
+
+
+def tier_no_toolchain(tmp: Path) -> None:
+    """覆盖率工具只需一份合成反汇编：它把分类变成可执行断言。"""
+    if not COVERAGE.exists():
+        skip("ee-gcc-coverage selftest", f"no tool at {COVERAGE}")
+        return
+    out = run([str(COVERAGE), "--selftest"])
+    check("ee-gcc-coverage selftest (classification)",
+          out.returncode == 0 and "selftest: OK" in out.stdout,
+          (out.stdout + out.stderr).strip()[-160:])
 
 
 def tier_toolchain(tmp: Path) -> None:
