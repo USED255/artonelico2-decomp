@@ -365,6 +365,31 @@ once `$ra` is included ([L-EE-012](#l-ee-012--frame-composition-varsoutgoing-arg
   allocno also remove `call_used_reg_set`.
 * **Scope** `ee-gcc 3.2-ee-040921`, read on this machine. These are compiler constants.
 
+## L-EE-017 · The shipped `find_reg` is not mainline's — it is a flagged retry ladder
+
+The shipped binary's own debug info gives the signature, and it is not the mainline one:
+
+```
+shipped   global.c:1336   find_reg (num, losers, alt_regs_p, accept_call_clobbered, retrying)
+mainline  global.c        find_reg (struct allocno *allocno, HARD_REG_SET *allocnos_live)
+```
+
+A traced run (gdb) on a 10-parameter fixture shows one call for allocno 0, then for allocno 2 the
+sequence `alt=0, alt=1, alt=0, alt=1` — the **caller retries with alternate registers**. `find_reg`
+does not write `allocno[num].reg` (the caller stores the result) and returns **-1** when it fails.
+
+* **Tier T1** · **Source anchor** `global.c:1336` (DWARF) · **Binary anchors** `find_reg @ 0x081acd64`
+  (global.c) and `find_reg @ 0x08134570` (reload1.c — always disambiguate by address)
+* **Receipt** `info args` under gdb plus the traced call sequence; `struct allocno` is 144 B with five
+  `HARD_REG_SET`s, including the EE-only `regs_someone_prefers`
+* **Falsifies** the assumption that a replay built on mainline's `find_reg` can reproduce the shipped
+  decisions — the structural reason a faithful replay scores **9.1%** (and **9.9%** with the real runtime
+  class tables) against a **34.3%** preference-first heuristic
+* **Lever** when modelling allocation, expect a retry ladder with alternate registers; do not port
+  mainline's two-pass scan
+* **Scope** `ee-gcc 3.2-ee-040921`, observed with gdb on this machine; `retrying` and
+  `accept_call_clobbered` were zero in the traced sample
+
 ---
 
 ## Open items
@@ -372,7 +397,10 @@ once `$ra` is included ([L-EE-012](#l-ee-012--frame-composition-varsoutgoing-arg
 * The exact `$L` counter formula (multi-label functions).
 * ~~`FIRST_PSEUDO_REGISTER` for the EE build~~ — **settled**: **140**, read from a live `cc1`
   ([L-EE-016](LAWS.md#l-ee-016--the-ee-register-file-140-hard-registers-in-29-classes)).
-* **Colouring replay is not modelled yet — and the tables were not the reason.** On 527 allocnos, a
+* **Colouring replay is not modelled yet — the tables were not the reason, and neither is the scan.**
+  [L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--it-is-a-flagged-retry-ladder) shows
+  the shipped `find_reg` takes a `losers` set plus three flags and is called in a **retry ladder**
+  (`alt_regs_p` toggling), so a replay ported from mainline cannot reproduce the decisions. On 527 allocnos, a
   preference-first heuristic reproduces **34.3%** of the recorded dispositions; a replay that follows
   `find_reg`'s two passes plus its preference override reproduces **9.1%**, and re-running that replay
   with the **real** runtime tables (`reg_class_contents`, `fixed_reg_set`, `call_used_reg_set`, read

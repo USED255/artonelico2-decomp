@@ -205,6 +205,23 @@ receipt：上表（活进程读出）。这些数组在 `.bss`、启动时填充
 falsifies：「EE 寄存器文件可以按 mainline MIPS 近似」，以及「这些表读不出来」。
 **杠杆**：只在 `reg_class_contents[类] − fixed_reg_set` 内分配；跨调用的 allocno 再去掉 `call_used_reg_set`。
 
+## L-EE-017 · 出厂的 `find_reg` **不是** mainline 那个——它是一套带标志的**重试阶梯**
+
+出厂二进制自己的调试信息给出了签名，与 mainline 不同：
+
+```
+出厂    global.c:1336   find_reg (num, losers, alt_regs_p, accept_call_clobbered, retrying)
+mainline global.c       find_reg (struct allocno *allocno, HARD_REG_SET *allocnos_live)
+```
+
+gdb 追踪（10 参数夹具）：allocno 0 调一次；allocno 2 的序列是 `alt=0, alt=1, alt=0, alt=1`——**调用者用备用寄存器重试**。
+`find_reg` **不写** `allocno[num].reg`（结果由调用者写），失败时返回 **-1**。
+
+**T1**｜源码锚点 `global.c:1336`（DWARF）｜二进制锚点 `find_reg @ 0x081acd64`（global.c）与 `find_reg @ 0x08134570`（reload1.c，**一律按地址消歧**）｜
+receipt：gdb `info args` + 实测调用序列；`struct allocno` = 144 B、含 EE 独有的 `regs_someone_prefers`｜
+falsifies：「按 mainline 的 `find_reg` 写的重放能复现出厂决策」——这正是忠实重放 **9.1%**（换真值类表后 **9.9%**）而首选优先启发式有 **34.3%** 的结构性原因。
+**杠杆**：建模分配时要预期「带备用寄存器的重试阶梯」，不要照搬 mainline 的两趟扫描。
+
 ---
 
 ## 仍未解决
