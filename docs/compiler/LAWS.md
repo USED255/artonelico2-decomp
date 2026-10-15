@@ -330,17 +330,55 @@ otherwise                                    -> compare chain
   local copy of that aggregate creates a second live object and costs a slot.
 * **Scope** `ee-gcc 3.2-ee-040921` at `-Os -G0`; a 4-byte aggregate and a scalar.
 
+## L-EE-016 · The EE register file: 140 hard registers in 29 classes
+
+Read from a **live** `cc1` (gdb, breakpoint at `local_alloc`, after `init_reg_sets_1` filled the tables):
+
+| registers | class |
+| --- | --- |
+| 0–31 | `GR_REGS` (GPRs) |
+| 32–63 | `FP_REGS` |
+| 64–67 | `HI_REG`, `LO_REG`, `HI1_REG`, `LO1_REG` (the EE's second multiply/divide unit) |
+| 68 / 69–70 / 71 | `ST_REGS` / `ELIM_REGS` / `FP_ACC_REG` |
+| 72–75 | reserved (in `fixed_reg_set`, no class) |
+| 76 / 77–79 | `VU0_ACC_REG` / `VU0_Q_REG`, `VU0_I_REG`, `VU0_R_REG` |
+| 80–111 | `COP0_REGS` |
+| 112–143 | `VU0_REGS` |
+
+`ALL_REGS` spans **140** registers (`FIRST_PSEUDO_REGISTER`), `N_REG_CLASSES` is **29**, and a
+`HARD_REG_SET` is 192 bits.
+
+`fixed_reg_set` leaves `0, 1, 26, 27, 28, 29, 31` fixed among the GPRs (zero, at, k0, k1, gp, sp, ra);
+`call_used_reg_set` leaves `2–15, 24, 25` caller-saved. Therefore the **allocatable callee-saved GPRs are
+exactly `{16..23, 30}`** — eight `$s0`–`$s7` plus `$fp` — which is why the save area caps at **10 slots**
+once `$ra` is included ([L-EE-012](#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers)).
+
+* **Tier T1** · **Source anchor** `config/mips/mips5900.c` (the file that owns the EE register file; its
+  `mips.h` `REG_CLASS_CONTENTS` is not on this machine) · **Binary anchors**
+  `reg_class_contents @ 0x08309140`, `reg_class_size @ 0x083094c0`, `fixed_reg_set @ 0x0830a310`,
+  `call_used_reg_set @ 0x083093f8`
+* **Receipt** the table above, read from a live process. The static read returns zeros: these arrays live
+  in `.bss` and are filled at startup.
+* **Falsifies** the assumption that the shipped EE register file can be approximated by the mainline MIPS
+  one — and the earlier guess that these tables are unreadable.
+* **Lever** allocate only inside `reg_class_contents[class] − fixed_reg_set`, and for a call-crossing
+  allocno also remove `call_used_reg_set`.
+* **Scope** `ee-gcc 3.2-ee-040921`, read on this machine. These are compiler constants.
+
 ---
 
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).
-* `FIRST_PSEUDO_REGISTER` for the EE build is bounded but not read exactly (the class tables are
-  runtime-initialised); the practical classifier is L-EE-008's lever.
-* **Colouring replay is not modelled yet.** On 527 allocnos, a preference-first heuristic reproduces
-  **34.3%** of the recorded dispositions, and a replay that follows `find_reg`'s two passes plus its
-  preference override reproduces only **9.1%** — implementing more of the source *hurt*. The cause is
-  identified: `reg_class_contents`, `fixed_reg_set` and `call_used_reg_set` are runtime-initialised
-  (`.bss`), so a static read returns zeros and the exclusion sets in the replay are wrong. Reading
-  those tables from a live process is the next step.
+* ~~`FIRST_PSEUDO_REGISTER` for the EE build~~ — **settled**: **140**, read from a live `cc1`
+  ([L-EE-016](LAWS.md#l-ee-016--the-ee-register-file-140-hard-registers-in-29-classes)).
+* **Colouring replay is not modelled yet — and the tables were not the reason.** On 527 allocnos, a
+  preference-first heuristic reproduces **34.3%** of the recorded dispositions; a replay that follows
+  `find_reg`'s two passes plus its preference override reproduces **9.1%**, and re-running that replay
+  with the **real** runtime tables (`reg_class_contents`, `fixed_reg_set`, `call_used_reg_set`, read
+  from a live process) moves it only to **9.9%**. So implementing more of the source *hurts*, and the
+  earlier explanation (the tables read as zeros) is **falsified** — the error is in the replay logic,
+  not in the tables. A faithful replay also leaves 45 allocnos without a register where the real
+  compiler left 3, so `find_reg`'s fallback path is still missing. Next step: re-read the fallback and
+  the `regs to allocate` / `conflicts` scope ([L-EE-008](LAWS.md#l-ee-008--23greg-prints-two-different-lists-a-conflicts-line-that-lists-every-allocno-and-a-regs-to-allocate-line-that-lists-only-the-locally-unplaced-residue)).
 * ~~`freq` accumulation~~ — settled: the per-occurrence rule wins by measurement (L-EE-005).

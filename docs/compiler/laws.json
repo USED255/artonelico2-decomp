@@ -510,7 +510,7 @@
         "decompose the frame before editing: vars / outgoing args / 8 B per saved register",
         "each saved register costs 8 B; beyond 10 saved registers more values can only spill into vars"
       ],
-      "receipt": "Synthetic dose-response (-O2 -G0, k values live across calls): k=2/4/6/8/10/12/14/18/24 -> frame 32/48/64/80/96/96/112/128/144 with regs= 4/6/8/10/10/10/10/10/10. The frame grows 8 B per saved register and the save area caps at 10 registers (80 B); beyond that only vars grows. The saved registers observed are $s0-$s7 (16-23), $fp (30) and $ra (31). Naming trap: the objdump in this toolchain prints register 30 as `s8` while the compiler's own assembly prints `$fp`, so counting names in a disassembly can mislead. Real function: func_001d4b88 retail frame 144 = vars 16 + args 48 + 10 saves (80); candidate frame 176 = vars 48 + args 48 + the same 10 saves, so the whole +32 B is the vars block.",
+      "receipt": "Synthetic dose-response (-O2 -G0, k values live across calls): k=2/4/6/8/10/12/14/18/24 -> frame 32/48/64/80/96/96/112/128/144 with regs= 4/6/8/10/10/10/10/10/10. The frame grows 8 B per saved register and the save area caps at 10 registers (80 B); beyond that only vars grows. The saved registers observed are $s0-$s7 (16-23), $fp (30) and $ra (31). Naming trap: the objdump in this toolchain prints register 30 as `s8` while the compiler's own assembly prints `$fp`, so counting names in a disassembly can mislead. Real function: func_001d4b88 retail frame 144 = vars 16 + args 48 + 10 saves (80); candidate frame 176 = vars 48 + args 48 + the same 10 saves, so the whole +32 B is the vars block. The cap is explained by the runtime register file read from a live cc1: the allocatable callee-saved GPRs are exactly {16..23, 30} (eight $s0-$s7 plus $fp), so with $ra the save area holds nine allocatable registers plus one return address = 10 slots.",
       "falsifies": "the reading that a larger candidate frame means more saved registers, and the reading that the save area grows without bound with the number of live values",
       "scope": "ee-gcc 3.2-ee-040921 at -O2/-Os; 6 synthetic functions plus one real function. In the synthetic corpus, values that cannot take a register are partly rematerialised rather than spilled, so vars does not grow one slot per value",
       "evidence": [
@@ -641,6 +641,77 @@
       "scope": "ee-gcc 3.2-ee-040921 at -Os -G0; two synthetic fixtures plus one observation in a real function. Verified for a 4-byte aggregate and a scalar; other aggregate sizes are not measured.",
       "evidence": [
         "private:out/evidence/ee_gcc_outgoing_reuse.txt"
+      ]
+    },
+    {
+      "id": "L-EE-016",
+      "title": "The EE register file is 140 hard registers in 29 classes: GPR 0-31, FP 32-63, HI/LO/HI1/LO1 64-67, FP_ACC 71, VU0 76-79 and 112-143, COP0 80-111",
+      "tier": "T1",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips5900.c",
+        "line": 0,
+        "note": "The class contents live in the EE backend's mips.h (REG_CLASS_CONTENTS), which is not on this machine; the line cited is the file that owns the EE register file. The values below are read from a live cc1, not from source."
+      },
+      "binary_anchor": {
+        "symbol": "reg_class_contents",
+        "addr": "0x08309140",
+        "related": [
+          {
+            "symbol": "reg_class_size",
+            "addr": "0x083094c0"
+          },
+          {
+            "symbol": "fixed_reg_set",
+            "addr": "0x0830a310"
+          },
+          {
+            "symbol": "call_used_reg_set",
+            "addr": "0x083093f8"
+          },
+          {
+            "symbol": "call_fixed_reg_set",
+            "addr": "0x0830a328"
+          }
+        ],
+        "constants": [
+          {
+            "kind": "int",
+            "value": 140,
+            "at": "ALL_REGS",
+            "means": "FIRST_PSEUDO_REGISTER (ALL_REGS bit width)"
+          },
+          {
+            "kind": "int",
+            "value": 29,
+            "at": "reg_class_contents",
+            "means": "N_REG_CLASSES"
+          },
+          {
+            "kind": "int",
+            "value": 192,
+            "at": "fixed_reg_set",
+            "means": "HARD_REG_SET bits = 3 x 64"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "23.greg"
+      ],
+      "symptom": [
+        "you need to know whether a register is allocatable, caller-saved or reserved for this compiler",
+        "a replay or a diff assumes the mainline MIPS register file"
+      ],
+      "lever": [
+        "allocate only inside reg_class_contents[class] minus fixed_reg_set; for a call-crossing allocno also remove call_used_reg_set",
+        "the allocatable callee-saved GPRs are exactly {16..23, 30}: eight $s0-$s7 plus $fp, so with $ra the save area is 10 slots"
+      ],
+      "receipt": "Read from a live cc1 (gdb, breakpoint at local_alloc, where init_reg_sets_1 has already filled the tables): 29 classes, ALL_REGS = 140 registers, HARD_REG_SET = 3 x 64 = 192 bits. GR_REGS = 0-31 (32), FP_REGS = 32-63 (32), HI/LO/HI1/LO1 = 64-67, ST = 68, ELIM = 69-70, FP_ACC = 71, 72-75 reserved, VU0_ACC = 76, VU0_Q/I/R = 77/78/79, COP0 = 80-111 (32), VU0 = 112-143 (32). fixed_reg_set leaves 0,1,26,27,28,29,31 fixed among the GPRs; call_used_reg_set leaves 2-15, 24, 25 caller-saved, so the allocatable callee-saved GPRs are {16..23, 30}.",
+      "falsifies": "the assumption that the shipped EE register file can be approximated by the mainline MIPS one, and the earlier guess that the runtime tables were unreadable (they are readable from a live process; only the static read returns zeros)",
+      "scope": "ee-gcc 3.2-ee-040921; read from a live cc1 on this machine. The class contents are compiler constants, not per-function decisions.",
+      "evidence": [
+        "private:out/evidence/ee_gcc_regclasses_runtime.txt"
       ]
     }
   ],

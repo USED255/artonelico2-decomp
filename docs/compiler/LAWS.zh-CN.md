@@ -181,10 +181,39 @@ receipt（`-Os -G0`，参数多于 8 个 ⇒ 第 9 个落在传出区）：聚�
 falsifies：「凡是既要传给调用、调用后又要用的值，都必须溢出或占一个 callee-saved 寄存器」。
 **杠杆**：把**同一个聚合体表达式**既传给调用、又在调用后使用；为它引入一个局部副本会多出一个活跃对象、多花一个槽。
 
+## L-EE-016 · EE 寄存器文件：**140 个硬寄存器、29 个类**
+
+从**运行中**的 `cc1` 读出（gdb 挂在 `local_alloc`，此时 `init_reg_sets_1` 已填表）：
+
+| 寄存器 | 类 |
+| --- | --- |
+| 0–31 | `GR_REGS`（通用） |
+| 32–63 | `FP_REGS` |
+| 64–67 | `HI/LO/HI1/LO1`（EE 的第二套乘除单元） |
+| 68 / 69–70 / 71 | `ST_REGS` / `ELIM_REGS` / `FP_ACC_REG` |
+| 72–75 | 保留（在 `fixed_reg_set` 里，不属于任何类） |
+| 76 / 77–79 | `VU0_ACC_REG` / `VU0_Q_REG`、`VU0_I_REG`、`VU0_R_REG` |
+| 80–111 | `COP0_REGS` |
+| 112–143 | `VU0_REGS` |
+
+`ALL_REGS` 共 **140** 个（`FIRST_PSEUDO_REGISTER`），`N_REG_CLASSES` = **29**，`HARD_REG_SET` = 192 位。
+GPR 里被 `fixed_reg_set` 固定的是 `0,1,26,27,28,29,31`；`call_used_reg_set` 剩下 `2–15,24,25` 为调用者保存
+⇒ **可分配的 callee-saved GPR 恰好是 `{16..23, 30}`**（8 个 `$s0`–`$s7` + `$fp`），加上 `$ra` 正好 **10 个保存槽**，与 [L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers) 的实测上限吻合。
+
+**T1**｜源码锚点 `config/mips/mips5900.c`｜二进制锚点 `reg_class_contents @ 0x08309140`、`reg_class_size @ 0x083094c0`、`fixed_reg_set @ 0x0830a310`、`call_used_reg_set @ 0x083093f8`｜
+receipt：上表（活进程读出）。这些数组在 `.bss`、启动时填充，**静态读为 0**｜
+falsifies：「EE 寄存器文件可以按 mainline MIPS 近似」，以及「这些表读不出来」。
+**杠杆**：只在 `reg_class_contents[类] − fixed_reg_set` 内分配；跨调用的 allocno 再去掉 `call_used_reg_set`。
+
 ---
 
 ## 仍未解决
 
-* `$L` 计数器的精确公式（多标签函数未测）。
-* 分类别着色重放：已记录的 26.1% 精度早于本次 EE `find_reg` 锚点。
-* `freq` 需在真实多基本块函数上核对，而不只是读源码。
+* `$L` 计数器精确公式（多标签函数）。
+* ~~EE 构建的 `FIRST_PSEUDO_REGISTER`~~ —— **已结清：140**，从活 `cc1` 读出（[L-EE-016](LAWS.md#l-ee-016--the-ee-register-file-140-hard-registers-in-29-classes)）。
+* **着色重放尚未建模——而且卡点不在类表。** 527 个 allocno 上，首选优先的启发式复现 **34.3%** 的已记录 dispositions；
+  按 `find_reg` 两趟 + 首选覆盖实现的忠实重放只有 **9.1%**；把它换成**运行时真值类表**（活进程读出的
+  `reg_class_contents` / `fixed_reg_set` / `call_used_reg_set`）也只到 **9.9%**。
+  ⇒ 「按源码实现反而更差」依旧成立，而我此前给的根因（类表是 `.bss`、静态读为 0）**已被推翻**——误差在**重放逻辑**里，不在表里。
+  忠实重放还会留下 45 个 allocno 未选出寄存器（真实只未分配 3 个），说明 `find_reg` 的兜底路径仍缺。
+  下一步：重读兜底路径，以及 `regs to allocate` / `conflicts` 的口径（[L-EE-008](LAWS.md#l-ee-008--23greg-prints-two-different-lists-a-conflicts-line-that-lists-every-allocno-and-a-regs-to-allocate-line-that-lists-only-the-locally-unplaced-residue)）。
