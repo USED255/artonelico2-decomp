@@ -1381,6 +1381,47 @@
       "evidence": [
         "private:out/evidence/ee_gcc_double_softfloat.txt"
       ]
+    },
+    {
+      "id": "L-EE-030",
+      "title": "An aggregate of 8 bytes or less is passed by value in a register, a larger one by invisible reference, and a returned aggregate uses a hidden pointer in $4 that shifts the other arguments",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips.c",
+        "line": 0,
+        "note": "The aggregate part of the EE EABI lives in the MIPS backend; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 8,
+            "at": "aggregate size boundary",
+            "means": "8 bytes and below go by value, 9 and above by reference"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "22.lreg"
+      ],
+      "symptom": [
+        "the target's prologue loads a field from 0($4) but your candidate stores $4 to the stack first, or the reverse",
+        "a function that returns a structure seems to take one more argument than the source declares"
+      ],
+      "lever": [
+        "<= 8-byte aggregates are passed by value in a register; larger ones arrive as a pointer in $4, so a field read at 0($4) means 'by reference' and an sd $4,0($sp) followed by stack reads means 'by value'",
+        "a function returning an aggregate receives a hidden return pointer in $4, which shifts every other argument one slot: int x in 'S8 make8(int x)' is read from $5, and the pointer comes back in $2"
+      ],
+      "receipt": "At -O2 -G0 on this machine, reading the callee side. struct{int a;} (4 bytes) arrives in $4 and is used directly (move v0,a0); struct{char c[8];} and struct{short a,b,c,d;} (8 bytes) arrive in $4 and are stored to the stack before their fields are read (sd a0,0(sp) then lb/lh from (sp)); struct{int a,b,c;} (12), struct{int a,b,c,d;} (16) and struct{char c[9];} (9) are dereferenced instead (lw t7,0(a0), ldl t4,7(a0)), so they arrive as pointers. The boundary is therefore 8 bytes inclusive. For returns, S8 make8(int x) writes through a0 (sw a1,0(a0)), reads x from a1 and returns a0 in v0, and its caller moves the argument into a1 and the hidden slot into a0 before the call.",
+      "falsifies": "the assumption that a small structure is passed in a register pair, and that a structure-returning function's first argument is in $4",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0, synthetic functions with 4/8/9/12/16/32-byte aggregates, on the callee and the caller side; unions, bitfields and varargs were not measured",
+      "evidence": [
+        "private:out/evidence/ee_gcc_struct_abi.txt"
+      ]
     }
   ],
   "verification": {

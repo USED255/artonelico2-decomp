@@ -789,6 +789,42 @@ single precision to software; `-O3` behaves like `-O2`.
 
 ---
 
+## L-EE-030 · Aggregates: 8 bytes by value, larger by reference; returns use a hidden pointer
+
+Judged from the **callee** side, `-O2 -G0`:
+
+| aggregate | size | prologue | convention |
+| --- | ---: | --- | --- |
+| `struct { int a; }` | 4 | `move v0,a0` | **by value** in `$4` |
+| `struct { char c[8]; }` | 8 | `sd a0,0(sp)` then `lb v0,7(sp)` | **by value** |
+| `struct { short a,b,c,d; }` | 8 | `sd a0,0(sp)` then `lh v0,0(sp)` | **by value** |
+| `struct { int a,b,c; }` | 12 | `lw t7,0(a0)` | **by reference** |
+| `struct { int a,b,c,d; }` | 16 | `lw t5,0(a0)` | **by reference** |
+| `struct { char c[9]; }` | 9 | `ldl t4,7(a0)` | **by reference** |
+
+The boundary is **8 bytes inclusive**. For a **returned** aggregate the compiler uses a hidden pointer in
+`$4`, which shifts every other argument one slot:
+
+```asm
+make8(int x):                 ; S8 make8(int x)
+    addiu t7,a1,1             ; x is read from $5 - $4 is the return slot
+    sw    a1,0(a0)
+    sw    t7,4(a0)
+    move  v0,a0               ; the pointer comes back in $2
+```
+
+* **Tier T2** · **Source anchor** the aggregate part of the EE EABI (`config/mips/mips.c`; no line read from
+  the shipped tree) · **Constant** the 8-byte boundary
+* **Falsifies** the assumption that a small structure travels in a register pair, and that a
+  structure-returning function's first argument is in `$4`
+* **Lever** `lw …,0($4)` in the target's prologue ⇒ a >8-byte aggregate by reference; `sd $4,0($sp)` followed
+  by stack reads ⇒ a ≤8-byte aggregate by value. And when the target returns a structure, count the
+  arguments one slot later — `$4` is the return pointer
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`, synthetic 4/8/9/12/16/32-byte aggregates, callee and caller
+  side; unions, bitfields and varargs were not measured
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).
