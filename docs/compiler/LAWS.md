@@ -562,6 +562,30 @@ while a weak object without an attribute lands in `.bss`.
 
 ---
 
+## L-EE-022 · Function alignment: 8 bytes by default, 4 with `-falign-functions=4`
+
+Four 12-byte functions, `-O2 -G0`:
+
+| flags | alignment in the assembly | symbol offsets | `.text` |
+| --- | --- | --- | ---: |
+| none | `.align 2` + **`.p2align 3,,7`** (8 bytes) | 0x0, 0x10, 0x20, 0x30 | **0x40** |
+| `-falign-functions=4` | `.align 2` only | 0x0, 0xc, 0x18, 0x24 | **0x30** |
+| `-ffunction-sections` | one `.text.N` per function, still `.p2align 3` | 0 in each | 0x10 each |
+| **`-falign-functions=4 -ffunction-sections`** (what this project uses) | `.text.N` + `.align 2` only | 0 in each | **0xc each — no padding** |
+
+So the default is **8-byte** alignment, which pads a 12-byte function to 16; `-falign-functions=4` drops it to
+4 and the functions pack tightly. `-ffunction-sections` alone does **not** remove the 8-byte alignment.
+
+* **Tier T2** · **Source anchor** `varasm.c` (the alignment directive; not read from the shipped tree) ·
+  **Constants** the emitted `.p2align 3,,7` and `.align 2`
+* **Falsifies** the assumption that `-ffunction-sections` alone removes inter-function padding, and that
+  the default alignment is 4 bytes
+* **Lever** when objdiff shows a *size or offset* mismatch while the instructions agree, check the
+  alignment flags before rewriting anything
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`, four one-instruction functions
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).

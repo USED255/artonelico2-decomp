@@ -80,6 +80,16 @@ Note: tracing *every* `find_reg` call is not the way to do this — the function
 result is a side effect ([L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--a-two-step-ladder-whose-decision-is-a-side-effect)),
 and a long trace trips over the debugger. One breakpoint after allocation answers the question.
 
+## 3.6 A size or offset mismatch is not an instruction mismatch
+
+If the instructions agree but objdiff reports a different size, or function symbols sit at different
+offsets, check the alignment flags before rewriting anything. The default function alignment is **8 bytes**,
+so a 12-byte function is padded to 16; `-falign-functions=4` lowers it to 4 and removes the padding, and
+`-ffunction-sections` alone does not
+([L-EE-022](LAWS.md#l-ee-022--functions-are-8-byte-aligned-by-default--falign-functions4-removes-the-padding-between-small-functions-and--ffunction-sections-alone-does-not)).
+This project builds with `-O2 -falign-functions=4 -ffunction-sections`, so every function section should be
+exactly the function's size.
+
 ## 4. Two false signals
 
 Both of these produce a *clean, confident, wrong* answer. They are the reason a first-divergence

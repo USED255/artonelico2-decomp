@@ -351,6 +351,26 @@ falsifies：「产生 `gp_rel` 的是 **weak** 小数据定义」——真正起
 
 ---
 
+## L-EE-022 · 函数对齐：默认 **8 字节**，`-falign-functions=4` 降到 4
+
+四个 12 字节函数，`-O2 -G0`：
+
+| 旗标 | 汇编里的对齐指令 | 符号偏移 | `.text` |
+| --- | --- | --- | ---: |
+| 无 | `.align 2` + **`.p2align 3,,7`**（8 字节） | 0x0, 0x10, 0x20, 0x30 | **0x40** |
+| `-falign-functions=4` | 只有 `.align 2` | 0x0, 0xc, 0x18, 0x24 | **0x30** |
+| `-ffunction-sections` | 每函数一个 `.text.N`，段内仍有 `.p2align 3` | 各段内 0 | 各 0x10 |
+| **`-falign-functions=4 -ffunction-sections`**（本项目实际） | `.text.N` + 只有 `.align 2` | 各段内 0 | **各 0xc —— 零填充** |
+
+⇒ 默认对齐是 **8 字节**，12 字节函数被填到 16；`-falign-functions=4` 降到 4 后**紧密排列**。
+**`-ffunction-sections` 单独并不能去掉 8 字节对齐**。
+
+**T2**｜源码锚点 `varasm.c`（对齐指令；未从出厂树读到行号）｜常量：发出的 `.p2align 3,,7` 与 `.align 2`｜
+falsifies：「`-ffunction-sections` 单独就能去掉函数间填充」，以及「默认函数对齐是 4 字节」。
+**杠杆**：objdiff 报**大小/偏移**不符而指令一致时，先查对齐旗标，别急着改源码。
+
+---
+
 ## 仍未解决
 
 * `$L` 计数器精确公式（多标签函数）。

@@ -71,6 +71,13 @@ objdump -d "$CC1" | grep 'call .*<global_alloc>'
 （[L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--a-two-step-ladder-whose-decision-is-a-side-effect)），
 长轨迹还会把调试器绊倒。分配后一个断点就能回答。
 
+## 3.6 大小/偏移不符 ≠ 指令不符
+
+如果指令一致、但 objdiff 报大小不同，或函数符号偏移不同，先查**对齐旗标**，别急着改源码。默认函数对齐是 **8 字节**，
+12 字节函数会被填到 16；`-falign-functions=4` 降到 4 后去掉填充，而 **`-ffunction-sections` 单独做不到**
+（[L-EE-022](LAWS.md#l-ee-022--functions-are-8-byte-aligned-by-default--falign-functions4-removes-the-padding-between-small-functions-and--ffunction-sections-alone-does-not)）。
+本项目用 `-O2 -falign-functions=4 -ffunction-sections`，所以每个函数段应当**正好等于函数大小**。
+
 ## 4. 两个假信号
 
 这两件事都会给出**干净、自信、错误**的答案：
