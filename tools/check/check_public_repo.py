@@ -241,7 +241,25 @@ def check_published(root: Path = ROOT) -> None:
             bad("the sha256 of toolchain.lock.json does not match PUBLISHED.json")
         else:
             ok("the publication record agrees: toolchain.lock.json")
-    ok(f"the publication record is consistent (source_revision={str(pub.get('source_revision'))[:12]})")
+    # The record must name the commit the verified run built (see P-112). The live record is checked
+    # on every run now that the corrected publication is on `main`; a legacy baseline without a
+    # `source_commit` keeps the old, weaker report.
+    # 记录里的 source_revision 必须是**被验证那次运行**所用的提交（P-112）。线上记录纠正之后，
+    # 这条检查在每次运行都会执行；没有 source_commit 的旧基线仍按原来的弱口径放行。
+    base_doc = {}
+    base_path = root / "progress" / "baseline.json"
+    if base_path.is_file():
+        try:
+            base_doc = json.loads(base_path.read_text(encoding="utf-8"))
+        except Exception:
+            base_doc = {}
+    rev = str(pub.get("source_revision") or "")
+    committed = str(base_doc.get("source_commit") or "")
+    if committed and rev != committed:
+        bad(f"PUBLISHED.json source_revision ({rev[:12]!r}) is not the commit the baseline provenance "
+            f"verified ({committed[:12]!r})")
+    else:
+        ok(f"the publication record is consistent (source_revision={rev[:12]})")
 
 
 def check_deny(root: Path = ROOT) -> None:
@@ -458,6 +476,15 @@ def check_publication(root: Path, base: str) -> list[str]:
         problems.append(f"the baseline provenance came from a --limit {base_doc.get('limit')} smoke test")
     if not re.fullmatch(r"[0-9a-f]{40}", str(base_doc.get("source_commit") or "")):
         problems.append(f"the baseline provenance has no usable source_commit: {base_doc.get('source_commit')!r}")
+    # The record must name the commit the verified run built, not the commit that published it.
+    # `publish_report.py` used to write the local HEAD there, so a publication produced from a
+    # branch recorded a revision CI never verified (P-112).
+    # 记录里的 source_revision 必须是**被验证的那次运行**所用的提交，而不是发布动作所在的提交。
+    # 旧版 publish_report.py 写的是本地 HEAD，于是从分支发布就会记下一个 CI 从未验证过的版本（P-112）。
+    elif str(pub.get("source_revision") or "") != str(base_doc.get("source_commit") or ""):
+        problems.append(
+            f"PUBLISHED.json source_revision ({str(pub.get('source_revision'))[:12]!r}) is not the commit the "
+            f"baseline provenance verified ({str(base_doc.get('source_commit'))[:12]!r})")
     if base_doc.get("report_sha256") != sha256(report):
         problems.append("the baseline provenance does not describe the published report (report_sha256 mismatch)")
 

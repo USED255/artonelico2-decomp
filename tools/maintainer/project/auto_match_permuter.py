@@ -208,7 +208,18 @@ def best_flags(sym: str, src: Path, d: Path) -> list:
     return best
 
 
-def setup_dir(sym: str, frontend: str = "ghidra") -> Path | None:
+def setup_dir(sym: str, frontend: str = "ghidra") -> tuple[Path | None, str]:
+    """Prepare the permuter work directory for one candidate.
+
+    Returns `(dir, "")` on success and `(None, reason)` on every failure path. The reason matters:
+    a candidate whose requested frontend has no draft (for example a `.erx.lib` slot name under
+    `--frontend ghidra`, see P-113) used to be indistinguishable from a candidate whose block
+    boundary cannot be split, so both collapsed into one `setup_failed` counter.
+
+    为单个候选准备 permuter 工作目录。成功返回 `(dir, "")`，任何失败返回 `(None, 原因)`。
+    原因很重要：请求的前端拿不到草稿（例如 `--frontend ghidra` 遇到 `.erx.lib` 槽位名，见 P-113）
+    与「块边界切不开」以前都塌缩成同一个 `setup_failed` 计数，看不出该换前端还是该放弃。
+    """
     # R30 D8: the work directory is derived from a repo name. Prove it stays under WORK, and
     # skip the candidate on an unsafe name instead of raising out of the worker.
     # R30 D8：工作目录同样由仓库派生的名字拼成——先证明它仍在 WORK 之内；名字不合法就跳过该
@@ -217,7 +228,7 @@ def setup_dir(sym: str, frontend: str = "ghidra") -> Path | None:
         d = at2_io.safe_child(WORK, sym, what="symbol")
     except ValueError as e:
         print(f"  [skip] {sym}: {e}", file=sys.stderr)
-        return None
+        return None, "unsafe_name"
     d.mkdir(parents=True, exist_ok=True)
     cands = []
     if frontend in ("m2c", "best", "best3"):
@@ -232,17 +243,17 @@ def setup_dir(sym: str, frontend: str = "ghidra") -> Path | None:
         for i, q in enumerate(llm_drafts(sym)):
             cands.append((f"llm{i}", q))
     if not cands:
-        return None
+        return None, "no_draft"
     shutil.copyfile(cands[0][1], d / "base.c")
     d.joinpath("_cands.txt").write_text("\n".join(f"{n}\t{q}" for n, q in cands), encoding="utf-8")
     f = ROOT / "asm" / "cod" / f"{sym}.s"
     if not f.is_file():
-        return None
+        return None, "no_asm"
     L = f.read_text(encoding="utf-8", errors="replace").split("\n")
     gi = next((i for i, l in enumerate(L) if re.match(r"\s*glabel\s+", l)), None)
     en = next((i for i in range(gi or 0, len(L)) if re.match(r"\s*endlabel\s+", L[i])), None)
     if gi is None:
-        return None
+        return None, "no_glabel"
     if en is None:
         # 54 of the 10,926 .s files carry no endlabel: their body runs to the last instruction
         # (2026-10-12). split_asm decides the boundary and accepts only a whole-file
@@ -251,7 +262,7 @@ def setup_dir(sym: str, frontend: str = "ghidra") -> Path | None:
         # split_asm；它只在「整份替换不丢字节」时接受，因此这里不会取出错误的块。
         info = SPLIT.analyze(sym, asm_dir=ROOT / "asm" / "cod")
         if info.get("mode") != "direct" or "end" not in info:
-            return None
+            return None, "no_block_boundary"
         en = info["end"]
     block = L[gi:en + 1]
     if not any(re.match(r"\s*endlabel\s+", x) for x in block):
@@ -263,7 +274,7 @@ def setup_dir(sym: str, frontend: str = "ghidra") -> Path | None:
     r = subprocess.run([AS, "-EL", "-march=r5900", "-I", "include", "-o", str(d / "target.o"), str(d / "target.s")],
                        cwd=str(ROOT), capture_output=True, text=True)
     if r.returncode:
-        return None
+        return None, "target_asm_failed"
     fl = best_flags(sym, d / "base.c", d)          # Select the flag level first (see best_flags).
     tbl = jtbl_table(sym)
     if tbl:
@@ -306,7 +317,7 @@ def setup_dir(sym: str, frontend: str = "ghidra") -> Path | None:
                 shutil.copyfile(scored[0][2], d / "base.c")
             (d / "_frontend.txt").write_text(
                 "\n".join(f"{n}\t{m:.2f}" for m, n, _ in scored), encoding="utf-8")
-    return d
+    return d, ""
 
 
 def best_output(sym: str) -> Path | None:
@@ -456,9 +467,11 @@ def attempt(rec: dict, timeout: int, frontend: str = "ghidra") -> dict:
     sym = rec["sym"]
     out = {"sym": sym, "class": rec.get("class"), "base_match": rec.get("match"),
            "frontend": frontend, "permuter": "none", "objdiff": None}
-    d = setup_dir(sym, frontend)
+    d, why = setup_dir(sym, frontend)
     if d is None:
-        out["permuter"] = "setup_failed"
+        # Keep the reason in the status so a batch report says whether to switch the frontend.
+        # 状态里保留原因，跑批报告才能区分「换前端」与「放弃」。
+        out["permuter"] = f"setup_failed:{why}" if why else "setup_failed"
         return out
     for old in d.glob("output-*"):
         shutil.rmtree(old, ignore_errors=True)
@@ -535,8 +548,16 @@ def do_apply(winners: dict):
     for sym, info in winners.items():
         at2_io.atomic_copy(Path(info["source"]), paths[sym])
         try:
-            rec = at2_io.safe_child(WORK, sym, "_flags.txt", what="symbol") \
-                .read_text(encoding="utf-8").split("\t")[0].strip()
+            # `safe_child(root, name, suffix)` **concatenates** (`root/<name><suffix>`), it is not a
+            # path join. `verify()` writes `WORK/<sym>/_flags.txt`, so the reader must validate the
+            # symbol first and then append the file name. Reading `WORK/<sym>_flags.txt` never
+            # exists, the exception below swallowed it, and the winning level was silently dropped
+            # (measured 2026-10-15: two of three permuter landings were non-`-O2`).
+            # `safe_child(root, name, suffix)` 是**拼接**（`root/<name><suffix>`），不是路径 join；
+            # `verify()` 写在 `WORK/<sym>/_flags.txt`，所以先校验符号名、再拼文件名。
+            # 之前读成 `WORK/<sym>_flags.txt` 恒不存在，异常被吞 ⇒ 获胜档位静默丢失。
+            sym_dir = at2_io.safe_child(WORK, sym, what="symbol")
+            rec = (sym_dir / "_flags.txt").read_text(encoding="utf-8").split("\t")[0].strip()
         except Exception:
             rec = ""
         if rec and rec != "-O2":

@@ -114,8 +114,14 @@ python3 tools/maintainer/publish_report.py \
 只有 provenance 记录表明「载荷 sha1 实测通过、全部 C 单元 100%、工作树干净、不是 `--limit`
 冒烟」时才会发布。随后它写入 `progress/SLPS_258.19_report.json` 并更新 `PUBLISHED.json`，同时与
 基线比对数字（**含分母**）。用 `--force --reason "..."` 越过门禁，理由会记进 `PUBLISHED.json`。
-用 `--freeze-baseline` 把 provenance 记录变成新基线 —— 这是**单独且显式**的决定，因为
-`progress/baseline.json` 是冻结参照。改过 `toolchain.lock.json` 后用 `--refresh`。
+
+**只要这次发布的报告内容变了，就必须带 `--freeze-baseline`。** `progress/baseline.json` 是冻结参照，
+而发布门禁会拒绝「基线与所发布报告对不上」的 PR（报 `the baseline provenance does not describe the
+published report`）。该参数写进去的是 **provenance 记录**（验证了什么），不是报告副本，这样
+「不回归」才有意义。它不是可选项 —— 漏掉它就是发布 PR 第一次推送就变红的常见原因。
+
+记录里的 `source_revision` 是**被验证那次运行**所用的提交（provenance 的 `source_commit`，不是执行发布的
+提交），门禁同样校验这一条。改过 `toolchain.lock.json` 后用 `--refresh`：它只重算哈希，并保留已记录的版本。
 
 `main` 受仓库规则集保护，因此维护者也是走 PR 落地：
 
