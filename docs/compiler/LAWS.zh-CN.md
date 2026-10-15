@@ -240,13 +240,33 @@ falsifies：「按 mainline 的 `find_reg` 写的重放能复现出厂决策」�
 
 ---
 
+## L-EE-018 · 全局分配：候选集与选择规则
+
+按测量拟合出的规则：
+
+1. **池** = `reg_class_contents[类] − fixed_reg_set`；**跨调用**的 allocno 再去掉 `call_used_reg_set`（[L-EE-016](LAWS.md#l-ee-016--the-ee-register-file-140-hard-registers-in-29-classes)）。
+2. **禁止** = 该 allocno 的 `hard_reg_conflicts` ∪ **已放置且与其冲突**的 allocno 所占的寄存器。
+   **不要**把所有已分配的寄存器都禁掉——那是在冲突表已表达之处重复计算，会掉约 6 个点。
+3. **选择** = 首选列表里第一个仍可用的寄存器；否则取**编号最小**的候选。
+
+| 规则 | 留出集复现率（527 个 allocno） |
+| --- | ---: |
+| 按 mainline 写的两趟重放（v2） | 9.1% |
+| 首选优先 + 禁全部已分配（此前最好） | 34.3% |
+| 运行时真值表 + v2 规则（v4） | 9.9% |
+| **本规则** | **41.0%** |
+| 本规则 + 动态冲突集取真值 | **82.7%** |
+
+**T2**｜源码锚点 `global.c:400`（[L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--it-is-a-two-step-ladder-whose-decision-is-a-side-effect) 的阶梯；规则本身是**实测**而非读出）｜二进制锚点 `reg_renumber @ 0x082ea1ec`、`allocno @ 0x082e8a54`、`allocno_order @ 0x082e8a58`｜
+falsifies：「把所有已分配的寄存器都禁掉是安全的」（掉约 6 点），以及「mainline 的两趟扫描就是出厂算法」（12.8%）。
+**杠杆**：按上面的池与禁止集预测分配；**剩余误差主要是级联**——早期一次选错会污染后面的冲突集（41.0% → 82.7%），所以把**处理顺序与每次判断**做准，比继续放宽候选集更重要。
+
+---
+
 ## 仍未解决
 
 * `$L` 计数器精确公式（多标签函数）。
 * ~~EE 构建的 `FIRST_PSEUDO_REGISTER`~~ —— **已结清：140**，从活 `cc1` 读出（[L-EE-016](LAWS.md#l-ee-016--the-ee-register-file-140-hard-registers-in-29-classes)）。
-* **着色重放尚未建模——而且卡点不在类表。** 527 个 allocno 上，首选优先的启发式复现 **34.3%** 的已记录 dispositions；
-  按 `find_reg` 两趟 + 首选覆盖实现的忠实重放只有 **9.1%**；把它换成**运行时真值类表**（活进程读出的
-  `reg_class_contents` / `fixed_reg_set` / `call_used_reg_set`）也只到 **9.9%**。
-  ⇒ 「按源码实现反而更差」依旧成立，而我此前给的根因（类表是 `.bss`、静态读为 0）**已被推翻**——误差在**重放逻辑**里，不在表里。
-  忠实重放还会留下 45 个 allocno 未选出寄存器（真实只未分配 3 个），说明 `find_reg` 的兜底路径仍缺。
-  下一步：重读兜底路径，以及 `regs to allocate` / `conflicts` 的口径（[L-EE-008](LAWS.md#l-ee-008--23greg-prints-two-different-lists-a-conflicts-line-that-lists-every-allocno-and-a-regs-to-allocate-line-that-lists-only-the-locally-unplaced-residue)）。
+* **着色已部分建模。** [L-EE-018](LAWS.md#l-ee-018--global-allocation-the-candidate-set-and-the-selection-rule) 用实测出的候选/选择规则复现留出集 **41.0%** 的决策（此前启发式 34.3%、按 mainline 写的两趟重放 9.1%）；把动态冲突集换成真值后同一规则达 **82.7%** ⇒ 剩余误差主要是**级联**，不是单次判断错。
+  [L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--it-is-a-two-step-ladder-whose-decision-is-a-side-effect) 解释了为什么照搬 mainline 不行：出厂的 `find_reg` 带 `losers` 与三个标志、并按重试阶梯调用（`alt_regs_p` 在切换）。
+  下一步：钉住**处理顺序**（`allocno_compare`）与阶梯的精确语义。

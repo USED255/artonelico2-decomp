@@ -793,6 +793,56 @@
       "evidence": [
         "private:out/evidence/ee_gcc_find_reg_trace.txt"
       ]
+    },
+    {
+      "id": "L-EE-018",
+      "title": "Global allocation picks the allocno's preference, otherwise the lowest register left in its class, banning hard conflicts plus the already-placed conflicting allocnos",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "global.c",
+        "line": 400,
+        "note": "The rule is the behaviour of the ladder at global.c:400/407 (see L-EE-017); it was fitted by measurement, not read from the shipped source."
+      },
+      "binary_anchor": {
+        "symbol": "reg_renumber",
+        "addr": "0x082ea1ec",
+        "related": [
+          {
+            "symbol": "allocno",
+            "addr": "0x082e8a54"
+          },
+          {
+            "symbol": "allocno_order",
+            "addr": "0x082e8a58"
+          },
+          {
+            "symbol": "max_allocno",
+            "addr": "0x082e8a4c"
+          }
+        ],
+        "constants": [],
+        "struct": {}
+      },
+      "pass": [
+        "23.greg"
+      ],
+      "symptom": [
+        "you want to predict which hard register the compiler gives an allocno",
+        "a replay that bans every already-assigned register scores far below the naive heuristic"
+      ],
+      "lever": [
+        "pool = reg_class_contents[class] - fixed_reg_set, and for a call-crossing allocno also minus call_used_reg_set",
+        "ban only the allocno's hard_reg_conflicts plus the registers of the conflicting allocnos that are already placed",
+        "do NOT ban every already-assigned register: that double-counts what the conflict table already expresses",
+        "choose the first entry of the allocno's preference list that is still available, otherwise the lowest numbered candidate"
+      ],
+      "receipt": "On a 60/40 split of 75 functions (527 held-out allocnos with a recorded disposition): this rule reproduces 41.0% of the decisions, against 34.3% for the earlier preference-first heuristic and 9.1% for a replay modelled on mainline's find_reg two passes. Holding the dynamic conflict set at ground truth raises the same rule to 82.7%, so the residual is dominated by cascade from earlier wrong picks, not by the per-decision rule. Rule sweep over 888 allocnos: banning hard conflicts + dynamic conflicts 36.6%, adding the caller-saved exclusion for call-crossing allocnos 38.9%, banning all assigned registers 30.9%, and the two-pass 'someone prefers' variant 12.8%. Mismatch split: 160 the true register was banned, 368 the true register was a candidate but another was chosen, 15 the true register was outside the pool.",
+      "falsifies": "the two assumptions behind the earlier replays: that banning every already-assigned register is safe (it costs ~6 points), and that mainline's two-pass scan with a 'someone prefers' first pass is the shipped algorithm (12.8%)",
+      "scope": "ee-gcc 3.2-ee-040921, -O2/-Os corpus on this machine; the rule is measured for GPR allocnos and the readings come from a served-out split",
+      "evidence": [
+        "private:out/evidence/ee_gcc_coloring_v5.txt"
+      ]
     }
   ],
   "verification": {
