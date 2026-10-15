@@ -337,6 +337,20 @@ repo, base = publication_repo("pub-mixed", extra_file="sneaky.txt")
 check("a mixed change is refused",
       any("may change only" in m for m in run_pub(repo, base)), bad_text())
 
+# The always-on record check (`make check` runs it) applies the same rule as the publication gate.
+repo, _ = publication_repo("pub-alwayson-ok")
+C.OK.clear()
+C.BAD.clear()
+C.check_published(root=repo)
+check("the always-on record check accepts a consistent record", not C.BAD, bad_text())
+
+repo, _ = publication_repo("pub-alwayson-bad", pub_over={"source_revision": "c" * 40})
+C.OK.clear()
+C.BAD.clear()
+C.check_published(root=repo)
+check("the always-on record check refuses a revision the run did not build",
+      any("is not the commit the baseline provenance verified" in m for m in C.BAD), bad_text())
+
 shutil.rmtree(WORK, ignore_errors=True)
 
 print(f"\n{len(fails)} failed" if fails else "\nall check_public_repo tests passed")
