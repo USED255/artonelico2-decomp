@@ -6,6 +6,27 @@
 `<file>.<NN>.<pass>`. The numbering differs between the two compilers in this project, so a pass
 table is only valid **inside one compiler**. Compare by pass **name**, never by number.
 
+## Which laws hold at which optimisation level
+
+The handbook's receipts are taken at `-O2 -G0`. Whether a rule still holds at another level is a measured
+question, and the fixture suite answers it in one command:
+
+```sh
+python3 tools/compiler/ee-gcc-observe.py --matrix
+```
+
+| level | fixtures passing | notes |
+| --- | ---: | --- |
+| `-O0` | 21/34 | no optimiser: the frame pointer is used, constants are not pooled or deduplicated, narrow compares are not masked, loops are not strength-reduced |
+| `-O1` | 33/34 | the constant-trip loop keeps an upward `slt` comparison instead of counting down ([L-EE-025](LAWS.md#l-ee-025--loops-count-down-at--o2-os-at--o1-they-keep-slt-and-are-not-unrolled)) |
+| **`-O2`** | **34/34** | reference level for the receipts |
+| **`-Os`** | **34/34** | the level most of this project's files use ([L-EE-034](LAWS.md#l-ee-034---os-is-this-projects-most-common-level-and-the-rules-hold-there)) |
+| `-O3` | 33/34 | a plain `static` helper is inlined ([L-EE-023](LAWS.md#l-ee-023--at-these-flags-only-an-inline-declaration-is-inlined)) |
+
+For this project only the last four matter — its sources are built with `-Os` (687 files), `-O1` (542), `-O2`
+(264) and `-O3` (98), never `-O0`. So: **`-O2` and `-Os` take every rule as written, `-O1` differs in the loop
+shape, and `-O3` differs in the inlining gate.**
+
 ## Dump inventory
 
 | `ee-gcc 3.2-ee-040921` (26) | `ee-gcc 2.96-ee-001003-1` (22) |

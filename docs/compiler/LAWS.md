@@ -44,6 +44,11 @@ snapshot's, not a point-release artefact.
 
 ---
 
+
+**Level note.** Every receipt below is taken at `-O2 -G0` unless the entry says otherwise. Whether a rule holds
+at another level is measured, not assumed — see the matrix in [PASSES.md](PASSES.md#which-laws-hold-at-which-optimisation-level).
+In this project `-Os` (687 files) and `-O1` (542) are the common levels and there are no `-O0` files.
+
 ## L-EE-001 · Global allocation order is `allocno_compare`
 
 ```

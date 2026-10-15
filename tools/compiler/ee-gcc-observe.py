@@ -187,6 +187,37 @@ def selftest(cc: str, flags: list[str], work: Path, verbose: bool) -> int:
     return 1 if failed else 0
 
 
+def matrix(cc: str, work: Path, verbose: bool = False) -> int:
+    """每个夹具在每个 `-O` 档跑一遍，回答「这条 law 在我这个档成立吗」。
+
+    这是 `-O` 相关规则的唯一可靠来源：手册的推论默认在 `-O2` 上做出，而本项目里 `-Os` 文件最多。
+    """
+    levels = ["-O0", "-O1", "-O2", "-Os", "-O3"]
+    results: dict[str, dict[str, bool]] = {level: {} for level in levels}
+    for name, src_text, pattern, _why in FIXTURES:
+        for level in levels:
+            try:
+                asm = compile_asm(cc, src_text, [level, "-G0"], work / level.strip("-"), f"{name}{level}")
+            except RuntimeError:
+                results[level][name] = False
+                continue
+            if pattern.startswith("!"):
+                ok = re.search(pattern[1:], asm, re.M | re.S) is None
+            else:
+                ok = re.search(pattern, asm, re.M | re.S) is not None
+            results[level][name] = ok
+    width = max(len(n) for n, *_ in FIXTURES) + 2
+    print(f"{'fixture':<{width}}" + "".join(f"{lv:>6}" for lv in levels))
+    for name, _src, _pat, _why in FIXTURES:
+        cells = "".join(f"{('ok' if results[lv][name] else 'FAIL'):>6}" for lv in levels)
+        print(f"{name:<{width}}{cells}")
+    print()
+    for level in levels:
+        bad = [n for n, _s, _p, _w in FIXTURES if not results[level][n]]
+        print(f"{level:<4} {len(FIXTURES) - len(bad)}/{len(FIXTURES)} pass" + (f"  fails: {', '.join(bad)}" if bad else ""))
+    return 0
+
+
 def observe(cc: str, src: Path, flags: list[str], work: Path) -> int:
     asm = compile_asm(cc, src.read_text(encoding="utf-8", errors="replace"), flags, work, src.stem + "_observed")
     frame = re.search(r"\.frame\s+\$sp,(\d+),\$31\s*#\s*vars=\s*(\d+),\s*regs=\s*(\d+)/\d+,\s*args=\s*(\d+)", asm)
@@ -213,6 +244,8 @@ def main() -> int:
     ap.add_argument("--flags", default="-O2 -G0")
     ap.add_argument("--src", type=Path, default=None, help="observe this file instead of running the selftest")
     ap.add_argument("--selftest", action="store_true", help="compile the built-in fixtures and assert the handbook's claims")
+    ap.add_argument("--matrix", action="store_true",
+                    help="run every fixture at -O0/-O1/-O2/-Os/-O3 and print which law fails at which level")
     ap.add_argument("--work", type=Path, default=Path(".tmp/observe"))
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
@@ -222,6 +255,8 @@ def main() -> int:
         return 2
     if args.src is not None:
         return observe(args.cc, args.src, flags, args.work)
+    if args.matrix:
+        return matrix(args.cc, args.work, verbose=args.verbose)
     return selftest(args.cc, flags, args.work, args.verbose)
 
 
