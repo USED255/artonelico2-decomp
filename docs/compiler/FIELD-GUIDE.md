@@ -234,6 +234,21 @@ appears in the caller. If that does not reproduce the target, check whether the 
 **Caution**: this is a *source* difference with a large effect on the instruction stream — confirm the helper
 really is expanded in the target before respelling, since an extra `inline` also changes the caller's frame.
 
+## Lever 12 — The target loop is unrolled, or is not in countdown form
+
+**When**: the target repeats a loop body, or keeps an upward induction comparison your build does not.
+
+**Why**: this compiler turns loops into **countdown** loops — a constant trip becomes `li $r,N-1` …
+`addu $r,$r,-1` … `bgez`, a variable trip becomes a `blez` guard … `bne $r,$0` — and **neither `-O2` nor
+`-O3` unrolls**; unrolling needs `-funroll-loops` or a hand-unrolled source
+([L-EE-025](LAWS.md#l-ee-025--loops-count-down-and-are-not-unrolled)).
+
+**Expected movement**: `-O2 -funroll-loops` turns the eight-trip fixture from 8 into 12 instructions; hand
+unrolling produces a visibly repeated body.
+
+**Caution**: do not unroll by hand to imitate a repeated body before checking the flags — and if the target
+is *not* in countdown form, the difference is in the source loop shape, not the flags.
+
 ---
 
 ## Recorded but not yet measured locally

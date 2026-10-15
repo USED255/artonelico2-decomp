@@ -645,6 +645,44 @@ with it, the function inlines even at `-O0`.
 
 ---
 
+## L-EE-025 · Loops count down and are not unrolled
+
+`for (i = 0; i < N; i++) s += a * i;` at `-O2 -G0`:
+
+```asm
+        move    $2,$0            # s
+        move    $14,$0
+        li      $15,7            # N-1  <- immediate countdown counter
+$L6:
+        addu    $2,$2,$14
+        addu    $15,$15,-1
+        bgez    $15,$L6
+        addu    $14,$14,$4
+```
+
+Eight instructions for **N = 4, 8 and 20** — only the immediate changes, so the loop stays **rolled and counts
+down**. A variable bound (`i < n`) also counts down, but with a runtime counter: a `blez` guard, `addu
+$5,$5,-1`, `bne $5,$0`.
+
+| level | instructions (constant trip 8) |
+| --- | ---: |
+| `-O1` | 9 |
+| `-O2` | 8 |
+| `-O3` | 8 |
+| `-O2 -funroll-loops` | **12** |
+
+So **neither `-O2` nor `-O3` unrolls here** — unrolling needs `-funroll-loops` or a hand-unrolled source.
+
+* **Tier T2** · **Source anchor** the loop/strength-reduction passes (`loop.c`; no line read from the shipped
+  tree) · **Constants** 8 instructions at three trip counts, 12 with `-funroll-loops`
+* **Falsifies** the expectation that `-O3` unrolls, and that a constant bound keeps an upward comparison
+* **Lever** if the target body is repeated, check for `-funroll-loops` (or a manually unrolled source)
+  before restructuring the loop; if the target is not in countdown form, the source loop shape differs
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0` plus `-O1`/`-O3`/`-funroll-loops`, synthetic single-loop
+  functions
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).

@@ -1137,6 +1137,53 @@
       "evidence": [
         "private:out/evidence/ee_gcc_frame_pointer.txt"
       ]
+    },
+    {
+      "id": "L-EE-025",
+      "title": "Loops become countdown loops and are not unrolled at -O2 or -O3; a constant trip count shows up as li $r,N-1 with bgez",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "loop.c",
+        "line": 0,
+        "note": "The countdown transformation comes from the loop/strength-reduction passes; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 8,
+            "at": "instructions for a constant-trip loop",
+            "means": "the same count at N=4, 8 and 20 - the loop stays rolled"
+          },
+          {
+            "kind": "int",
+            "value": 12,
+            "at": "instructions with -O2 -funroll-loops",
+            "means": "unrolling is what changes the size"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "12.loop"
+      ],
+      "symptom": [
+        "the target loop body is repeated but yours is rolled, or the reverse",
+        "your loop compares an induction variable upward while the target counts a register down"
+      ],
+      "lever": [
+        "expect a countdown, not an upward compare: a constant-trip for loop becomes li $r,N-1 then addu $r,$r,-1 then bgez, and a variable-trip loop becomes a blez guard then addu $r,$r,-1 then bne $r,$0",
+        "do not unroll by hand to imitate a repeated body before checking for -funroll-loops: -O2 and -O3 here do not unroll, and -O2 -funroll-loops does"
+      ],
+      "receipt": "At -O2 -G0 on this machine. for(i=0;i<N;i++) s += a*i; compiles to move/move/li $15,N-1 then a three-instruction body with addu $15,$15,-1 and bgez $15,$L6, eight instructions in total for N=4, 8 and 20 - only the immediate changes, so the loop stays rolled and counts down. for(i=0;i<n;i++) compiles to a blez guard, addu $5,$5,-1 and bne $5,$0 - also a countdown, with a runtime counter. Instruction counts for the constant-trip case: 9 at -O1, 8 at -O2, 8 at -O3 and 12 with -funroll-loops, so neither -O2 nor -O3 unrolls.",
+      "falsifies": "the expectation that -O3 unrolls loops, and the expectation that a for loop over a constant bound keeps an upward comparison",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0 (plus -O1/-O3/-funroll-loops for the size comparison), synthetic single-loop functions",
+      "evidence": [
+        "private:out/evidence/ee_gcc_loops.txt"
+      ]
     }
   ],
   "verification": {
