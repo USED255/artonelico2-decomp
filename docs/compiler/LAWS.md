@@ -1530,6 +1530,43 @@ always compiled to `mul.s` + `add.s`. It is recorded as unexplained rather than 
 
 ---
 
+## L-EE-050 · The COP1 accumulator: a sum of products uses `mula.s`/`madd.s`
+
+| float expression | code |
+| --- | --- |
+| `a*b + c` (one product) | `mul.s` + `add.s` |
+| **`a*b + c*d`** | **`mula.s` + `madd.s`** |
+| **`a*b + c*d + e*g`** | **`mula.s` + `madda.s` + `madd.s`** |
+| `a*b + c*d + e` | `mula.s` + `madd.s` + `add.s` |
+| **`a*b - c*d`** | **`mula.s` + `msub.s`** |
+| **statement** `s = a*b; s += c;` | `mul.s` + `add.s` — **no accumulator** |
+| loop `for (…) s += p[i]*q[i];` | `mul.s` + `add.s` — no accumulator |
+
+So a single expression that **sums two or more products** is evaluated in the **COP1 accumulator**: the first
+product is `mula.s`, each further one `madd.s` (with `madda.s` when the chain needs the intermediate value),
+and subtraction uses `msub.s`. The accumulator is hard register **71** (`FP_ACC`, [L-EE-016](LAWS.md#l-ee-016--the-ee-register-file-140-hard-registers-in-29-classes)) —
+it really is used. The **statement** form and loop accumulation do **not** use it, which makes the accumulator a
+signal that the source wrote the sum of products **as one expression**.
+
+**This resolves the open question from [L-EE-049](LAWS.md#l-ee-049--variable-shifts-negation-float-compare--and-the-second-multiplier)**: `madd.s` is ordinary C after all.
+
+Two smaller items in the same pass:
+
+* **float stores are `swc1`** (assembly `s.s`) against `lwc1` (`l.s`) for loads — the store half was missing.
+* the 64-bit forms carry **object suffixes**: `dsra32`, `dsrl32`, `dsllv`, `dsrlv`, `dnegu` where the assembly
+  writes `dsra/dsrl $d,$s,32`, `dsll/dsrl $d,$s,$t` and `dsubu $d,$0,$s`.
+
+* **Tier T2** · **Source anchor** the backend's accumulator patterns (no line read from the shipped tree) ·
+  **Constants** `mula.s`, `madd.s`, `swc1`
+* **Falsifies** the earlier note that `madd.s` could not be produced from C, and the assumption that a float
+  multiply-accumulate always uses the accumulator
+* **Lever** `mula.s`/`madd.s` in the target ⇒ the source summed **at least two products in one expression**;
+  and if a candidate produces `mul.s`+`add.s` there, the source probably split the sum into statements
+* **Scope** `ee-gcc 3.2-ee-040921` at `-O2` with `-G0`, one to three products plus statement and loop forms;
+  `double` uses libgcc instead ([L-EE-029](LAWS.md#l-ee-029--single-precision-is-hardware-double-precision-is-soft-float))
+
+---
+
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).

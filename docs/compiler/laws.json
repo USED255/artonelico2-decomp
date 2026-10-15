@@ -2386,13 +2386,69 @@
         "a shift by a variable amount is a register shift: the assembly writes sll/sra/srl $d,$s,$t but the object contains sllv/srav/srlv, so these are ordinary C expressions and not inline assembly",
         "integer negation is nego in the object (the assembly writes subu $d,$0,$s); float copy is mov.s, float negation is neg.s, and float comparisons are c.lt.s/c.le.s/c.eq.s followed by bc1t (bc1f for the inverted test)",
         "mult and mult1 are the EE's two integer multiplier units: at -O2 and -O3 the scheduler moves one multiply to mult1 when two can overlap (three independent multiplies, or a dependent chain), while -O1 and -Os use mult throughout - so mult1 in a target is a scheduling signal and also a level hint",
-        "madd.s appears in binaries but no ordinary C float expression produced it in this measurement - treat it as an open question"
+        "madd.s was an open question in this entry and is resolved by L-EE-050: it comes from a sum of two or more products in one float expression"
       ],
-      "receipt": "At -O2 -G0 on this machine. a<<n gives sllv a0,a0,a1 in the object (sll $4,$4,$5 in the assembly), a>>n gives srav or srlv, and -a gives negu a0,a0 (subu $4,$0,$4); float negation is neg.s $f0,$f12, a float copy is mov.s, and a<=b is c.le.s $f12,$f13 followed by bc1t, with c.lt.s and c.eq.s for the other comparisons. The second multiplier: one multiply uses mult only; two independent multiplies still use mult only; three independent multiplies produce mult plus mult1; a dependent pair (x=a*b; return x*b;) also produces mult plus mult1; and the second multiplier is level-dependent (see below). No C spelling tried for a*b+c produced madd.s - it always compiled to mul.s plus add.s. The second multiplier is level-dependent: the same three-multiply fixture compiles to mult three times at -O1 and -Os, but to mult twice plus mult1 once at -O2 and -O3. The earlier count that suggested -O2 and -Os agreed came from a different fixture (two independent multiplies), which uses mult only at every level.",
+      "receipt": "At -O2 -G0 on this machine. a<<n gives sllv a0,a0,a1 in the object (sll $4,$4,$5 in the assembly), a>>n gives srav or srlv, and -a gives negu a0,a0 (subu $4,$0,$4); float negation is neg.s $f0,$f12, a float copy is mov.s, and a<=b is c.le.s $f12,$f13 followed by bc1t, with c.lt.s and c.eq.s for the other comparisons. The second multiplier: one multiply uses mult only; two independent multiplies still use mult only; three independent multiplies produce mult plus mult1; a dependent pair (x=a*b; return x*b;) also produces mult plus mult1; and the second multiplier is level-dependent (see below). No C spelling tried for a*b+c produced madd.s - it always compiled to mul.s plus add.s; L-EE-050 resolved this: a sum of two or more products in one expression uses the COP1 accumulator (mula.s plus madd.s), so madd.s is ordinary C after all. The second multiplier is level-dependent: the same three-multiply fixture compiles to mult three times at -O1 and -Os, but to mult twice plus mult1 once at -O2 and -O3. The earlier count that suggested -O2 and -Os agreed came from a different fixture (two independent multiplies), which uses mult only at every level.",
       "falsifies": "the expectation that sllv/srlv/negu in a binary indicate hand-written assembly, and that mult1 needs inline assembly",
       "scope": "ee-gcc 3.2-ee-040921 at -O2/-Os with -G0, synthetic one-operator functions over int, unsigned and float; other EE multiply-unit shapes and madd.s were not resolved",
       "evidence": [
         "private:out/evidence/ee_gcc_ops_remaining.txt"
+      ]
+    },
+    {
+      "id": "L-EE-050",
+      "title": "A float expression that sums two or more products uses the COP1 accumulator (mula.s then madd.s, madda.s mid-chain, msub.s for subtraction) while a statement form does not, and float stores are swc1",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips.md",
+        "line": 0,
+        "note": "The accumulator patterns are backend-specific; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "mula.s",
+            "at": "accumulator start",
+            "means": "the first product goes into the COP1 accumulator"
+          },
+          {
+            "kind": "string",
+            "value": "madd.s",
+            "at": "accumulator chain",
+            "means": "each further product is added in the accumulator"
+          },
+          {
+            "kind": "string",
+            "value": "swc1",
+            "at": "float store",
+            "means": "stores use the COP1 form, printed s.s in the assembly"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "17.combine"
+      ],
+      "symptom": [
+        "the target has mula.s/madd.s (or madda.s/msub.s) where your reconstruction produces mul.s plus add.s",
+        "you cannot produce the madd.s you saw in the target"
+      ],
+      "lever": [
+        "a single float expression that sums two or more products is evaluated in the COP1 accumulator: the first product is mula.s, each further one madd.s, and a chain that needs the intermediate value uses madda.s; subtraction uses msub.s",
+        "a statement form (s = a*b; s += c;) or a loop accumulation uses mul.s plus add.s instead, so the accumulator is a signal that the source wrote the sum of products as one expression",
+        "the accumulator is hard register 71 (FP_ACC of L-EE-016), i.e. it is genuinely used",
+        "float stores are swc1 (printed s.s in the assembly) against lwc1 for loads - both are COP1 forms",
+        "the 64-bit shifts and negation appear in the object with a suffix: dsra32, dsrl32, dsllv, dsrlv and dnegu"
+      ],
+      "receipt": "At -O2 -G0 on this machine. a*b+c gives mul.s plus add.s, but a*b+c*d gives mula.s $f12,$f13 followed by madd.s $f0,$f14,$f15; a*b+c*d+e*g gives mula.s, madda.s, madd.s; a*b+c*d+e gives mula.s, madd.s, add.s; and a*b-c*d gives mula.s plus msub.s. The statement form float s=a*b; s+=c; and the loop form for(...) s += p[i]*q[i]; both give mul.s plus add.s, so the accumulator depends on the expression shape rather than the operation. A float global store is swc1 $f12,off (s.s in the assembly) where the load is lwc1. In the object the 64-bit forms carry suffixes: dsra32, dsrl32, dsllv, dsrlv and dnegu, while the assembly writes dsra/dsrl by 32, dsll/dsrl by register, and dsubu $d,$0,$s.",
+      "falsifies": "the earlier note that madd.s could not be produced from C, and the assumption that a float multiply-accumulate always uses the accumulator",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 with -G0, synthetic float expressions over one to three products plus statement and loop forms; the same shapes for double go to libgcc (L-EE-029)",
+      "evidence": [
+        "private:out/evidence/ee_gcc_fp_accumulator.txt"
       ]
     }
   ],

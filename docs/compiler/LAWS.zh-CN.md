@@ -1141,6 +1141,35 @@ falsifies：「`sllv`/`srlv`/`negu` 说明是手写汇编」与「`mult1` 需要
 
 ---
 
+## L-EE-050 · COP1 累加器：**一个表达式里求和多个乘积**时用 `mula.s`/`madd.s`
+
+| 浮点表达式 | 生成 |
+| --- | --- |
+| `a*b + c`（1 个乘积） | `mul.s` + `add.s` |
+| **`a*b + c*d`** | **`mula.s` + `madd.s`** |
+| **`a*b + c*d + e*g`** | **`mula.s` + `madda.s` + `madd.s`** |
+| `a*b + c*d + e` | `mula.s` + `madd.s` + `add.s` |
+| **`a*b - c*d`** | **`mula.s` + `msub.s`** |
+| **语句形式** `s = a*b; s += c;` | `mul.s` + `add.s` —— **不用累加器** |
+| 循环累加 `for (…) s += p[i]*q[i];` | `mul.s` + `add.s` —— 不用累加器 |
+
+⇒ **一个表达式里求和 ≥2 个乘积**时用 **COP1 累加器**：第一个乘积 `mula.s`，后续每个 `madd.s`
+（链中需要中间值时用 `madda.s`），减法用 `msub.s`。累加器是硬寄存器 **71**（`FP_ACC`，[L-EE-016](LAWS.md#l-ee-016--the-ee-register-file-140-hard-registers-in-29-classes)）——确实被用到。
+而**语句形式**与循环累加**不用**它 ⇒ 累加器是「源码把乘积之和**写成一个表达式**」的信号。
+
+**这也解开了 [L-EE-049](LAWS.md#l-ee-049--variable-shifts-negation-float-compare--and-the-second-multiplier) 的未决项**：`madd.s` 其实是普通 C。
+
+同轮另外两项：
+
+* **浮点存储是 `swc1`**（汇编 `s.s`），装载是 `lwc1`（`l.s`）——此前漏了存储那一半；
+* 64 位运算在对象里带后缀：**`dsra32`、`dsrl32`、`dsllv`、`dsrlv`、`dnegu`**（汇编写 `dsra $d,$s,32`、`dsll $d,$s,$t`、`dsubu $d,$0,$s`）。
+
+**T2**｜源码锚点：后端的累加器模式（未从出厂树读到行号）｜常量：`mula.s`、`madd.s`、`swc1`｜
+falsifies：「`madd.s` 无法由 C 生成」与「浮点乘加一定用累加器」。
+**杠杆**：目标里 `mula.s`/`madd.s` ⇒ 源码在**一个表达式**里求和了 ≥2 个乘积；若候选给出 `mul.s`+`add.s`，说明源码被拆成了多条语句。
+
+---
+
 ## 仍未解决
 
 * `$L` 计数器精确公式（多标签函数）。

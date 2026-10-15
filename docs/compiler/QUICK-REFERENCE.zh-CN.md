@@ -44,6 +44,7 @@
 | 照 mainline 写的分配循环复现不出 dump 里的 disposition | [L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--a-two-step-ladder-whose-decision-is-a-side-effect) —— 出厂 `find_reg` 是两级 `alt_regs` 阶梯，决定通过**副作用**落地 |
 | 字段读用 `lh`/`lbu` 而非 `lw`，或写之前出现负数 `li` 后接 `and`/`or` | [L-EE-035](LAWS.md#l-ee-035--bitfields-lsb-first-no-32-bit-straddling-narrowed-reads-and-masked-writes) —— 有符号位域读、或位域写 |
 | 目标对同一地址读了两次、你只读一次 | [L-EE-037](LAWS.md#l-ee-037--volatile-is-visible-as-unmerged-accesses) —— 源码用了 `volatile` 指针（或两次读之间隔着调用） |
+| 目标里有 `mula.s`/`madd.s`，或 `swc1` | [L-EE-050](LAWS.md#l-ee-050--the-cop1-accumulator-a-sum-of-products-uses-mulasmadds) —— 一个浮点表达式里求和 ≥2 个乘积；浮点存储是 `swc1` |
 | 目标里有 `sllv`/`srlv`/`negu`、`mov.s`/`neg.s` 或 `mult1` | [L-EE-049](LAWS.md#l-ee-049--variable-shifts-negation-float-compare--and-the-second-multiplier) —— 都是普通 C：寄存器移位、取负、浮点运算、第二乘法器 |
 | 目标里有 `lqc2`/`sqc2`/`qmtc2`/`v*` | [L-EE-048](LAWS.md#l-ee-048--cop2vu0-instructions-cannot-come-from-c) —— COP2/VU0 是**内联汇编**；没有任何 C 类型能生成它 |
 | 汇编写 `li`、目标却是 `addiu`/`ori`，或两段文本完全相同 | [L-EE-047](LAWS.md#l-ee-047--the-printed-mnemonic-is-an-alias--compare-encodings-not-spellings) —— 助记符是别名；要比编码 |
