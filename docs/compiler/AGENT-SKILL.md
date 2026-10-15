@@ -28,23 +28,35 @@ reference; this is the loop.
 #    Read it in this order: control flow -> instruction shape -> register allocation -> stack.
 #    Below ~80% match this is a structural problem: rewrite the C, do not consult the model.
 
-# 1. Which pass owns the difference?
+# 1. Is this region even C? COP2/VU0 and MMI instructions are hand-written assembly and no C
+#    spelling will match them - check before spending a loop on it.
+python3 tools/compiler/ee-gcc-coverage.py --elf "$TARGET"
+
+# 2. Which pass owns the difference?
 python3 tools/compiler/ee-gcc-passdiff.py candidate.c variant.c
 
-# 2. What does the compiler do at that pass?
+# 3. What does the compiler do at that pass?
 python3 tools/compiler/laws-query.py pass 23.greg
 python3 tools/compiler/laws-query.py find allocation
 
-# 3. What edit moves it?
+# 4. What edit moves it?
 python3 tools/compiler/laws-query.py guide frame
 python3 tools/compiler/laws-query.py guide "live range"
 
-# 4. What is the compiler *actually* doing at the decision point?
+# 5. Observe your own file: frame composition, constant pool, mnemonic histogram. This is the
+#    first measurement to take when you are not sure what the compiler did to *your* source.
+python3 tools/compiler/ee-gcc-observe.py --src candidate.c --flags="-O2 -G0"
+
+# 6. Frame too large? Decompose it before editing anything: every spill is traced to the line
+#    that defined it, and the last use is what sets the live range.
+python3 tools/compiler/ee-gcc-spill-map.py --src candidate.c --flags="-O2 -G0"
+
+# 7. What is the compiler *actually* doing at the decision point?
 python3 tools/compiler/ee-gcc-anchor.py --cc1 "$CC1" symbol allocno_compare --disasm 64
 python3 tools/compiler/ee-gcc-anchor.py --cc1 "$CC1" struct allocno
 python3 tools/compiler/ee-gcc-anchor.py --cc1 "$CC1" const 0x821e360 --bytes 8
 
-# 5. Re-measure. A lever that does not move the reading is not a lever.
+# 8. Re-measure. A lever that does not move the reading is not a lever.
 ```
 
 ## Reading a law when you have one
@@ -82,5 +94,6 @@ The handbook is versioned, and an unattended agent is expected to leave it bette
 2. Found a lever that moves a measurement? Add it to `FIELD-GUIDE.md` with the before/after numbers.
 3. Disproved a law? Add the falsification to that law and record it in the research repository's
    pitfall ledger.
-4. Run `python3 tools/check/test_compiler_laws.py` before you stop. It enforces the tier
+4. Wrote a new tool? Mention it here — the laws check fails if a `tools/compiler/*.py` is not named on this page.
+5. Run `python3 tools/check/test_compiler_laws.py` and `python3 tools/check/test_compiler_tools.py` before you stop. It enforces the tier
    preconditions and re-verifies every binary anchor against the `cc1` on this machine.

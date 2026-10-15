@@ -19,9 +19,13 @@ The tool reports three numbers and two lists:
 
 | | meaning |
 | --- | --- |
-| **covered** | the mnemonic appears somewhere in `docs/compiler/` — a rule in this handbook explains where it comes from |
-| **ASM_ONLY** | the compiler **cannot** emit it from C, so it comes from hand-written assembly |
-| **OTHER** | nobody has explained it yet — these are the handbook's real gaps |
+| **explained by a rule** | the mnemonic is named in `docs/compiler/` **and** the compiler can emit it from C |
+| **assembly-only** | the compiler **cannot** emit it from C, so it comes from hand-written assembly |
+| **unexplained** | neither — these are the handbook's real gaps |
+
+Classification comes **before** the mention test, and deliberately so: naming `mthi` in a sentence about
+inline assembly must not turn it into "explained". (An earlier version of this tool did exactly that and
+over-reported its own coverage by 1.3 points; the split below is the corrected one.)
 
 `OTHER` is the interesting number: it is the handbook's own to-do list, and it can be driven to zero.
 `ASM_ONLY` is not a gap but a **result** — see below.

@@ -21,23 +21,34 @@
 #    按这个顺序读：控制流 -> 指令形状 -> 寄存器分配 -> 栈。
 #    匹配率低于约 80% 属于结构问题：改写 C，不要问模型。
 
-# 1. 差异归哪个 pass？
+# 1. 这片区域到底是不是 C？COP2/VU0 与 MMI 指令是手写汇编，任何 C 写法都匹配不上——
+#    先查，别把整个循环耗在上面。
+python3 tools/compiler/ee-gcc-coverage.py --elf "$TARGET"
+
+# 2. 差异归哪个 pass？
 python3 tools/compiler/ee-gcc-passdiff.py candidate.c variant.c
 
-# 2. 编译器在那个 pass 怎么做？
+# 3. 编译器在那个 pass 怎么做？
 python3 tools/compiler/laws-query.py pass 23.greg
 python3 tools/compiler/laws-query.py find allocation
 
-# 3. 哪种改动能移动它？
+# 4. 哪种改动能移动它？
 python3 tools/compiler/laws-query.py guide frame
 python3 tools/compiler/laws-query.py guide "live range"
 
-# 4. 出厂编译器在决策点**实际**怎么做？
+# 5. 观测量你自己的文件：帧的组成、常量池、助记符分布。不确定编译器对你的源码做了什么时，
+#    这是第一个该做的测量。
+python3 tools/compiler/ee-gcc-observe.py --src candidate.c --flags="-O2 -G0"
+
+# 6. 帧太大？**先分解再动代码**：每次溢出都溯回定义它的那一行，而**最后一次使用**决定活跃区间。
+python3 tools/compiler/ee-gcc-spill-map.py --src candidate.c --flags="-O2 -G0"
+
+# 7. 出厂编译器在决策点**实际**怎么做？
 python3 tools/compiler/ee-gcc-anchor.py --cc1 "$CC1" symbol allocno_compare --disasm 64
 python3 tools/compiler/ee-gcc-anchor.py --cc1 "$CC1" struct allocno
 python3 tools/compiler/ee-gcc-anchor.py --cc1 "$CC1" const 0x821e360 --bytes 8
 
-# 5. 复测。没移动读数的杠杆不是杠杆。
+# 8. 复测。没移动读数的杠杆不是杠杆。
 ```
 
 ## 读一条 law 时看什么

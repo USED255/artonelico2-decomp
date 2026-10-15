@@ -276,6 +276,14 @@ def check_quick_reference(data: dict) -> None:
                       bool(m) and int(m.group(1)) == actual,
                       f"docs say {m.group(1) if m else '?'}, tool has {actual}")
 
+    # 技能页漂移守卫：tools/compiler 下每个工具都必须在 AGENT-SKILL.md 里被提到
+    skill = Path(__file__).resolve().parents[2] / "docs" / "compiler" / "AGENT-SKILL.md"
+    tools = sorted(p.name for p in (Path(__file__).resolve().parents[2] / "tools" / "compiler").glob("*.py"))
+    if skill.exists() and tools:
+        text = skill.read_text(encoding="utf-8")
+        missing = [t for t in tools if t not in text]
+        check("every tool is named in AGENT-SKILL", not missing, f"missing: {missing}")
+
 
 def _gh_slug(heading: str) -> str:
     """GitHub 的标题锚点算法：小写、去标点（保留空格）、每个空格→连字符（**不折叠**）。"""

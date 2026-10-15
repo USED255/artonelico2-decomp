@@ -6,9 +6,12 @@ Why: the handbook is a set of rules about what this compiler emits. "How complet
 answerable question: take a disassembly, collect the mnemonics, and check which of them the handbook
 mentions anywhere. The leftovers then classify themselves:
 
-  ASM_ONLY  the compiler cannot emit it from C, so it comes from hand-written assembly
-            (COP2/VU0, MMI packed arithmetic, privileged instructions - see L-EE-048)
-  OTHER     nobody has explained it yet; these are the handbook's real gaps
+  explained  a rule in the handbook names it and the compiler can emit it from C
+  ASM_ONLY   the compiler cannot emit it from C, so it comes from hand-written assembly
+             (COP2/VU0, MMI packed arithmetic, privileged instructions - see L-EE-048)
+  OTHER      nobody has explained it yet; these are the handbook's real gaps
+
+Classification runs first: naming an assembly-only mnemonic in prose does not make it explained.
 
 Usage
 -----
@@ -110,25 +113,33 @@ def mnemonics_from_text(text: str) -> "dict[str, int]":
 
 def report(counts: "dict[str, int]", text: str, top: int) -> int:
     total = sum(counts.values())
-    covered = {k: v for k, v in counts.items() if k in text}
-    uncovered = {k: v for k, v in counts.items() if k not in text}
-    asm_only = {k: v for k, v in uncovered.items() if classify(k) == "ASM_ONLY"}
-    other = {k: v for k, v in uncovered.items() if classify(k) == "OTHER"}
-    cov = sum(covered.values())
+    # NOTE: classification comes first, and it does not depend on whether the handbook *mentions* the
+    # mnemonic. Mentioning `mthi` in a sentence about inline assembly must not turn it into "explained".
+    asm_only_total = {k: v for k, v in counts.items() if classify(k) == "ASM_ONLY"}
+    explained = {k: v for k, v in counts.items()
+                 if k not in asm_only_total and k in text}
+    other = {k: v for k, v in counts.items()
+             if k not in asm_only_total and k not in text}
+    asm_documented = {k: v for k, v in asm_only_total.items() if k in text}
+    cov = sum(explained.values())
+    asm = sum(asm_only_total.values())
     print(f"instructions: {total}")
     if total:
-        print(f"covered by the handbook: {cov} ({100 * cov / total:.2f}%)")
-    print(f"not mentioned: {sum(uncovered.values())} "
-          f"({100 * sum(uncovered.values()) / total:.2f}% of {len(uncovered)} mnemonics)")
+        print(f"explained by a rule: {cov} ({100 * cov / total:.2f}%)")
+        print(f"assembly-only (no C entry): {asm} ({100 * asm / total:.2f}%) "
+              f"in {len(asm_only_total)} mnemonics"
+              + (f", {len(asm_documented)} of them named in the handbook" if asm_documented else ""))
+        print(f"unexplained: {sum(other.values())} ({100 * sum(other.values()) / total:.2f}%) "
+              f"in {len(other)} mnemonics")
     print()
-    print(f"ASM_ONLY (no C entry, hand-written assembly - L-EE-048): "
-          f"{sum(asm_only.values())} in {len(asm_only)} mnemonics")
-    for k, v in sorted(asm_only.items(), key=lambda kv: -kv[1])[:top]:
-        print(f"    {k:<14} {v}")
-    print()
-    print(f"OTHER (real gaps - the handbook should explain these): "
+    print("OTHER (real gaps - the handbook should explain these): "
           f"{sum(other.values())} in {len(other)} mnemonics")
     for k, v in sorted(other.items(), key=lambda kv: -kv[1])[:top]:
+        print(f"    {k:<14} {v}")
+    print()
+    print(f"ASM_ONLY (no C entry, hand-written assembly - L-EE-048): "
+          f"{asm} in {len(asm_only_total)} mnemonics")
+    for k, v in sorted(asm_only_total.items(), key=lambda kv: -kv[1])[:top]:
         print(f"    {k:<14} {v}")
     return 0 if not other else 1
 
@@ -149,11 +160,11 @@ def selftest() -> int:
     ])
     text = handbook_text(DEFAULT_DOCS)
     counts = mnemonics_from_text(listing)
-    covered = {k for k in counts if k in text}
+    covered = {k for k in counts if k in text and classify(k) != "ASM_ONLY"}
     problems = []
     for want in ("addiu", "move", "jr", "nop", "lwr"):
         if want not in covered:
-            problems.append(f"{want} should be covered")
+            problems.append(f"{want} should be explained")
     for want in ("lqc2", "vmulax.xyzw", "paddsh", "syscall"):
         if classify(want) != "ASM_ONLY":
             problems.append(f"{want} should classify ASM_ONLY, got {classify(want)}")
@@ -166,9 +177,9 @@ def selftest() -> int:
             print(f"FAIL {p}")
         print(f"ee-gcc-coverage selftest: {len(problems)} failed")
         return 1
+    asm = [k for k in counts if classify(k) == "ASM_ONLY"]
     print("ee-gcc-coverage selftest: OK "
-          f"({len(counts)} mnemonics, {len(covered)} covered, "
-          f"{len([k for k in counts if classify(k) == 'ASM_ONLY'])} asm-only)")
+          f"({len(counts)} mnemonics, {len(covered)} explained, {len(asm)} asm-only)")
     return 0
 
 
