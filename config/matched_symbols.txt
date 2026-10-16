@@ -89,6 +89,8 @@ func_00105000    # llm_draft
 func_00105670    # permuter
 func_00105e3c    # ghidra_draft:-O2
 func_001062a8    # permuter
+func_001063cc    # permuter
+func_0010644c    # permuter
 func_00106540    # wrapper_o2_tail
 func_0010694c    # ghidra_draft:-O2
 func_00106c3c    # llm_draft
@@ -1394,6 +1396,7 @@ func_0023bb10    # ghidra_draft:-O2
 func_0023cef0    # ghidra_draft:-O2
 func_0023cf68    # ghidra_draft:-O2
 func_0023d1bc    # ghidra_draft:-O2
+func_0023d238    # permuter
 func_0023d5dc    # ghidra_draft:-O2
 func_0023de74    # ghidra_draft:-O2
 func_0023e2a0    # empty
@@ -1662,6 +1665,7 @@ func_00267ac4    # permuter
 func_00267b40    # ghidra_draft:-Os
 func_00267df4    # llm_draft
 func_00267e98    # llm_draft
+func_00268004    # permuter
 func_0026828c    # permuter
 func_00268b04    # llm_draft
 func_00268b38    # permuter
