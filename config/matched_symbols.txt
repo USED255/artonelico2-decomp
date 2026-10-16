@@ -1841,6 +1841,7 @@ func_00289f10    # ghidra_draft:-O2
 func_00289fc8    # ghidra_draft:-O2
 func_0028a3c4    # permuter
 func_0028a3e8    # ghidra_draft:-O2
+func_0028ad38    # permuter
 func_0028bc6c    # permuter
 func_0028bcac    # permuter
 func_0028bcdc    # ghidra_draft:-O2
