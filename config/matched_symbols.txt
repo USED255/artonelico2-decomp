@@ -1566,6 +1566,7 @@ func_002505ec    # permuter
 func_00250664    # permuter
 func_0025067c    # wrapper_o2_tail
 func_00250690    # wrapper_o2_tail
+func_00252140    # permuter
 func_002521bc    # ghidra_draft:-Os
 func_00252b10    # llm_draft
 func_00252d30    # wrapper_o2_tail
