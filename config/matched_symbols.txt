@@ -1333,6 +1333,7 @@ func_00235934    # permuter
 func_002359a0    # permuter
 func_00235b80    # permuter
 func_00235b9c    # llm_draft
+func_00235c68    # permuter
 func_00235cb0    # permuter
 func_00235ccc    # permuter
 func_00235ce8    # permuter
