@@ -612,7 +612,7 @@ def do_apply(winners: dict):
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("mode", nargs="?", default="run", choices=["run", "apply-workdir"])
+    ap.add_argument("mode", nargs="?", default="run", choices=["run", "apply-workdir", "sweep"])
     ap.add_argument("--from", dest="src_json", default="matching-jp/build/m2/ghidra_batch/result.json")
     ap.add_argument("--min-match", type=float, default=95.0)
     ap.add_argument("--max-match", type=float, default=99.999)
@@ -648,6 +648,47 @@ def main() -> int:
         print(f"workdir harvest: {len(winners)} at objdiff 100%")
         if args.apply and winners:
             do_apply(winners)
+        (WORK / "accepted.json").write_text(json.dumps(winners, indent=1, ensure_ascii=False), encoding="utf-8")
+        return 0
+
+    if args.mode == "sweep":
+        # P-124: a candidate can verify at 100 and still never reach the ledger. `verify()` writes
+        # `_flags.txt` only when it really reaches 100, so a recorded 100.00 is a strong hint of an
+        # unlanded winner -- but the record can be stale, hence the re-verify below.
+        # P-124：候选可能验到 100 却一直没落库。`verify()` 只在真到 100 时才写 `_flags.txt`，
+        # 所以记录着 100.00 是「未落库赢家」的强信号——但记录可能是陈旧的，所以下面要重验一次。
+        landed = set()
+        if MATCHED_LIST.is_file():
+            for line in MATCHED_LIST.read_text(encoding="utf-8").splitlines():
+                a = line.split("#", 1)[0].strip()
+                if a:
+                    landed.add(a.split()[0])
+        winners, checked = {}, 0
+        for d in sorted(WORK.glob("*")):
+            sym = d.name
+            if not at2_io.symbol_ok(sym) or sym in landed:
+                continue
+            outs = sorted(d.glob("output-0-*"))
+            cand = outs[-1] / "source.c" if outs and (outs[-1] / "source.c").is_file() else None
+            if cand is None:
+                # No converged output: only worth a compile when `_flags.txt` claims 100 (P-124).
+                fl = d / "_flags.txt"
+                if fl.is_file() and "100.00" in fl.read_text(encoding="utf-8", errors="replace") \
+                        and (d / "base.c").is_file():
+                    cand = d / "base.c"
+            if cand is None:
+                continue
+            checked += 1
+            m = verify(sym, cand)
+            if m == 100.0:
+                winners[sym] = {"source": str(cand), "objdiff": m}
+        print(f"sweep: checked {checked} unlanded candidates, {len(winners)} are landable")
+        for sym in sorted(winners):
+            print(f"  {sym}\t{winners[sym]['source']}")
+        (WORK / "sweep_new.json").write_text(json.dumps(winners, indent=1, ensure_ascii=False), encoding="utf-8")
+        if args.apply and winners:
+            do_apply(winners)
+        return 0
         (WORK / "accepted.json").write_text(json.dumps(winners, indent=1, ensure_ascii=False), encoding="utf-8")
         return 0
 
