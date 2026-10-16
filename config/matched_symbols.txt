@@ -761,6 +761,7 @@ func_0019eacc    # permuter
 func_0019eb74    # ret_const
 func_0019eee0    # empty
 func_0019ef4c    # permuter
+func_0019eff4    # permuter
 func_0019f01c    # ghidra_draft:-O2
 func_0019f230    # ret_data_load
 func_0019f23c    # permuter
