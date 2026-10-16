@@ -202,7 +202,9 @@ func_00149104	-Os
 func_001495dc	-O1
 func_0014a720	-Os
 func_0014ab24	-Os
+func_0014b1bc	-Os
 func_0014b224	-Os
+func_0014b274	-Os
 func_0014b868	-Os
 func_0014bfc4	-Os
 func_0014c098	-O2

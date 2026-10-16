@@ -357,8 +357,10 @@ func_0014ab24    # llm_draft
 func_0014ab6c    # ghidra_draft:-O2
 func_0014ac68    # ghidra_draft:-O2
 func_0014aed8    # ghidra_draft:-O2
+func_0014b1bc    # permuter
 func_0014b20c    # ghidra_draft:-O2
 func_0014b224    # llm_draft
+func_0014b274    # permuter
 func_0014b7f0    # ghidra_draft:-O2
 func_0014b808    # ghidra_draft:-O2
 func_0014b868    # permuter
