@@ -236,7 +236,18 @@ def setup_dir(sym: str, frontend: str = "ghidra") -> tuple[Path | None, str]:
         if s is not None:
             cands.append(("m2c", s))
     if frontend in ("ghidra", "best", "best3"):
-        s = GD.emit(sym, d)
+        # gp_rel 类：汇编里用 `%gp_rel(D_x)($28)` 做 gp 相对寻址。纯 C 发不出这种寻址，
+        # 必须让草稿把小数据符号写成 **weak 定义**（放 .sdata/.sbss，混合链接脚本会 /DISCARD/ 掉，
+        # 存储仍来自原数据对象）。`auto_match_ghidra.py` 一直这么做，但本工具此前没传 gprel_syms
+        # ⇒ gp_rel 候选拿到的草稿**永远不可能**产生 gp 相对寻址，在 permuter 里必然 0 命中
+        # （实测：62 个已跑候选汇编里都有 %gp_rel，base.c 里一个 weak 定义都没有）。
+        # gp_rel class: `%gp_rel(D_x)($28)` needs the draft to write those small data symbols as
+        # **weak definitions**; without it the C can never emit gp-relative addressing.
+        _gprel = set()
+        _asmf = ROOT / "asm" / "cod" / f"{sym}.s"
+        if _asmf.is_file():
+            _gprel = set(re.findall(r"%gp_rel\((\w+)\)", _asmf.read_text(encoding="utf-8", errors="replace")))
+        s = GD.emit(sym, d, gprel_syms=_gprel or None)
         if s is not None:
             cands.append(("ghidra", s))
     if frontend in ("llm", "best3"):
