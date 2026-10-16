@@ -322,12 +322,24 @@ def setup_dir(sym: str, frontend: str = "ghidra") -> tuple[Path | None, str]:
             name, ps = line.split("\t", 1)
             m = _score(sym, Path(ps), d)
             scored.append((m if m is not None else -1.0, name, ps))
-        if len(scored) > 1 and scored:
-            scored.sort(reverse=True)
-            if scored[0][0] >= 0:
-                shutil.copyfile(scored[0][2], d / "base.c")
+        scored.sort(reverse=True)
+        # gp_rel 候选：目标用 `%gp_rel(D_x)($28)`，**只有带 shim 的 ghidra 草稿在结构上能产出它**
+        # （m2c/llm 草稿发不出 gp 相对寻址）。按分数选会让 m2c 胜出（分数往往更高）⇒ 该候选必然失败：
+        # 实测同一批 gp_rel 用 m2c 草稿 0/12，用带 shim 的 ghidra 草稿 4/10（R32 §21）。
+        # 所以在 gp_rel 上把**选择域限制为 ghidra 草稿**，并把三者的分数照旧写进 `_frontend.txt` 供审计。
+        # gp_rel: only the shimmed Ghidra draft can express gp-relative addressing, so restrict the
+        # selection to it even when another draft scores higher.
+        chosen = scored[0] if scored else None
+        if _gprel:
+            _cap = [t for t in scored if t[1] == "ghidra"]
+            if _cap:
+                chosen = _cap[0]
+        if chosen is not None and chosen[0] >= 0:
+            shutil.copyfile(chosen[2], d / "base.c")
+        if scored:
             (d / "_frontend.txt").write_text(
-                "\n".join(f"{n}\t{m:.2f}" for m, n, _ in scored), encoding="utf-8")
+                "\n".join(f"{n}\t{m:.2f}" for m, n, _ in scored)
+                + (f"\n# chosen: {chosen[1]}" if chosen else ""), encoding="utf-8")
     return d, ""
 
 
