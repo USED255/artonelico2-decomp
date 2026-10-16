@@ -113,6 +113,7 @@ func_001202ac	-Os
 func_00120314	-Os
 func_001227b8	-Os
 func_001248a0	-Os
+func_00126084	-O3
 func_0012988c	-Os
 func_00129f24	-Os
 func_00129f74	-Os
@@ -1498,6 +1499,7 @@ func_003341b0	-O1
 func_003341c0	-O1
 func_00335048	-O3
 func_00336cd8	-O3
+func_0033aec8	-O1
 func_0033b9a8	-O2
 func_0033c7d8	-O2
 func_0033e790	-Os
