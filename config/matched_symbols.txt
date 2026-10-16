@@ -221,6 +221,7 @@ func_0013237c    # ghidra_draft:-O2
 func_00132400    # ghidra_draft:-O2
 func_001326f4    # ghidra_draft:-O2
 func_00132808    # ghidra_draft:-O2
+func_001343f8    # permuter
 func_001357f4    # permuter
 func_00136344    # ghidra_draft:-O2
 func_00136b38    # permuter
@@ -262,6 +263,10 @@ func_0013db08    # permuter
 func_0013e2e8    # permuter
 func_0013f814    # permuter
 func_0013f8dc    # ghidra_draft:-O2
+func_0013f8f8    # permuter
+func_0013f900    # permuter
+func_0013f908    # permuter
+func_0013f910    # permuter
 func_0013fb24    # permuter
 func_0013fe80    # permuter
 func_00140020    # ghidra_draft:-O2
@@ -288,8 +293,10 @@ func_00143808    # llm_draft
 func_00143928    # llm_draft
 func_00143a5c    # permuter
 func_00143ca4    # permuter
+func_0014420c    # permuter
 func_00144214    # permuter
 func_00144224    # ghidra_draft:-O2
+func_00144234    # permuter
 func_0014426c    # ghidra_draft:-O2
 func_0014431c    # store_arg0
 func_00144324    # empty
@@ -354,6 +361,7 @@ func_0014b20c    # ghidra_draft:-O2
 func_0014b224    # llm_draft
 func_0014b7f0    # ghidra_draft:-O2
 func_0014b808    # ghidra_draft:-O2
+func_0014b868    # permuter
 func_0014b870    # permuter
 func_0014be94    # ghidra_draft:-O2
 func_0014bfc4    # llm_draft
@@ -370,6 +378,7 @@ func_0014cfc8    # llm_draft
 func_0014d02c    # ghidra_draft:-O2
 func_0014d0f8    # permuter
 func_0014d19c    # ghidra_draft:-O2
+func_0014d210    # permuter
 func_0014d218    # wrapper_o2_tail
 func_0014d22c    # permuter
 func_0014d26c    # llm_draft
@@ -507,6 +516,7 @@ func_00171a98    # llm_draft
 func_001744c4    # permuter
 func_00175238    # wrapper_o2_tail
 func_00175e3c    # permuter
+func_00177688    # permuter
 func_00177760    # ghidra_draft:-Os
 func_00178d64    # ghidra_draft:-O2
 func_0017a16c    # empty
@@ -944,6 +954,7 @@ func_001daaf0    # llm_draft
 func_001dafac    # ret_const
 func_001db344    # ret_data_addr
 func_001db444    # ghidra_draft:-O2
+func_001db450    # permuter
 func_001db92c    # wrapper_o2_tail
 func_001db940    # ghidra_draft:-O1
 func_001dbed4    # ghidra_draft:-O2
