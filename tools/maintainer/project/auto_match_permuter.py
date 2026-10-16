@@ -699,12 +699,20 @@ def main() -> int:
                 continue
             for r in recs:
                 sym = r.get("sym")
-                if not sym or sym in landed or sym in cands or not at2_io.symbol_ok(sym):
+                if not sym or sym in landed or not at2_io.symbol_ok(sym):
                     continue
                 src, od = r.get("source"), r.get("objdiff")
                 if od == 100.0 and src and Path(src).is_file():
+                    # **Override** any candidate from the work-directory heuristics: this is the
+                    # run's own recorded winner, and its permuter score may be non-zero, so it need
+                    # not be `output-0-*` (measured: `output-130-1`, `output-10-1`). Skipping it just
+                    # because `base.c` was already queued is how `func_002a1fd4` stayed unlanded.
+                    # 覆盖工作目录启发式给出的候选：这是该次运行**自己记录的赢家**，其 permuter 分可能
+                    # 非零（实测有 `output-130-1`、`output-10-1`），因此不在 `output-0-*`。此前因为
+                    # `base.c` 已在队列里就跳过它——`func_002a1fd4` 正是这样被漏掉的。
+                    if cands.get(sym) != Path(src):
+                        n_res += 1
                     cands[sym] = Path(src)
-                    n_res += 1
         print(f"sweep: sources - {n_dirs} from work dirs, {n_res} from result files")
         winners, checked = {}, 0
         for sym, cand in sorted(cands.items()):
