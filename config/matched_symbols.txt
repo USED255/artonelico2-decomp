@@ -2019,6 +2019,7 @@ func_002a19e0    # ghidra_draft:-O2
 func_002a1a20    # llm_draft
 func_002a1bec    # llm_draft
 func_002a1e74    # ghidra_draft:-Os
+func_002a1fd4    # permuter
 func_002a2088    # llm_draft
 func_002a2220    # ghidra_draft:-O2
 func_002a2ae4    # ghidra_draft:-O2
