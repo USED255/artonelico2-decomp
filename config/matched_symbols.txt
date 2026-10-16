@@ -758,6 +758,7 @@ func_001a0158    # ghidra_draft:-O2
 func_001a0188    # wrapper_o1_jal
 func_001a01a4    # wrapper_o2_tail
 func_001a0208    # wrapper_o2_tail
+func_001a021c    # permuter
 func_001a0274    # wrapper_o2_tail
 func_001a0318    # llm_draft
 func_001a0468    # permuter
