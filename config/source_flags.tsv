@@ -1211,6 +1211,7 @@ func_00289e6c	-O2
 func_00289ebc	-O2
 func_0028a434	-Os
 func_0028ac9c	-Os
+func_0028ad38	-Os
 func_0028b144	-O2
 func_0028b21c	-O2
 func_0028bc3c	-O2
