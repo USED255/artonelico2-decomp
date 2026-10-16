@@ -618,6 +618,7 @@ def main() -> int:
     ap.add_argument("--max-match", type=float, default=99.999)
     ap.add_argument("--classes", default="")
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--results", default="", help="sweep: 额外的 result.json（如批次结束的快照）")
     ap.add_argument("--symbols-file", default="")
     ap.add_argument("--timeout", type=int, default=120)
     ap.add_argument("--jobs", type=int, default=3)
@@ -663,21 +664,50 @@ def main() -> int:
                 a = line.split("#", 1)[0].strip()
                 if a:
                     landed.add(a.split()[0])
-        winners, checked = {}, 0
+        # Candidate sources come from three places. The third one closes the P-101 gap: a winner is
+        # NOT always `output-0-*` - the permutation can stop at a non-zero score (say 10 differing
+        # bytes) while some flag level still reproduces the target exactly (`output-10-1/source.c`).
+        # 候选来源有三处。第三处堵上 P-101 的漏：赢家**不一定**在 `output-0-*`——permuter 可能在非零分
+        # （比如 10 个失配字节）停下，而某个档位仍能精确复现目标（`output-10-1/source.c`）。
+        cands: dict[str, Path] = {}
+        n_dirs = 0
         for d in sorted(WORK.glob("*")):
             sym = d.name
             if not at2_io.symbol_ok(sym) or sym in landed:
                 continue
             outs = sorted(d.glob("output-0-*"))
-            cand = outs[-1] / "source.c" if outs and (outs[-1] / "source.c").is_file() else None
-            if cand is None:
-                # No converged output: only worth a compile when `_flags.txt` claims 100 (P-124).
-                fl = d / "_flags.txt"
-                if fl.is_file() and "100.00" in fl.read_text(encoding="utf-8", errors="replace") \
-                        and (d / "base.c").is_file():
-                    cand = d / "base.c"
-            if cand is None:
+            if outs and (outs[-1] / "source.c").is_file():
+                cands[sym] = outs[-1] / "source.c"
+                n_dirs += 1
                 continue
+            # No converged output: only worth a compile when `_flags.txt` claims 100 (P-124).
+            fl = d / "_flags.txt"
+            if fl.is_file() and "100.00" in fl.read_text(encoding="utf-8", errors="replace") \
+                    and (d / "base.c").is_file():
+                cands[sym] = d / "base.c"
+                n_dirs += 1
+        res_paths = [Path(args.results)] if args.results else []
+        default_res = WORK / "result.json"
+        if default_res.is_file() and default_res not in res_paths:
+            res_paths.append(default_res)
+        n_res = 0
+        for rp in res_paths:
+            try:
+                recs = json.loads(rp.read_text(encoding="utf-8"))
+            except (OSError, ValueError) as e:
+                print(f"  [skip] {rp}: {e}", file=sys.stderr)
+                continue
+            for r in recs:
+                sym = r.get("sym")
+                if not sym or sym in landed or sym in cands or not at2_io.symbol_ok(sym):
+                    continue
+                src, od = r.get("source"), r.get("objdiff")
+                if od == 100.0 and src and Path(src).is_file():
+                    cands[sym] = Path(src)
+                    n_res += 1
+        print(f"sweep: sources - {n_dirs} from work dirs, {n_res} from result files")
+        winners, checked = {}, 0
+        for sym, cand in sorted(cands.items()):
             checked += 1
             m = verify(sym, cand)
             if m == 100.0:
