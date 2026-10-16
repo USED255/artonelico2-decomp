@@ -230,6 +230,11 @@ def setup_dir(sym: str, frontend: str = "ghidra") -> tuple[Path | None, str]:
         print(f"  [skip] {sym}: {e}", file=sys.stderr)
         return None, "unsafe_name"
     d.mkdir(parents=True, exist_ok=True)
+    # `_gprel` is filled in the Ghidra branch below but consumed after all branches (the gp_rel
+    # selection rule), so it must exist for every frontend - `--frontend m2c` used to raise
+    # UnboundLocalError here. / 该变量在下面的 ghidra 分支里填，但所有分支之后都会用到（gp_rel
+    # 选择规则），因此必须对每种前端都存在——`--frontend m2c` 以前会在这里抛 UnboundLocalError。
+    _gprel: set = set()
     cands = []
     if frontend in ("m2c", "best", "best3"):
         s = M2C.emit(sym, d)
@@ -243,7 +248,6 @@ def setup_dir(sym: str, frontend: str = "ghidra") -> tuple[Path | None, str]:
         # （实测：62 个已跑候选汇编里都有 %gp_rel，base.c 里一个 weak 定义都没有）。
         # gp_rel class: `%gp_rel(D_x)($28)` needs the draft to write those small data symbols as
         # **weak definitions**; without it the C can never emit gp-relative addressing.
-        _gprel = set()
         _asmf = ROOT / "asm" / "cod" / f"{sym}.s"
         if _asmf.is_file():
             _gprel = set(re.findall(r"%gp_rel\((\w+)\)", _asmf.read_text(encoding="utf-8", errors="replace")))
