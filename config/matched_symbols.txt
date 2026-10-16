@@ -946,6 +946,7 @@ func_001db444    # ghidra_draft:-O2
 func_001db92c    # wrapper_o2_tail
 func_001db940    # ghidra_draft:-O1
 func_001dbed4    # ghidra_draft:-O2
+func_001dbf7c    # permuter
 func_001dbf94    # ghidra_draft:-O2
 func_001dbfb0    # ghidra_draft:-O2
 func_001dd7d4    # ret_const
