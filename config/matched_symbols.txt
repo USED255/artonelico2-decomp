@@ -1675,6 +1675,7 @@ func_0024fd68    # ghidra_draft:-O2
 func_0024fd78    # ret_load_arg0
 func_0024fde8    # ghidra_draft:-O2
 func_0024fdf8    # ret_load_arg0
+func_0024fe00    # permuter
 func_0024ff28    # mem_pair
 func_00250234    # permuter
 func_00250288    # wrapper_o2_tail
@@ -2014,6 +2015,7 @@ func_002906c8    # ghidra_draft:-O2
 func_00291154    # llm_draft
 func_002911b4    # ghidra_draft:-O2
 func_00291320    # permuter
+func_00291354    # permuter
 func_00291790    # permuter
 func_002917b4    # ghidra_draft:-O2
 func_00292898    # permuter
