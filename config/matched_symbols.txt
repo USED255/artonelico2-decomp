@@ -1137,6 +1137,7 @@ func_001e8648    # ghidra_draft:-O1
 func_001e866c    # permuter
 func_001e8694    # ghidra_draft:-O1
 func_001e86b8    # permuter
+func_001e871c    # permuter
 func_001e8854    # permuter
 func_001e88cc    # ghidra_draft:-O2
 func_001e88e0    # ret_const
