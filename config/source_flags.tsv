@@ -1605,6 +1605,7 @@ func_003263e0	-O3
 func_003284c8	-O1
 func_00328530	-O1
 func_0032bf10	-Os
+func_0032c030	-Os
 func_0032c058	-Os
 func_0032c080	-Os
 func_0032c0b8	-Os
