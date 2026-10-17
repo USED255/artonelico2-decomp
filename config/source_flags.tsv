@@ -1487,7 +1487,9 @@ func_002effd8	-Os
 func_002f0170	-O3
 func_002f0188	-O3
 func_002f1488	-Os
+func_002f1910	-Os
 func_002f2118	-O3
+func_002f2820	-O2
 func_002f56b8	-O1
 func_002f59c8	-O3
 func_002f66a0	-O3

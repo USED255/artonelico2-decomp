@@ -2348,11 +2348,13 @@ func_002f0210    # ret_const
 func_002f0218    # ghidra_draft:-O2
 func_002f04d8    # permuter
 func_002f1488    # llm_draft
+func_002f1910    # permuter
 func_002f1c00    # empty
 func_002f1e58    # wrapper_o2_tail
 func_002f1ec0    # wrapper_o2_tail
 func_002f1ef8    # ghidra_draft:-O2
 func_002f2020    # empty
+func_002f2820    # permuter
 func_002f2968    # ghidra_draft:-O2
 func_002f2b18    # ghidra_draft:-O2
 func_002f2eb0    # ghidra_draft:-O2
