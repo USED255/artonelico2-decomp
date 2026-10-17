@@ -1831,12 +1831,14 @@ func_0026afb8    # permuter
 func_0026b004    # store_arg0
 func_0026b020    # permuter
 func_0026b064    # ghidra_draft:-Os
+func_0026b1f4    # permuter
 func_0026bbf8    # ghidra_draft:-O2
 func_0026bc24    # ghidra_draft:-O2
 func_0026bc48    # ghidra_draft:-O2
 func_0026bc80    # ghidra_draft:-O2
 func_0026bca0    # wrapper_o2_tail
 func_0026bf70    # ghidra_draft:-O1
+func_0026e0e4    # permuter
 func_0026f4e0    # ghidra_draft:-O2
 func_0026f4f8    # wrapper_o2_tail
 func_0026f610    # wrapper_o2_tail
