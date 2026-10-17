@@ -1877,6 +1877,7 @@ func_00273c10    # permuter
 func_00273e10    # permuter
 func_00273e58    # ghidra_draft:-O2
 func_00274598    # llm_draft
+func_00274d50    # permuter
 func_00274e7c    # permuter
 func_00275208    # mem_pair
 func_002760c0    # mem_pair
