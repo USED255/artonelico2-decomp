@@ -169,6 +169,7 @@ func_00106540    # wrapper_o2_tail
 func_0010694c    # ghidra_draft:-O2
 func_00106c3c    # llm_draft
 func_00107624    # permuter
+func_0010764c    # permuter
 func_001078d4    # wrapper_o2_tail
 func_00107e18    # permuter
 func_00107e30    # ghidra_draft:-O2
