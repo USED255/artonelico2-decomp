@@ -1269,6 +1269,7 @@ func_0026e0e4	-Os
 func_0026e8a4	-O2
 func_0026ec04	-O2
 func_0026f0c4	-O2
+func_0026f138	-Os -fno-optimize-sibling-calls
 func_0026f240	-O2
 func_0026ffb0	-O2
 func_0026ffec	-O2
