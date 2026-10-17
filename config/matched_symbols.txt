@@ -291,6 +291,7 @@ func_0012f234    # ghidra_draft:-Os
 func_001302fc    # ghidra_draft:-O1
 func_00131078    # wrapper_o2_tail
 func_001310a8    # ghidra_draft:-O2
+func_001313e4    # permuter
 func_00131680    # ghidra_draft:-O2
 func_00131858    # wrapper_o2_tail
 func_00131cd0    # llm_draft
