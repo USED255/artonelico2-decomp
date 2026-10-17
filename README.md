@@ -15,11 +15,11 @@ The build compares the result with the retail binary byte by byte. A function is
 
 ## Status
 
-As of 2026-10-15 ([progress/baseline.json](progress/baseline.json), build `f2e6a68`,
-report `sha256:1deb0a2e939a…`, payload `sha1:7cc42d275750600d…`):
+As of 2026-10-15 ([progress/baseline.json](progress/baseline.json), build `c8902af`,
+report `sha256:31e58902f758…`, payload `sha1:7cc42d275750600d…`):
 
-- Matched functions: **3,541 / 10,923 (32.42%)**
-- Matched code: **183,124 / 2,276,780 bytes (8.04%)**
+- Matched functions: **3,542 / 10,923 (32.43%)**
+- Matched code: **183,172 / 2,276,780 bytes (8.05%)**
 
 We do not count the assembly stubs that we copied. CI does not publish a report
 that is worse than the baseline. Progress history:
