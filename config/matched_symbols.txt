@@ -2379,6 +2379,7 @@ func_002f9f78    # ghidra_draft:-O2
 func_002fa298    # ret_load_arg0
 func_002fab08    # permuter
 func_002fb078    # mem_multi_store
+func_002fb088    # permuter
 func_002fb180    # ghidra_draft:-O2
 func_002fb2e0    # llm_draft
 func_002fbc78    # ghidra_draft:-O2
@@ -2386,6 +2387,7 @@ func_002fc100    # ghidra_draft:-O1
 func_002fc118    # mem_multi_store
 func_002fc8a0    # llm_draft
 func_002fcb80    # ghidra_draft:-O2
+func_002fcc10    # permuter
 func_002fd338    # wrapper_o2_tail
 func_002fd698    # idx_load
 func_002fd6b8    # mem_pair
