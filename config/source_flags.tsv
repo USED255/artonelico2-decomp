@@ -639,6 +639,7 @@ func_001dfc80	-Os
 func_001dfce4	-Os
 func_001e0274	-O2
 func_001e02c0	-Os
+func_001e0308	-Os
 func_001e032c	-Os
 func_001e06d4	-O1
 func_001e1010	-O1
