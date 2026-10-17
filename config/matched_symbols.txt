@@ -209,6 +209,7 @@ func_001129d8    # ret_data_load
 func_001129e4    # store_data
 func_00112a68    # store_data
 func_00112a74    # store_data
+func_00112c4c    # permuter
 func_00112da4    # permuter
 func_00112e30    # llm_draft
 func_00113724    # permuter
