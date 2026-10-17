@@ -42,6 +42,7 @@ baseelf_112    # permuter
 baseelf_139    # llm_draft
 baseelf_16    # permuter
 baseelf_17    # llm_draft
+baseelf_181    # permuter
 baseelf_186    # permuter
 baseelf_191    # permuter
 baseelf_202    # permuter
@@ -1208,6 +1209,7 @@ func_001f00dc    # ghidra_draft:-O1
 func_001f05a4    # permuter
 func_001f063c    # ghidra_draft:-O1
 func_001f0c24    # llm_draft
+func_001f18a8    # permuter
 func_001f31a8    # permuter
 func_001f31f0    # ghidra_draft:-O1
 func_001f3308    # ret_bool
