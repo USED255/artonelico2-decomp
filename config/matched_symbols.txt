@@ -1848,6 +1848,7 @@ func_0026bc80    # ghidra_draft:-O2
 func_0026bca0    # wrapper_o2_tail
 func_0026bf70    # ghidra_draft:-O1
 func_0026e0e4    # permuter
+func_0026f138    # permuter
 func_0026f4e0    # ghidra_draft:-O2
 func_0026f4f8    # wrapper_o2_tail
 func_0026f610    # wrapper_o2_tail
