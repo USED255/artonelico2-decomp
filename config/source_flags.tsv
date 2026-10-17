@@ -1614,7 +1614,6 @@ func_00306978	-O3
 func_00306e70	-O3
 func_00307908	-O3
 func_00307a68	-O3
-func_0030c4c8	-O2
 func_0030ec78	-O1
 func_0030ed50	-O3
 func_0030ee98	-O3
@@ -1645,7 +1644,6 @@ func_0031a7a0	-O1
 func_0031a9c0	-G0
 func_0031cbc8	-G0
 func_003217c0	-O3
-func_00322278	-O2
 func_00323368	-O3
 func_00324368	-O2
 func_00324398	-O2
@@ -1695,7 +1693,6 @@ func_00346760	-O3
 func_0035da00	-Os
 func_0035ee30	-O2
 func_0035f5c0	-O2
-func_00361978	-O2
 func_00365ac8	-O2 -fno-optimize-sibling-calls
 func_00366170	-Os
 func_00366ee0	-Os
