@@ -72,6 +72,17 @@ from auto_match_trivial import (  # noqa: E402
 from at2_paths import OBJDUMP  # noqa: E402  section-size guard (P-97)
 import split_asm as SPLIT  # noqa: E402  block boundary rule shared with the mixed build
 import jtbl_patch as JTP  # noqa: E402  jump-table reference redirect (P-52)
+try:                                    # data-reference redirect (O-01 (1)); the build uses the same module
+    import data_patch as DTP            # noqa: E402
+except Exception:                       # pragma: no cover
+    DTP = None
+import obj_gate as GATE                 # noqa: E402  the mixed-build safety gate (P-135: verify() must cover it)
+
+# Why a skip is recorded: before 2026-10-17 `verify()` could report 100 for an object that the
+# build gate refuses (P-135). The reason now travels with the symbol so a batch report can show it.
+# 记录跳过原因：2026-10-17 之前 `verify()` 可能给「构建闸门会拒收」的对象 100 分（P-135）。
+# 现在原因跟着符号走，批次报告能看到。
+VERIFY_SKIPS: dict[str, str] = {}
 
 # A jtbl function compiles into its own .rodata jump table, so the reference in .text points at
 # the wrong symbol and the score saturates below 100 (measured 99.33 for the best candidate,
@@ -462,13 +473,28 @@ def verify(sym: str, source: Path) -> float | None:
         c_sz, ref_sz = _text_size(c_o), _text_size(ref)
         if c_sz is None or ref_sz is None or c_sz != ref_sz:
             continue
-        if tbl:
-            # Same redirect as the build does, so the verification sees the object that will be
-            # linked. The patch keeps the .rodata bytes but removes every .text reference to them.
-            # 与构建同一步改指；补丁保留 .rodata 字节，只去掉 .text 对它的引用。
+        # Same redirects as the build does, so the verification sees the object that will be
+        # linked. The data patch subsumes the jtbl patch; fall back to jtbl_patch only when the
+        # asm block or the baseline link is absent (for example an out-of-tree experiment).
+        # 与构建同一步改指；数据改指覆盖 jtbl 改指，只有 asm 块或基线链接缺失时才退回 jtbl_patch。
+        asm_f = ROOT / "asm" / "cod" / f"{sym}.s"
+        image_f = ROOT / "build" / "SLPS_258.19.elf"
+        if DTP is not None and asm_f.is_file() and image_f.is_file():
+            ok, why = DTP.patch(c_o, sym, asm_f, image_f)
+            if not ok:
+                VERIFY_SKIPS[sym] = "data patch refused: " + why
+                continue
+        elif tbl:
             ok, _why = JTP.patch(c_o, tbl, c_o)
             if not ok:
                 continue
+        # P-135: objdiff 100 does not prove that the build gate accepts the object. Check it
+        # here, with the same implementation the build uses.
+        # P-135：objdiff 100 不代表构建闸门收它。这里用构建的同一份实现检查。
+        bad = GATE.bad_sections(str(c_o))
+        if bad:
+            VERIFY_SKIPS[sym] = "the mixed-build gate would refuse the object: %s" % (bad,)
+            continue
         m = _match_of(sym, c_o, d)
         if m is not None and (best is None or m > best):
             best = m

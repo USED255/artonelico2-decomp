@@ -83,6 +83,10 @@ try:                                   # jtbl jump table patch in the same direc
     import jtbl_patch as JTBL          # noqa: E402
 except Exception:                      # pragma: no cover
     JTBL = None
+try:                                   # data-reference redirect (O-01 (1)). Optional, like jtbl_patch.
+    import data_patch as DATP          # noqa: E402
+except Exception:                      # pragma: no cover
+    DATP = None
 
 
 # Flags that make the compiler read an arbitrary file or run an arbitrary program. The per-source
@@ -249,6 +253,13 @@ def main() -> int:
     ap.add_argument("--jtbl-tables", default="",
                     help="per-source jump table file (line 1 is a header row): <key><TAB><jtbl_symbol>. After the compile, jtbl_patch redirects "
                          "the reference of the C jump table to the existing data symbol (see tools/project/jtbl_patch.py)")
+    ap.add_argument("--data-patch", action="store_true",
+                    help="after the compile, redirect the C object's own data references to the splat data symbols "
+                         "(text literals, static tables). Requires --symbols-tsv and --image. When set, the jtbl table is "
+                         "not applied: the same pass covers a switch table (see tools/project/data_patch.py)")
+    ap.add_argument("--symbols-tsv", default="", help="<key><TAB><symbol> for the data patch (default: the symbol is the key)")
+    ap.add_argument("--image", default="", help="the baseline link (build.sh output) for data symbols and bytes")
+    ap.add_argument("--data-patch-asm-dir", default="asm/cod", help="the splat asm tree for the data patch")
     ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--no-cache", action="store_true")
     ap.add_argument("--label", default="sources")
@@ -284,6 +295,30 @@ def main() -> int:
                 a = line.split()
                 if len(a) >= 2:
                     jtbl[a[0]] = a[1]
+
+    # Data patch (O-01 (1)): <key><TAB><symbol>. The key is the source basename; the symbol is
+    # what the linker script and the asm block are named after. They are usually equal, but the
+    # ledger permits a different source name, so the mapping is explicit.
+    # 数据改指（O-01 ①）：<key><TAB><符号>。key 是源码基名，符号是链接脚本与 asm 块的名字；
+    # 两者通常相同，但台账允许不同名，所以映射必须显式给出。
+    symof: dict[str, str] = {}
+    if args.data_patch:
+        if not (args.symbols_tsv and args.image):
+            print("FAIL: --data-patch needs --symbols-tsv and --image", file=sys.stderr)
+            return 2
+        if DATP is None:
+            print("FAIL: the data_patch module is necessary, but the import failed", file=sys.stderr)
+            return 2
+        for line in Path(args.symbols_tsv).read_text(encoding="utf-8").splitlines():
+            line = line.split("#", 1)[0].strip()
+            if not line:
+                continue
+            a = line.split()
+            symof[a[0]] = a[1] if len(a) > 1 else a[0]
+        if not Path(args.image).is_file():
+            print(f"FAIL: the data-patch image is missing: {args.image}", file=sys.stderr)
+            return 2
+    image_sha = sha1_file(Path(args.image)) if args.data_patch else ""
 
     # Per-source compiler. The CRI section uses ee-gcc 2.96. The game code uses 3.2. See R17 section 4.2.
     # 每源编译器（CRI 段用 ee-gcc 2.96，游戏代码用 3.2；见 R17 §4.2）
@@ -396,7 +431,12 @@ def main() -> int:
         # al4：2026-10-04 起 cc 对象统一把 .text* 段对齐降到 4（见 build 里的 objcopy），
         #      版本串加后缀让旧缓存失效重建。
         want = f"{kind}|{ver}|al4|{base}|{ex}|{gcc}|{inc}|{sha1_file(src)}"
-        if jtbl.get(key):
+        if args.data_patch:
+            # The patch result depends on the target symbol, the asm block (derived from it) and
+            # the baseline image. Any of them changing must rebuild the object.
+            # 补丁结果取决于目标符号、它派生的 asm 块与基线镜像；任一变化都要重建。
+            want += f"|dp={symof.get(key, key)}:{image_sha}"
+        elif jtbl.get(key):
             want += f"|jtbl={jtbl[key]}"
         stamp = objdir / f"{key}.stamp"
         obj = objdir / f"{key}.o"
@@ -436,13 +476,28 @@ def main() -> int:
             # bytes then agree with the original.
             # jtbl（2026-10-07）：真 `switch` 会自产 `.rodata` 跳转表；把它的引用改指到 splat 既有的
             # `jtbl_*` 符号，`.rodata` 随即变成无人引用的段（被 /DISCARD/ 丢掉）⇒ 代码字节与原版一致。
-            table = jtbl.get(key)
-            if table:
-                if JTBL is None:
-                    return (key, ["the jtbl_patch module is necessary, but the import failed"])
-                ok, msg = JTBL.patch(obj, table, obj)
+            if args.data_patch:
+                # The data patch subsumes the jtbl patch (a switch table is just another data
+                # reference), and it also handles a function that has a switch table *and* a
+                # string: the jtbl patch requires the table at .rodata offset 0, which such a
+                # function does not satisfy.
+                # 数据改指覆盖 jtbl 改指（跳转表无非另一种数据引用），并能处理「跳转表 + 字符串」同时存在的
+                # 函数——jtbl 补丁要求表在 .rodata 偏移 0，这种函数不满足。
+                sym = symof.get(key, key)
+                asm = Path(args.data_patch_asm_dir) / f"{sym}.s"
+                if not asm.is_file():
+                    return (key, ["the data patch needs the asm block: %s" % asm])
+                ok, msg = DATP.patch(obj, sym, asm, Path(args.image), obj)
                 if not ok:
-                    return (key, ["jtbl patch failed: %s" % msg])
+                    return (key, ["data patch failed: %s" % msg])
+            else:
+                table = jtbl.get(key)
+                if table:
+                    if JTBL is None:
+                        return (key, ["the jtbl_patch module is necessary, but the import failed"])
+                    ok, msg = JTBL.patch(obj, table, obj)
+                    if not ok:
+                        return (key, ["jtbl patch failed: %s" % msg])
         stamp.write_text(want, encoding="utf-8")
         return None
 
