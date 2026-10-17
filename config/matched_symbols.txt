@@ -1908,6 +1908,7 @@ func_0027955c    # permuter
 func_0027982c    # ghidra_draft:-O2
 func_00279844    # mem_pair
 func_00279ddc    # llm_draft
+func_00279eb0    # permuter
 func_00279ff8    # mem_pair
 func_0027a004    # permuter
 func_0027a8c8    # permuter
