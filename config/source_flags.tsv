@@ -1279,6 +1279,7 @@ func_00273970	-O2
 func_00273e10	-Os
 func_00274598	-O2
 func_00274650	-O2
+func_00274d50	-Os
 func_002756d8	-Os
 func_00276640	-Os
 func_00276b2c	-O2
