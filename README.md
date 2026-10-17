@@ -15,7 +15,7 @@ The build compares the result with the retail binary byte by byte. A function is
 
 ## Status
 
-As of 2026-10-15 ([progress/baseline.json](progress/baseline.json), build `92f1a0c`,
+As of 2026-10-15 ([progress/baseline.json](progress/baseline.json), build `017c5c8`,
 report `sha256:3c03e3d776f6…`, payload `sha1:7cc42d275750600d…`):
 
 - Matched functions: **3,591 / 10,923 (32.88%)**

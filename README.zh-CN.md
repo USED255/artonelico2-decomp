@@ -13,7 +13,7 @@
 
 ## 进度
 
-截至 2026-10-15（[progress/baseline.json](progress/baseline.json)，构建版本 `92f1a0c`，
+截至 2026-10-15（[progress/baseline.json](progress/baseline.json)，构建版本 `017c5c8`，
 报告 `sha256:3c03e3d776f6…`，载荷 `sha1:7cc42d275750600d…`）：
 
 - 已匹配函数：**3,591 / 10,923（32.88%）**
