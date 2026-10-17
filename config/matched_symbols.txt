@@ -281,6 +281,7 @@ func_0012a504    # ghidra_draft:-O2
 func_0012a62c    # empty
 func_0012a634    # wrapper_o2_tail
 func_0012a650    # llm_draft
+func_0012a6e0    # permuter
 func_0012a7f8    # empty
 func_0012b654    # llm_draft
 func_0012b688    # ghidra_draft:-O2
