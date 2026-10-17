@@ -160,6 +160,7 @@ func_00112810	-O1
 func_001128f8	-O1
 func_0011290c	-O2
 func_00112918	-O2
+func_00112da4	-Os
 func_00112e30	-Os
 func_00113724	-Os
 func_001139b0	-Os
