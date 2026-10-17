@@ -1482,6 +1482,7 @@ func_00236258    # permuter
 func_002362f8    # permuter
 func_00236350    # llm_draft
 func_00236398    # ret_data_load
+func_002363a4    # permuter
 func_002363c4    # ret_data_load
 func_002363f8    # ret_data_load
 func_00236404    # permuter
