@@ -193,8 +193,19 @@ done
 # 不再应用跳转表；负面对照用 HYBRID_DATA_PATCH=0 回到旧的 jtbl 路径。
 DATA_PATCH="${HYBRID_DATA_PATCH:-1}"
 BASE_ELF="$HERE/build/SLPS_258.19.elf"
+# The data patch reads the baseline link to redirect a C object's own data references. The CI
+# runs `make build-fast` for source-only pull requests: it assembles the baseline but skips the
+# link, so the ELF is absent. Fall back to the jtbl path instead of failing - the mixed payload
+# check that follows still compares the final image against the retail payload byte for byte, so
+# a source that genuinely needs the data patch cannot slip through unnoticed.
+# 数据改指要读基线链接；CI 的 `make build-fast`（纯源码 PR）只装配不链接，故 ELF 不存在。
+# 此时回退到 jtbl 路径而不是直接失败——后面的混合载荷检查仍会与零售载荷逐字节比对，
+# 真正需要数据改指的源不可能蒙混过关。
+if [ "$DATA_PATCH" = 1 ] && [ ! -f "$BASE_ELF" ]; then
+    echo "notice: the baseline link is absent (fast mode); the data patch falls back to the jtbl path"
+    DATA_PATCH=0
+fi
 if [ "$DATA_PATCH" = 1 ]; then
-    [ -f "$BASE_ELF" ] || { echo "FAIL: the data patch needs the baseline link $BASE_ELF (run build.sh)"; exit 1; }
     DP_ARGS=(--data-patch --symbols-tsv "$SYMTSV" --image "$BASE_ELF")
     JTBL_ARGS=()
 else
