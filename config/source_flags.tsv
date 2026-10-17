@@ -1510,12 +1510,14 @@ func_002f9448	-O3
 func_002f9670	-Os
 func_002f9940	-Os
 func_002fab08	-Os
+func_002fb088	-O2
 func_002fb2e0	-Os
 func_002fb3d8	-O3
 func_002fb3e8	-O3
 func_002fc100	-O1
 func_002fc888	-O3
 func_002fc8a0	-Os
+func_002fcc10	-Os
 func_002fd2b0	-O1
 func_002fd350	-O2 -fno-schedule-insns2
 func_002fd738	-O1
