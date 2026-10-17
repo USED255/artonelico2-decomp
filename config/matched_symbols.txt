@@ -1079,6 +1079,7 @@ func_001dfce4    # permuter
 func_001e01c0    # empty
 func_001e0298    # ghidra_draft:-O2
 func_001e02c0    # permuter
+func_001e0308    # permuter
 func_001e032c    # llm_draft
 func_001e03a4    # ghidra_draft:-O2
 func_001e06d4    # permuter
