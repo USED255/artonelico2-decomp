@@ -1110,6 +1110,7 @@ func_001e3cfc    # ghidra_draft:-O1
 func_001e3d28    # ghidra_draft:-O1
 func_001e3e64    # wrapper_o1_jal
 func_001e3e88    # wrapper_o1_jal
+func_001e3ff8    # permuter
 func_001e41f8    # ghidra_draft:-O1
 func_001e4248    # ghidra_draft:-O1
 func_001e42e0    # ghidra_draft:-O1
