@@ -619,6 +619,7 @@ func_00177760    # ghidra_draft:-Os
 func_00178d64    # ghidra_draft:-O2
 func_0017a16c    # empty
 func_0017a174    # llm_draft
+func_0017cafc    # permuter
 func_0017cc90    # permuter
 func_0017ce10    # llm_draft
 func_0017ce58    # ghidra_draft:-O2
