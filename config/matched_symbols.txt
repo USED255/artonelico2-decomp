@@ -2136,6 +2136,7 @@ func_0029cf1c    # empty
 func_0029d0c8    # llm_draft
 func_0029d0f8    # ghidra_draft:-Os
 func_0029d128    # permuter
+func_0029d2b8    # permuter
 func_0029d3e4    # store_data
 func_0029d3f0    # store_data
 func_0029d3fc    # ghidra_draft:-O2
