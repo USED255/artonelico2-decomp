@@ -139,6 +139,7 @@ func_00103b78	-O1
 func_0010449c	-Os
 func_00104a68	-O1
 func_00104a8c	-Os
+func_00104adc	-Os
 func_00105000	-Os
 func_00105670	-Os
 func_001063cc	-Os
