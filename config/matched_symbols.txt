@@ -506,6 +506,7 @@ func_0014ea4c    # permuter
 func_0014ead0    # ghidra_draft:-O2
 func_0014eaf8    # llm_draft
 func_0014ec3c    # ghidra_draft:-O2
+func_0014ec64    # permuter
 func_0014ef20    # ghidra_draft:-O2
 func_0014f01c    # llm_draft
 func_0014f124    # ghidra_draft:-O2
