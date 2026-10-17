@@ -361,6 +361,7 @@ func_00140c1c    # permuter
 func_00140c3c    # permuter
 func_00140c5c    # llm_draft
 func_00140d0c    # llm_draft
+func_00140dac    # permuter
 func_00140dcc    # store_data
 func_00140dd8    # ret_data_load
 func_00140df4    # store_data_const
