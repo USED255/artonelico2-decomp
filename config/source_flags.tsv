@@ -7,6 +7,7 @@ LibcStdlib_37	-O2
 LibcStdlib_39	-O2
 LibcStdlib_40	-O2
 LibcStdlib_7	-Os
+LibcStdlib_9	-Os
 LibcString_35	-O2
 RFU086_WaitEvnetFlag	-Os
 RFU091	-Os

@@ -18,6 +18,7 @@ LibcStdio_19    # permuter
 LibcStdio_34    # permuter
 LibcStdlib_10    # llm_draft
 LibcStdlib_7    # llm_draft
+LibcStdlib_9    # permuter
 LibcString_12    # wrapper_o2_tail
 LibcString_23    # permuter
 LibcString_31    # wrapper_o2_tail
