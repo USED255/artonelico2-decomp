@@ -194,6 +194,7 @@ func_0010c128    # ghidra_draft:-O2
 func_0010c294    # permuter
 func_0010c2b8    # permuter
 func_0010c858    # permuter
+func_0010c8c4    # permuter
 func_0010ca08    # ghidra_draft:-O2
 func_0010cd1c    # ghidra_draft:-O2
 func_0010cd64    # permuter
