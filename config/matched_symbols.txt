@@ -535,6 +535,7 @@ func_0014fe28    # ghidra_draft:-O2
 func_0014fe78    # ghidra_draft:-O2
 func_0014fea0    # ghidra_draft:-O2
 func_0014fef0    # ghidra_draft:-O2
+func_0015062c    # permuter
 func_0015187c    # llm_draft
 func_001519a8    # permuter
 func_001519f8    # permuter
