@@ -132,6 +132,7 @@ fileio_21    # llm_draft
 fileio_25    # llm_draft
 fileio_28    # llm_draft
 func_0010054c    # wrapper_o2_tail
+func_001005a0    # permuter
 func_00100610    # wrapper_o2_tail
 func_00100624    # wrapper_o2_tail
 func_00100638    # wrapper_o2_tail
@@ -1206,6 +1207,7 @@ func_001f5b10    # ghidra_draft:-O1
 func_001f5b70    # ghidra_draft:-O2
 func_001f5b84    # ghidra_draft:-O1
 func_001f5ba8    # ghidra_draft:-O1
+func_001f5d00    # permuter
 func_001f6c84    # llm_draft
 func_001f6ef8    # llm_draft
 func_001f7364    # permuter
