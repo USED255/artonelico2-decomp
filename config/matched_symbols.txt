@@ -719,6 +719,7 @@ func_00191860    # llm_draft
 func_001919e4    # permuter
 func_00191a08    # llm_draft
 func_00191ae0    # llm_draft
+func_00191b24    # permuter
 func_00191d5c    # llm_draft
 func_00191d88    # llm_draft
 func_00191db8    # llm_draft
@@ -789,6 +790,7 @@ func_00193dd8    # ghidra_draft:-O2
 func_00193dfc    # ret_data_addr
 func_00193e08    # permuter
 func_00194040    # mem_multi_store
+func_00194050    # permuter
 func_001940a0    # ghidra_draft:-O2
 func_00194754    # ghidra_draft:-O2
 func_00194b50    # llm_draft

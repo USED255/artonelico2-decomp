@@ -449,6 +449,7 @@ func_00191860	-Os
 func_001919e4	-O1
 func_00191a08	-Os
 func_00191ae0	-Os
+func_00191b24	-Os
 func_00191bb4	-O2
 func_00191d5c	-Os
 func_00191d88	-Os
@@ -490,6 +491,7 @@ func_00193c04	-Os
 func_00193cf8	-Os
 func_00193d28	-Os
 func_00193e54	-O2
+func_00194050	-Os
 func_0019470c	-O2
 func_0019476c	-O2
 func_00194b50	-Os
