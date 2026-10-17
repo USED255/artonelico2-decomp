@@ -417,6 +417,7 @@ func_0018c6d0	-Os
 func_0018c784	-O2
 func_0018cf14	-O2
 func_0018cf30	-Os
+func_0018cf88	-Os
 func_0018d004	-Os
 func_0018d274	-Os
 func_0018d2ec	-Os
@@ -1282,7 +1283,9 @@ func_0027c9d8	-Os
 func_0027d19c	-Os
 func_0027d1b8	-Os
 func_0027d400	-O2
+func_0027d5b0	-Os
 func_0027e2f8	-Os
+func_0027e4a4	-Os
 func_0027e684	-Os
 func_0027e6d0	-Os
 func_0027e71c	-Os
