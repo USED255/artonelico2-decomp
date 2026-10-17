@@ -661,6 +661,7 @@ func_0018ce88    # permuter
 func_0018cea4    # permuter
 func_0018cedc    # store_data
 func_0018cf08    # ret_data_load
+func_0018cf30    # permuter
 func_0018cfc8    # store_data
 func_0018cfe8    # permuter
 func_0018d1fc    # permuter
@@ -1820,6 +1821,7 @@ func_00270dd0    # ghidra_draft:-O2
 func_00270df4    # ghidra_draft:-O2
 func_00270e18    # permuter
 func_00270e64    # store_arg0
+func_00271320    # permuter
 func_00271380    # mem_pair
 func_00271590    # mem_pair
 func_00271974    # ghidra_draft:-O1
@@ -2535,6 +2537,7 @@ func_00314978    # empty
 func_00319488    # llm_draft
 func_003195b8    # permuter
 func_00319600    # wrapper_o2_tail
+func_00319630    # permuter
 func_0031a290    # ghidra_draft:-O1
 func_0031a2b8    # ret_load_arg0
 func_0031a390    # ret_load_arg0
