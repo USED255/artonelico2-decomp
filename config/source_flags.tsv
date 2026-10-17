@@ -1288,6 +1288,7 @@ func_00276c30	-O2
 func_0027955c	-Os
 func_00279780	-Os
 func_00279ddc	-Os
+func_00279eb0	-Os
 func_0027a99c	-Os
 func_0027a9f4	-Os
 func_0027ab6c	-Os
