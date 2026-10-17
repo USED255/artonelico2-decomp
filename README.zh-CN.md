@@ -13,11 +13,11 @@
 
 ## 进度
 
-截至 2026-10-15（[progress/baseline.json](progress/baseline.json)，构建版本 `c24e646`，
-报告 `sha256:f5ecffa7e604…`，载荷 `sha1:7cc42d275750600d…`）：
+截至 2026-10-15（[progress/baseline.json](progress/baseline.json)，构建版本 `6acd99f`，
+报告 `sha256:427f8b2ac4c6…`，载荷 `sha1:7cc42d275750600d…`）：
 
-- 已匹配函数：**3,574 / 10,923（32.72%）**
-- 已匹配代码：**186,604 / 2,276,780 字节（8.20%）**
+- 已匹配函数：**3,575 / 10,923（32.73%）**
+- 已匹配代码：**186,712 / 2,276,780 字节（8.20%）**
 
 逐条转录的汇编桩**不计入**「已匹配」。比基线更差的报告，CI 不会发布。进度历史：<https://decomp.dev/USED255/artonelico2-decomp>。
 
