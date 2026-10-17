@@ -249,6 +249,7 @@ func_0013fe80	-Os
 func_00140bb8	-Os
 func_00140c5c	-Os
 func_00140d0c	-Os
+func_00140dac	-Os
 func_00140e14	-O2 -mno-split-addresses
 func_001420e8	-Os
 func_00142214	-O1
