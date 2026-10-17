@@ -1547,6 +1547,7 @@ func_0023cf68    # ghidra_draft:-O2
 func_0023d1bc    # ghidra_draft:-O2
 func_0023d238    # permuter
 func_0023d4f8    # permuter
+func_0023d570    # permuter
 func_0023d5dc    # ghidra_draft:-O2
 func_0023de74    # ghidra_draft:-O2
 func_0023e21c    # permuter
