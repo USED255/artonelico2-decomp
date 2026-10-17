@@ -2367,6 +2367,7 @@ func_002f6da8    # ghidra_draft:-O2
 func_002f6ff0    # wrapper_o2_tail
 func_002f7050    # ghidra_draft:-O2
 func_002f78b8    # llm_draft
+func_002f7a50    # permuter
 func_002f8ae8    # llm_draft
 func_002f8f80    # ghidra_draft:-O1
 func_002f8fa8    # ghidra_draft:-O1
