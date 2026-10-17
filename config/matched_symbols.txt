@@ -1765,6 +1765,7 @@ func_0025d7ac    # llm_draft
 func_0025d874    # ghidra_draft:-O2
 func_0025dbd0    # ghidra_draft:-O2
 func_0025dee0    # ghidra_draft:-O2
+func_0025e4dc    # permuter
 func_0025e544    # permuter
 func_0025e628    # ghidra_draft:-O2
 func_0025ea3c    # wrapper_o2_tail
