@@ -193,6 +193,7 @@ func_00126084	-O3
 func_0012988c	-Os
 func_00129f24	-Os
 func_00129f74	-Os
+func_0012a3bc	-Os
 func_0012a650	-Os
 func_0012b654	-O1
 func_0012b730	-O2

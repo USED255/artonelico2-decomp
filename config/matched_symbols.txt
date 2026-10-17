@@ -269,6 +269,7 @@ func_00127814    # permuter
 func_0012988c    # permuter
 func_00129f24    # llm_draft
 func_00129f74    # llm_draft
+func_0012a3bc    # permuter
 func_0012a458    # ret_bool
 func_0012a4f4    # ghidra_draft:-O2
 func_0012a504    # ghidra_draft:-O2
