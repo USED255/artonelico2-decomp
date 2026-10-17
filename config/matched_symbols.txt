@@ -1016,6 +1016,7 @@ func_001d70cc    # llm_draft
 func_001d7154    # ghidra_draft+jtbl
 func_001d71a4    # ghidra_draft+jtbl
 func_001d7aac    # ghidra_draft:-Os
+func_001d7db0    # permuter
 func_001d7eec    # permuter
 func_001d7f74    # llm_draft
 func_001d81d0    # ghidra_draft:-O2
