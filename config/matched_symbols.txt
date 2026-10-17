@@ -2692,6 +2692,7 @@ func_0032a8a8    # permuter
 func_0032b910    # empty
 func_0032bd70    # ghidra_draft:-O2
 func_0032bf10    # permuter
+func_0032c030    # permuter
 func_0032c058    # llm_draft
 func_0032c080    # llm_draft
 func_0032c0a8    # mem_multi_store
