@@ -1,0 +1,86 @@
+
+typedef signed char s8;
+typedef unsigned char u8;
+typedef short s16;
+typedef unsigned short u16;
+typedef int s32;
+typedef unsigned int u32;
+typedef long long s64;
+typedef unsigned long long u64;
+typedef float f32;
+typedef double f64;
+typedef unsigned char undefined1;
+typedef unsigned short undefined2;
+typedef unsigned int undefined4;
+typedef unsigned long long undefined8;
+typedef unsigned char byte;
+typedef unsigned char code;
+typedef unsigned int uint;
+typedef int s128;
+typedef int u128;
+typedef int s64_;
+extern unsigned char *sp;
+typedef s32 M2C_UNK;
+typedef s8 M2C_UNK8;
+typedef s16 M2C_UNK16;
+typedef s32 M2C_UNK32;
+typedef s64 M2C_UNK64;
+M2C_UNK func_0011f004(s32);
+M2C_UNK func_0011f03c(s32, void *, M2C_UNK, M2C_UNK);
+M2C_UNK func_0012c30c(M2C_UNK *);
+M2C_UNK func_00144390(void *);
+M2C_UNK func_0015b144(M2C_UNK *, M2C_UNK *);
+M2C_UNK func_00258518(void *);
+M2C_UNK func_00270e18(void *);
+M2C_UNK func_0027102c(s32);
+M2C_UNK func_00271080(s32, M2C_UNK);
+M2C_UNK func_0027e684(s32);
+M2C_UNK func_0027e86c(s32);
+extern M2C_UNK D_0054AA00;
+extern M2C_UNK D_009948D0;
+extern M2C_UNK D_00A504E0;
+extern M2C_UNK D_00AD8000;
+extern M2C_UNK D_00BB71D0;
+void func_00259918(void *arg0)
+{
+  s16 *var_t6;
+  M2C_UNK *new_var2;
+  s32 temp_s0;
+  s32 temp_s1;
+  s8 *new_var;
+  s32 temp_s2;
+  s32 var_t5;
+  temp_s0 = arg0 + 0x40C;
+  temp_s1 = arg0 + 0x4BC;
+  func_0012c30c(&D_00AD8000);
+  temp_s2 = 0x540;
+  temp_s2 = arg0 + temp_s2;
+  func_0027e684(temp_s0);
+  func_0027e86c(temp_s0);
+  func_0027102c(temp_s1);
+  func_00271080(temp_s1, 6);
+  *((s8 *) (((s8 *) arg0) + 0x4BE)) = 0x10;
+  new_var = (s8 *) arg0;
+  *((u8 *) (((s8 *) arg0) + 0x4BD)) = (u8) (*((u8 *) (new_var + 0x4BF)));
+  temp_s1 = 0x1224;
+  func_00270e18(arg0 + 0x4D4);
+  func_0011f004(temp_s2);
+  new_var2 = &D_0054AA00;
+  func_0011f03c(temp_s2, *((void **) (((s8 *) new_var2) + 0xD8)), 0x44, 0x56);
+  *((M2C_UNK **) (((s8 *) (*((void **) (((s8 *) new_var2) + 0xD8)))) + 0xD8)) = &D_009948D0;
+  func_00144390(arg0 + 0x570);
+  func_00258518(arg0 + 0x4F0);
+  var_t6 = arg0 + 0x11D0;
+  *((s32 *) (((s8 *) arg0) + 0x11CC)) = -1;
+  var_t5 = 0x29;
+  do
+  {
+    var_t5 -= 1;
+    *var_t6 = -1;
+    var_t6 += 1;
+  }
+  while (var_t5 >= 0);
+  *((s32 *) (((s8 *) arg0) + temp_s1)) = 0;
+  *((s32 *) (((s8 *) arg0) + 0x1228)) = 0;
+  func_0015b144(&D_00BB71D0, &D_00A504E0);
+}
