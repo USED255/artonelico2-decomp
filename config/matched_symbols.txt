@@ -4076,3 +4076,16 @@ func_001a9a14    # cri_draft
 func_001a9b1c    # cri_draft
 func_001a9bf8    # cri_draft
 func_001a9cd4    # cri_draft
+func_0013adc0    # cri_draft
+func_00238800    # cri_draft
+func_002e8560    # cri_draft
+func_002e8578    # cri_draft
+func_003003e8    # cri_draft
+func_00300400    # cri_draft
+func_00300418    # cri_draft
+func_00300430    # cri_draft
+func_00305790    # cri_draft
+func_0033ec08    # cri_draft
+func_0033ec20    # cri_draft
+func_0033f068    # cri_draft
+func_0033f080    # cri_draft
