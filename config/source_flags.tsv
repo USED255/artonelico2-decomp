@@ -574,6 +574,8 @@ func_001b0cac	-Os
 func_001b0d10	-Os
 func_001b30c8	-O2 -mno-split-addresses
 func_001b3a64	-Os
+func_001b3fd4	-Os
+func_001b4878	-Os
 func_001b5354	-Os
 func_001b53dc	-Os
 func_001b5418	-O2
@@ -1379,6 +1381,7 @@ func_0028bc3c	-O2
 func_0028bd6c	-O2
 func_0028bd9c	-Os
 func_0028be38	-O2
+func_0028d3d4	-Os
 func_0028f254	-Os
 func_0028fae4	-O2
 func_0028fb10	-O2
