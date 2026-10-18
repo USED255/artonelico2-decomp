@@ -901,6 +901,7 @@ func_001a1da8    # ret_data_load
 func_001a1db4    # llm_draft
 func_001a1ddc    # permuter
 func_001a1e08    # ret_data_load
+func_001a1fd4    # permuter
 func_001a20e0    # ret_data_addr
 func_001a2220    # store_data_const
 func_001a2d78    # permuter
