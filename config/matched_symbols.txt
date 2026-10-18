@@ -3688,3 +3688,5 @@ func_0033f098    # cri_draft
 func_0033f0c8    # cri_draft
 func_00340518    # cri_draft
 func_00344270    # cri_draft
+func_002f2538    # cri_draft
+func_0032f530    # cri_draft
