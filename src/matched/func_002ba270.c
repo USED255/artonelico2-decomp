@@ -1,0 +1,26 @@
+extern char eepatch_5[];
+extern char eepatch_4[];
+__asm__(
+  ".set noreorder\n"
+  ".globl func_002ba270\n"
+  "func_002ba270:\n"
+  "addiu $29,$29,-48\n"
+  "sd $17,16($29)\n"
+  "sd $16,0($29)\n"
+  "move $17,$4\n"
+  "sd $31,32($29)\n"
+  "jal eepatch_4\n"
+  "move $16,$5\n"
+  "lq $6,0($16)\n"
+  "sq $6,0($17)\n"
+  ".word 0x10400005\n"
+  "ld $31,32($29)\n"
+  "ld $17,16($29)\n"
+  "ld $16,0($29)\n"
+  "j eepatch_5\n"
+  "addiu $29,$29,48\n"
+  "ld $17,16($29)\n"
+  "ld $16,0($29)\n"
+  "jr $31\n"
+  "addiu $29,$29,48\n"
+  ".set reorder\n");
