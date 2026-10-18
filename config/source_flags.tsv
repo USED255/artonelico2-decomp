@@ -1444,6 +1444,7 @@ func_0029be00	-O2 -fno-optimize-sibling-calls
 func_0029bf18	-O2
 func_0029c004	-O1
 func_0029c09c	-Os
+func_0029c0b0	-Os
 func_0029c678	-O2
 func_0029c6e4	-O2
 func_0029c704	-O2

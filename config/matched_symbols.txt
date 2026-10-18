@@ -2122,6 +2122,7 @@ func_0029bfe4    # wrapper_o2_tail
 func_0029bff8    # ret_data_load
 func_0029c004    # permuter
 func_0029c09c    # permuter
+func_0029c0b0    # permuter
 func_0029c114    # permuter
 func_0029c320    # ghidra_draft:-O2
 func_0029c33c    # ghidra_draft:-O2
