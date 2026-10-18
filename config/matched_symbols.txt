@@ -4055,3 +4055,6 @@ sifcmd_5    # cri_draft
 sysmem_3    # cri_draft
 func_002efab8    # cri_draft
 func_00325db0    # cri_draft
+func_001002f8    # hand_c
+func_00100370    # hand_c
+func_0035ee88    # hand_c

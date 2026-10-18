@@ -118,6 +118,8 @@ fileio_12	-O1
 fileio_21	-O1
 fileio_25	-O1
 fileio_28	-O1
+func_001002f8	-Os
+func_00100370	-Os
 func_001005a0	-Os
 func_00101c1c	-Os
 func_00101d8c	-Os
@@ -2236,6 +2238,7 @@ func_00344270	-O2
 func_00344480	-Os
 func_003444c0	-O2 -G0
 func_003445a8	-O2 -G0
+func_0035ee88	-Os
 iopreset_7	-Os
 isceSifSetDma	-Os
 loadcore_3	-O2 -G0
