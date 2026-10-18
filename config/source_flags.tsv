@@ -1522,8 +1522,17 @@ func_002a91e0	-O3
 func_002af0c0	-O3
 func_002b2320	-O2 -G0
 func_002b2338	-O2 -G0
+func_002b3828	-O2
 func_002b3878	-Os
+func_002b38d8	-O2
+func_002b38e8	-O2
 func_002b3950	-Os
+func_002b3a78	-O2
+func_002b3ab0	-O2
+func_002b3af0	-O2
+func_002b3c08	-O2
+func_002b3c18	-O2
+func_002b3c50	-O2
 func_002b4378	-Os
 func_002b5198	-Os
 func_002b7978	-Os
