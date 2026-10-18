@@ -4089,3 +4089,11 @@ func_0033ec08    # cri_draft
 func_0033ec20    # cri_draft
 func_0033f068    # cri_draft
 func_0033f080    # cri_draft
+func_00245328    # hand_c
+func_0024752c    # hand_c
+func_00272dd4    # cri_draft
+func_0027a988    # cri_draft
+func_002b3838    # cri_draft
+func_002b3858    # cri_draft
+func_002ed378    # cri_draft
+func_002ed398    # cri_draft
