@@ -247,6 +247,30 @@ def tier_toolchain(tmp: Path) -> None:
     check("ee-gcc-spill-map reports a frame", out.returncode == 0 and "frame=" in out.stdout,
           (out.stdout + out.stderr).strip()[-120:])
 
+    # Region regression (2026-10-18): the blocks sit at [outgoing args][vars][saves].
+    # A fixture with stack arguments and forced locals must report the vars block starting at
+    # `args`, not at 0 (the old code labelled the outgoing-argument area "vars").
+    region = tmp / "region.c"
+    names = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l"]
+    decls = "\n".join(f"    int v{i} = {n} + 1;" for i, n in enumerate(names))
+    sums = " + ".join(f"v{i}" for i in range(12))
+    region.write_text(
+        "extern int sink12(int,int,int,int,int,int,int,int,int,int,int,int);\n"
+        "int demo(int a,int b,int c,int d,int e,int f,int g,int h,int i,int j,int k,int l) {\n"
+        f"{decls}\n    int s = sink12(a,b,c,d,e,f,g,h,i,j,k,l);\n"
+        "    s += sink12(v0,v1,v2,v3,v4,v5,v6,v7,v8,v9,v10,v11);\n"
+        f"    return s + {sums};\n}}\n", encoding="utf-8")
+    out = run([str(SPILLMAP), "--cc", str(DEFAULT_EE_GCC), "--src", str(region),
+               "--flags=-Os", "--work", str(tmp / "sm2")])
+    fm = re.search(r"frame=(\d+) B\s+vars=(\d+)\s+regs=(\d+).*?args=(\d+)", out.stdout, re.S)
+    vm = re.search(r"vars 区（(\d+)\.\.(\d+)）", out.stdout)
+    ok = bool(fm and vm)
+    if ok:
+        args_b, vars_b = int(fm.group(4)), int(fm.group(2))
+        ok = int(vm.group(1)) == args_b and int(vm.group(2)) == args_b + vars_b - 1
+    check("ee-gcc-spill-map region is [args][vars][saves]", ok,
+          (out.stdout + out.stderr).strip()[-160:])
+
 
 def main() -> int:
     if not LAWS_JSON.exists():

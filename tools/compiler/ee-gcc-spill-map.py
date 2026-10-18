@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 """ee-gcc-spill-map —— map a function's stack accesses back to source lines.
 
-Why: a frame that is too large is the most common residual in a big function. The frame is
-`[vars][outgoing args][8 B per saved register]` (L-EE-012), so the first question is *which block*
-differs — and the second is *which source line* fills it. This tool answers both from one compile.
+Why: a frame that is too large is the most common residual in a big function. The blocks sit at
+`[outgoing args][vars][8 B per saved register]` (L-EE-012; measured 2026-10-18 — the earlier text
+listed the components in the wrong order), so the first question is *which block* differs — and the
+second is *which source line* fills it. This tool answers both from one compile.
 
 How: compile with `-gdwarf-2 -fverbose-asm`, read the `.frame` comment for the block sizes, then walk
 `.loc` markers and the `sw`/`sd`/`lw`/`ld` instructions whose offsets fall inside each block.
@@ -54,9 +55,9 @@ def compile_asm(cc: str, src: Path, include: str, flags: list[str], out: Path, d
     return out.read_text(encoding="utf-8", errors="replace")
 
 
-def trace_values(asm: str, frame: int, vars_b: int, saves_start: int) -> list[tuple[int, int, int, int | None]]:
+def trace_values(asm: str, vars_start: int, vars_end: int) -> list[tuple[int, int, int, int | None]]:
     """For every store into the vars block, find the most recent line that defined the stored
-    register. Returns `(slot_offset, call_site_line, register, defining_line)`.
+    register. Returns `(offset, call_site_line, register, defining_line)`.
 
     Reading: `(8, 80, 14, 65)` means "at the call on line 80, slot 8 holds register 14, last written
     on line 65" — that value has to survive the call, so line 65 is the thing to restructure.
@@ -78,7 +79,7 @@ def trace_values(asm: str, frame: int, vars_b: int, saves_start: int) -> list[tu
         mnemonic, operands = m.group(1), m.group(2)
         if mnemonic in ("sw", "sd", "usw"):
             mm = re.match(r"^\$(\d+),\s*(-?\d+)\(\$sp\)", operands)
-            if mm and 0 <= int(mm.group(2)) < vars_b:
+            if mm and vars_start <= int(mm.group(2)) < vars_end:
                 out.append((int(mm.group(2)), line, int(mm.group(1)), last_def.get(int(mm.group(1)))))
                 continue
         first = operands.split(",")[0].strip()
@@ -116,7 +117,9 @@ def main() -> int:
         print(f"frame={frame} B (no .frame comment; vars/args defaulted to 48/48 — pass --frame/vars "
               f"if the split matters)")
 
-    saves_start = vars_b + out_args
+    saves_start = vars_b + out_args   # saves start right after args+vars
+    vars_start = out_args             # outgoing args occupy [0, args); vars follow
+    vars_end = saves_start
     accesses: dict[int, list[tuple[str, int, int]]] = defaultdict(list)
     var_of: dict[tuple[int, int], str] = {}
     line = None
@@ -134,14 +137,14 @@ def main() -> int:
         if off < 0 or off >= frame:
             continue
         accesses[line].append((op, reg, off))
-        if comment and 0 <= off < vars_b:
+        if comment and vars_start <= off < vars_end:
             var_of[(line, off)] = comment
 
     def block(off: int) -> str:
-        if off < vars_b:
-            return "vars"
-        if off < saves_start:
+        if off < vars_start:
             return "args"
+        if off < saves_start:
+            return "vars"
         return "saves"
 
     stores, loads = Counter(), Counter()
@@ -159,7 +162,7 @@ def main() -> int:
     if not accesses:
         print("no stack accesses found (is the function using the frame at all?)")
         return 0
-    print(f"\nvars 区（0..{vars_b - 1}）访问涉及的源码行：{len(stores) + len(loads) and len({k for k in list(stores) + list(loads)})}")
+    print(f"\nvars 区（{vars_start}..{vars_end - 1}）访问涉及的源码行：{len(stores) + len(loads) and len({k for k in list(stores) + list(loads)})}")
     print(f"{'line':>6} {'store':>6} {'load':>5}  offsets / spilled variable names")
     for ln in sorted(set(stores) | set(loads), key=lambda k: -(stores[k] + loads[k]))[:args.top]:
         offs = sorted({off for _op, _r, off in accesses[ln] if block(off) == "vars"})
@@ -167,7 +170,7 @@ def main() -> int:
         suffix = f"   {', '.join(names)}" if names else ""
         print(f"{ln:>6} {stores[ln]:>6} {loads[ln]:>5}  {offs}{suffix}")
     if args.trace_values:
-        rows = trace_values(asm, frame, vars_b, saves_start)
+        rows = trace_values(asm, vars_start, vars_end)
         print("\nvars-block stores, traced to the value's defining line")
         print(f"{'offset':>7} {'call line':>10} {'reg':>4} {'value defined on line':>22}")
         seen = set()
@@ -180,7 +183,7 @@ def main() -> int:
         print("\nreading: those defining lines are the values that must survive the call; they are the")
         print("         candidates for recomputation after it.")
     if slots:
-        print("\nper 8 B slot (vars block):")
+        print("\nper 8 B slot (vars block; offsets are absolute):")
         for slot, count in sorted(slots.items()):
             print(f"  slot {slot} ({slot * 8}..{slot * 8 + 7} B): {count}")
     return 0
