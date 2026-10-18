@@ -4112,3 +4112,5 @@ func_00322880    # cri_draft
 func_0032d060    # cri_draft
 func_00334670    # cri_draft
 func_00344788    # cri_draft
+func_001dc708    # flag_matrix
+func_0028c320    # flag_matrix
