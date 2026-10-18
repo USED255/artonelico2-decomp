@@ -1552,6 +1552,7 @@ func_0023966c    # store_data
 func_00239678    # store_data
 func_00239af8    # permuter
 func_0023ab04    # llm_draft
+func_0023b010    # permuter
 func_0023b404    # llm_draft
 func_0023b794    # ghidra_draft:-O2
 func_0023bb10    # ghidra_draft:-O2
