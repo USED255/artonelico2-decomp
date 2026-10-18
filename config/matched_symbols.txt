@@ -1580,6 +1580,7 @@ func_002406b4    # permuter
 func_00240768    # permuter
 func_00241470    # permuter
 func_00241a04    # permuter
+func_00241a4c    # permuter
 func_00241dd0    # permuter
 func_00242214    # permuter
 func_002424b0    # permuter
