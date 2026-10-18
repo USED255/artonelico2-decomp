@@ -1518,10 +1518,13 @@ func_002a8cc8	-O2
 func_002a8cd8	-O3
 func_002a91e0	-O3
 func_002af0c0	-O3
+func_002b2320	-O2 -G0
+func_002b2338	-O2 -G0
 func_002b3878	-Os
 func_002b3950	-Os
 func_002b4378	-Os
 func_002b5198	-Os
+func_002b7978	-Os
 func_002b7f30	-Os
 func_002b92a0	-Os
 func_002b9610	-Os
@@ -1545,7 +1548,12 @@ func_002d4a48	-O2
 func_002d8ce0	-Os
 func_002dbee0	-O1
 func_002de1a0	-Os
+func_002de408	-Os
+func_002de5a8	-O2 -G0
+func_002de5c8	-O2 -G0
+func_002de810	-Os
 func_002de830	-Os
+func_002deaa8	-Os
 func_002dec30	-Os
 func_002dfb28	-Os
 func_002dfed0	-Os
@@ -1555,47 +1563,79 @@ func_002e0af8	-O2
 func_002e0b88	-O3
 func_002e0c20	-Os
 func_002e0c30	-Os
+func_002e1818	-O2 -G0
+func_002e2b58	-O2 -G0
 func_002e3200	-O2
 func_002e3240	-O2
+func_002e3b48	-O2 -G0
+func_002e3c28	-Os
+func_002e3ee8	-O2 -G0
 func_002e3f68	-O2
 func_002e4110	-O3
 func_002e4130	-O2 -G0
+func_002e4388	-O2
 func_002e4a08	-O3
+func_002e4a38	-Os
+func_002e4a60	-Os
 func_002e4b58	-O2
+func_002e5230	-O2 -G0
+func_002e5300	-Os
+func_002e56a8	-O2 -G0
 func_002e5c38	-O1
+func_002e5cc8	-Os
 func_002e6678	-Os
+func_002e6690	-O2 -G0
+func_002e6740	-O2 -G0
+func_002e69b8	-O2 -G0
+func_002e6b50	-Os
 func_002e7e00	-O2
 func_002e7e28	-O3
+func_002e7e58	-Os
 func_002e7e88	-O3
+func_002e8590	-O2
+func_002e8600	-Os
 func_002e87d0	-Os
 func_002e8dd8	-O3
 func_002e8e78	-O3
 func_002e8ed0	-O3
 func_002e8f28	-O3
 func_002e9270	-Os
+func_002e9488	-O2 -G0
 func_002e95d0	-Os
+func_002e9838	-Os
+func_002e9e40	-Os
 func_002e9ea8	-O2
 func_002e9ed0	-Os
 func_002ea268	-O2
+func_002ea438	-Os
+func_002ea460	-Os
 func_002ea540	-O3
+func_002ea6d0	-O2 -G0
 func_002ea710	-O1
 func_002ead78	-O3
 func_002eb188	-Os
+func_002eb908	-Os
 func_002eb978	-O3
 func_002ebc28	-O3
 func_002ec280	-O1
 func_002ec400	-O2 -fno-optimize-sibling-calls
 func_002ec448	-O2 -fno-optimize-sibling-calls
+func_002ec868	-Os
 func_002ecb40	-O3
 func_002ecb60	-O1
 func_002ece68	-Os
 func_002ece80	-Os
 func_002ecf40	-Os
 func_002ecf58	-Os
+func_002edd80	-O2 -G0
+func_002eddb8	-O2 -G0
 func_002eefc0	-O2
 func_002eeff8	-O1
 func_002ef0d8	-O2
+func_002ef100	-O2
 func_002ef230	-Os
+func_002ef340	-Os
+func_002ef3f8	-Os
 func_002efa18	-O2
 func_002efa80	-O3
 func_002efcc0	-O1
@@ -1613,6 +1653,7 @@ func_002f2820	-O2
 func_002f56b8	-O1
 func_002f59c8	-O3
 func_002f66a0	-O3
+func_002f7378	-Os
 func_002f78b8	-Os
 func_002f78c8	-O3
 func_002f78d8	-O3
@@ -1630,6 +1671,7 @@ func_002f9080	-O2
 func_002f9448	-O3
 func_002f9670	-Os
 func_002f9940	-Os
+func_002f9d98	-Os
 func_002f9dd8	-Os
 func_002fab08	-Os
 func_002fb088	-O2
@@ -1639,9 +1681,13 @@ func_002fb3e8	-O3
 func_002fc100	-O1
 func_002fc888	-O3
 func_002fc8a0	-Os
+func_002fc8d0	-Os
 func_002fcc10	-Os
+func_002fd118	-Os
 func_002fd2b0	-O1
 func_002fd350	-O2 -fno-schedule-insns2
+func_002fd4d0	-Os
+func_002fd520	-Os
 func_002fd738	-O1
 func_002fddf8	-O1
 func_002fe0a8	-Os
@@ -1649,13 +1695,17 @@ func_002fe338	-O1
 func_002fe500	-Os
 func_002fe868	-Os
 func_002ffe50	-O2
+func_00300548	-Os
 func_00300590	-O3
 func_003005a8	-Os
 func_003005c0	-O3
 func_003005d8	-Os
 func_003005f0	-O2
+func_00301178	-Os
 func_003013a8	-O1
+func_00301558	-Os
 func_003016e8	-O3
+func_00302e10	-Os
 func_00302f00	-O3
 func_00302f18	-O2
 func_00302f38	-O3
@@ -1686,37 +1736,64 @@ func_00305a50	-O3
 func_00305a60	-O3
 func_00305ac0	-O1
 func_00305ad0	-O3
+func_00305cc8	-Os
+func_00305d50	-Os
 func_00305de0	-Os
 func_00305f10	-Os
 func_003060f8	-O1
 func_00306968	-O3
 func_00306978	-O3
 func_00306e70	-O3
+func_00306ef0	-O2 -G0
 func_00307908	-O3
 func_00307a68	-O3
+func_0030b8d0	-Os
 func_0030ec78	-O1
 func_0030ed50	-O3
+func_0030ee80	-Os
 func_0030ee98	-O3
 func_0030eec0	-O3
 func_0030fcd8	-O2
 func_0030fcf8	-O1
 func_00310448	-O1
 func_00310460	-O3
+func_00312148	-O2 -G0
 func_00312378	-O1
 func_00312428	-O3
 func_003125d8	-Os
+func_003128d8	-Os
 func_00312db8	-O1
 func_00312dc8	-O1
 func_00312de0	-O3
 func_00312e58	-Os
 func_003131e0	-O3
+func_00313250	-O2 -G0
+func_00313278	-O2 -G0
+func_003132d0	-O2 -G0
+func_003132f8	-O2 -G0
+func_00313320	-O2 -G0
+func_00313348	-O2 -G0
+func_00313370	-O2 -G0
+func_00313398	-O2 -G0
+func_003133c0	-O2 -G0
+func_003133e8	-O2 -G0
+func_00313410	-O2 -G0
+func_00313438	-O2 -G0
+func_00313490	-O2 -G0
+func_003134b8	-O2 -G0
+func_003134e0	-O2 -G0
+func_00313508	-O2 -G0
+func_00313530	-O2 -G0
 func_00313920	-O1
 func_003139d8	-O3
+func_003141e0	-O2
 func_003142e8	-O1
+func_003193c8	-O2 -G0
 func_00319488	-Os
 func_003195b8	-Os
 func_00319630	-Os
 func_00319660	-Os
+func_00319870	-O2 -G0
 func_00319af8	-O3
 func_00319b08	-O3
 func_00319b18	-O2 -G0
@@ -1726,29 +1803,203 @@ func_0031a3b8	-O2
 func_0031a6f0	-O3
 func_0031a7a0	-O1
 func_0031a9c0	-G0
+func_0031aea8	-O2 -G0
+func_0031c7e0	-O2 -G0
+func_0031c818	-O2 -G0
+func_0031c850	-O2 -G0
 func_0031cbc8	-G0
+func_0031cc40	-Os
+func_0031cdb0	-Os
+func_0031ce40	-Os
+func_0031cf48	-Os
+func_0031cfd8	-Os
+func_0031d068	-Os
+func_0031d0f8	-Os
+func_0031d1d0	-Os
+func_0031d298	-Os
+func_0031d370	-Os
+func_0031d7d0	-Os
+func_0031dc30	-Os
+func_0031dc68	-O2
+func_0031de90	-Os
+func_0031df98	-Os
+func_0031e088	-Os
+func_0031e160	-Os
+func_0031e3d8	-Os
+func_0031e4c0	-Os
+func_0031e508	-Os
+func_0031e728	-O2 -G0
+func_0031e888	-Os
+func_0031e970	-Os
+func_0031ec40	-Os
+func_0031ee00	-Os
+func_0031f070	-Os
+func_0031f200	-Os
+func_0031f238	-O2 -G0
+func_0031f268	-Os
+func_0031f370	-Os
+func_0031f470	-Os
+func_0031f508	-Os
+func_0031f570	-Os
+func_0031f650	-Os
+func_0031f6f8	-Os
+func_0031f928	-Os
+func_0031f960	-Os
+func_0031f978	-Os
+func_0031f9c8	-Os
+func_0031fa40	-Os
+func_0031fae8	-Os
+func_0031fb60	-Os
+func_0031fbd0	-Os
+func_0031fc40	-Os
+func_0031fce0	-Os
+func_00320398	-Os
+func_003203f8	-Os
+func_003204c8	-Os
+func_00320730	-Os
+func_00320790	-Os
+func_003209a8	-Os
+func_00320d58	-Os
 func_003217c0	-O3
 func_003217d0	-O2 -G0
 func_00322750	-O2 -G0
 func_00322780	-O2 -G0
+func_00322f90	-O2 -G0
+func_00322fa8	-O2 -G0
+func_00323240	-Os
+func_003232a8	-Os
+func_003232f8	-Os
+func_00323338	-Os
 func_00323368	-O3
+func_00323398	-Os
+func_00324248	-O2 -G0
 func_00324368	-O2
 func_00324398	-O2
 func_00324410	-O1
 func_00324420	-O1
 func_00324718	-Os
+func_00324b00	-Os
+func_00324c18	-Os
+func_00324d10	-Os
 func_00324e58	-O3
+func_00324ee8	-Os
+func_00324f28	-Os
+func_00324f90	-Os
 func_00324fc8	-O3
+func_00325018	-Os
+func_00325050	-Os
+func_00325090	-Os
+func_003250d8	-Os
+func_00325238	-Os
 func_00325288	-O1
+func_00325298	-Os
+func_003252f0	-Os
+func_00325c30	-Os
 func_00325c78	-O1
+func_00325ca8	-Os
 func_00325d00	-Os
+func_00325d18	-Os
+func_00325d58	-Os
+func_00325dc0	-Os
+func_00325e20	-Os
+func_00325e68	-Os
+func_00325ea8	-Os
+func_00325ee8	-Os
+func_00325f38	-Os
+func_00325f88	-Os
+func_00325fd8	-Os
+func_00326020	-Os
+func_00326060	-Os
+func_003260a0	-Os
 func_003260e8	-Os
+func_00326130	-Os
 func_00326178	-O1
+func_003261a8	-Os
+func_00326268	-Os
+func_003262a8	-Os
+func_003262c0	-Os
+func_00326300	-Os
+func_00326360	-Os
 func_00326398	-O3
+func_003263a8	-Os
 func_003263e0	-O3
+func_003263f0	-Os
+func_00326a98	-Os
+func_00326e18	-Os
+func_00326eb8	-O2 -G0
+func_00326ee0	-O2 -G0
+func_00326f08	-O2 -G0
+func_00327160	-O2 -G0
+func_003273d8	-Os
 func_00327418	-Os
+func_00327660	-Os
+func_00327730	-Os
+func_00327848	-Os
+func_003279c8	-O2 -G0
+func_003279e0	-Os
+func_00327d28	-Os
+func_00327db0	-Os
+func_00327e38	-Os
+func_00327ec0	-Os
+func_00327f48	-Os
+func_00327fd0	-Os
+func_00328058	-Os
+func_003281c0	-Os
+func_00328248	-Os
+func_00328310	-Os
+func_00328378	-Os
+func_00328428	-Os
+func_00328490	-Os
 func_003284c8	-O1
+func_003284e8	-Os
 func_00328530	-O1
+func_00328550	-Os
+func_003285a0	-Os
+func_00328620	-Os
+func_003286d8	-O2 -G0
+func_003286f0	-Os
+func_00328928	-Os
+func_003289c8	-Os
+func_00328a60	-Os
+func_00328aa8	-O2 -G0
+func_00328c38	-Os
+func_00328ce0	-Os
+func_00328d28	-Os
+func_00328fc8	-Os
+func_003290a0	-Os
+func_00329108	-Os
+func_00329278	-Os
+func_003292e0	-Os
+func_00329350	-Os
+func_003293b8	-Os
+func_00329528	-Os
+func_00329628	-Os
+func_00329678	-Os
+func_003296d8	-Os
+func_00329778	-Os
+func_00329848	-Os
+func_00329978	-Os
+func_003299b8	-Os
+func_00329a00	-Os
+func_00329a60	-Os
+func_00329ad8	-Os
+func_00329b18	-Os
+func_00329b80	-Os
+func_00329bf0	-Os
+func_00329c60	-Os
+func_00329db8	-Os
+func_0032a070	-Os
+func_0032a128	-Os
+func_0032a168	-Os
+func_0032a1c0	-Os
+func_0032a218	-Os
+func_0032a268	-Os
+func_0032a3b0	-Os
+func_0032a528	-Os
+func_0032a580	-Os
+func_0032a6a8	-Os
+func_0032a868	-Os
+func_0032a928	-O2 -G0
 func_0032bf10	-Os
 func_0032c030	-Os
 func_0032c058	-Os
@@ -1759,25 +2010,93 @@ func_0032c1f8	-Os
 func_0032c218	-O2 -G0
 func_0032c3b8	-O1
 func_0032c3f0	-O1
+func_0032d668	-Os
+func_0032d6d8	-Os
+func_0032d748	-Os
+func_0032d7b8	-Os
+func_0032d820	-Os
+func_0032d9b8	-Os
+func_0032da90	-Os
+func_0032db00	-Os
+func_0032dbd8	-Os
+func_0032dc68	-Os
+func_0032dcf8	-Os
+func_0032dd88	-Os
+func_0032e7c0	-Os
+func_0032e8b0	-Os
+func_0032ea30	-Os
+func_0032ef00	-Os
+func_0032efb8	-Os
 func_0032f008	-O3
+func_0032f0a8	-Os
+func_0032f168	-O2 -G0
+func_0032f1b8	-Os
 func_0032f530	-Os
 func_00330658	-O2
+func_00331f48	-O2 -G0
+func_003324b0	-O2 -G0
 func_00332b78	-Os
 func_00332e58	-O2
 func_003341b0	-O1
 func_003341c0	-O1
 func_00335048	-O3
 func_00336cd8	-O3
+func_00337510	-Os
+func_00337578	-Os
+func_00337650	-Os
+func_00337730	-Os
+func_00337810	-Os
+func_003378f0	-Os
+func_00337998	-Os
+func_00337a78	-Os
+func_00337b28	-O2 -G0
+func_003382b8	-O2 -G0
+func_00338bc8	-O2 -G0
+func_0033ab00	-O2 -G0
 func_0033aec8	-O1
+func_0033b0f8	-Os
+func_0033b2c0	-Os
+func_0033b350	-Os
+func_0033b498	-Os
+func_0033b4e0	-Os
+func_0033b620	-Os
+func_0033b710	-Os
+func_0033b860	-Os
 func_0033b9a8	-O2
+func_0033bb10	-Os
+func_0033bc48	-Os
+func_0033bd50	-Os
+func_0033c010	-Os
+func_0033c400	-Os
+func_0033c630	-Os
 func_0033c7d8	-O2
+func_0033cb38	-Os
+func_0033cbc8	-Os
+func_0033cd80	-Os
+func_0033ce80	-Os
+func_0033d030	-Os
+func_0033d1a8	-Os
+func_0033d318	-Os
+func_0033d448	-Os
+func_0033d520	-Os
+func_0033d780	-Os
 func_0033e790	-Os
+func_0033e8d0	-Os
+func_0033e9c0	-Os
+func_0033f108	-O2 -G0
 func_0033f328	-O1
+func_0033fbd0	-O2 -G0
+func_0033fc18	-O2 -G0
 func_00340398	-O3
 func_00340eb0	-O3
 func_00342c20	-O3
 func_00342d58	-O1
 func_003434d8	-O3
+func_003445c0	-Os
+func_003447c8	-Os
+func_00344998	-Os
+func_00344b98	-Os
+func_00344c98	-Os
 func_00346278	-Os
 func_00346738	-O1
 func_00346750	-O3
@@ -1854,6 +2173,31 @@ func_002428f8	-Os
 func_0018e090	-Os
 func_002e2cc8	-Os
 func_002ebc60	-O1
+func_0032cc60	-Os
+func_0032ccc8	-Os
+func_0032cef8	-Os
+func_0032d020	-Os
+func_0032d330	-Os
+func_0032d3f8	-Os
+func_0032e960	-Os
+func_0032f020	-Os
+func_00330628	-O2 -G0
+func_00330708	-O2 -G0
+func_00336d58	-Os
+func_00336f18	-Os
+func_00336f60	-Os
+func_00336fd0	-Os
+func_00337448	-O2 -G0
+func_003374a8	-Os
+func_0033aee0	-O2 -G0
+func_0033afb0	-Os
+func_0033b9c8	-Os
+func_0033c7f8	-Os
+func_0033c940	-Os
+func_0033e7a8	-Os
+func_0033f340	-Os
+func_0033f3f8	-O2 -G0
+func_003403c0	-O2 -G0
 func_00342488	-Os
 func_00254a84	-Os
 func_0012a77c	-Os
@@ -1862,12 +2206,15 @@ func_00180c38	-Os
 func_00236a00	-Os
 func_002650c4	-Os
 func_00192644	-Os
+func_0032c6d8	-Os
 func_00346518	-Os
 func_00343630	-O1
 func_0014d130	-Os
 func_0028fcc0	-Os
 func_0010838c	-Os
 func_00104700	-Os
+func_0032c320	-O2 -G0
+func_0032c5f0	-Os
 func_00340458	-O3
 func_001083e8	-Os
 func_00324de8	-O3
@@ -1876,11 +2223,21 @@ func_0029cd98	-Os
 baseelf_81	-O1
 func_0023631c	-Os
 func_003361e0	-Os
+func_003373a0	-Os
 func_0033f098	-O2 -G0
 func_0033f0c8	-O2 -G0
 func_00340518	-Os
 func_00342a38	-Os
+func_003434b0	-Os
 func_003436e0	-Os
 func_00344270	-O2
+func_00344480	-Os
+func_003444c0	-O2 -G0
+func_003445a8	-O2 -G0
+iopreset_7	-Os
 isceSifSetDma	-Os
+loadcore_3	-O2 -G0
+modload_3	-O2 -G0
 sceSifSetDma	-Os
+sifcmd_5	-O2 -G0
+sysmem_3	-O2 -G0
