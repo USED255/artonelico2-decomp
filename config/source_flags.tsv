@@ -506,6 +506,7 @@ func_001931c4	-O1
 func_001931e8	-O1
 func_001934a8	-O2
 func_001934c8	-O2
+func_001936e8	-Os
 func_00193a84	-Os
 func_00193b38	-Os
 func_00193b94	-O1
@@ -563,6 +564,7 @@ func_001a57e0	-O1
 func_001a62ac	-O1
 func_001a62d0	-O1
 func_001a66bc	-Os
+func_001a8de4	-Os
 func_001a8e04	-Os
 func_001ab8b8	-O2
 func_001ab9a8	-O2
