@@ -414,3 +414,5 @@ loadcore_3	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹配
 modload_3	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹配
 sifcmd_5	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹配
 sysmem_3	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹配
+func_002efab8	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹配
+func_00325db0	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹配

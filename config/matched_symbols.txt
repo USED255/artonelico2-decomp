@@ -4053,3 +4053,5 @@ loadcore_3    # cri_draft
 modload_3    # cri_draft
 sifcmd_5    # cri_draft
 sysmem_3    # cri_draft
+func_002efab8    # cri_draft
+func_00325db0    # cri_draft
