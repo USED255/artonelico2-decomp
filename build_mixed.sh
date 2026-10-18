@@ -50,7 +50,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 BINUTILS="${BINUTILS:-$HOME/eecc/ps2binutils}"
 GCC="${GCC:-${EE_GCC:-$HOME/eecc/ee-gcc3.2-040921/bin/ee-gcc}}"
 GCC_CRI="${GCC_CRI:-${EE_GCC_CRI:-$HOME/eecc/ee-gcc2.96/bin/ee-gcc}}"   # CRI sections (ADXT 10.03 / ADXRT 3100, R17 section 4.2)
-CCMAP="$HERE/config/compiler_map.tsv"                    # the compiler of each source: <source><TAB>game|cri
+CCMAP="$HERE/config/compiler_map.tsv"                    # the compiler of each source: <source><TAB>game|cri[<TAB>note]; only the first two columns are read
 LD="${LD:-$HOME/eecc/deb/root/usr/bin/mips-linux-gnu-ld.bfd}"
 # The ld from the Debian package needs its own shared libraries. Do not hard-code a personal home
 # directory: `LD_LIBDIR` (or `EE_LIBDIR`) names it, the default follows `$HOME`, and an absent

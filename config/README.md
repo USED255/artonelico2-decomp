@@ -147,22 +147,20 @@ the result on `recvx-decomp` (MIT): a CRI C file built with
 `ee-gcc 2.96 -O2 -G0` agrees with the Japanese binary byte for byte. Example:
 `AIFF_GetInfo`, 908 bytes, sha1 `4e205079...` on both sides.
 
-The file has a header row. The header row is
-`source-basename<TAB>compiler`. Each data row states the compiler for one source:
+The file has a header row: `source-basename<TAB>compiler<TAB>note`. Each data row states the
+compiler for one source:
 
 ```
-<source-basename><TAB>game|cri
+<source-basename><TAB>game|cri<TAB>note
 ```
 
 - `game` selects `--gcc` (`ee-gcc 3.2-ee-040921`).
 - `cri` selects `--gcc-cri` (`ee-gcc 2.96-ee-001003-1`).
 - An absolute compiler path is also permitted.
 - List a source only when it is not a game source. The default is `game`.
-
-Two CRI entries are these:
-
-- `func_0031a9c0` — the CRI memcpy2 function (ADXB).
-- `func_0031cbc8` — the CRI adxf_wait_1ms function.
+- The third column `note` is **free text** (why this source needs the CRI compiler, which
+  function it is, and so on). Readers take only the first two columns; spaces in the note do
+  not affect parsing.
 
 Both archives are locked in `toolchain.lock.json`. CI installs both archives and
 exports `GCC_CRI`.
