@@ -3651,3 +3651,6 @@ func_00140974    # llm_draft+permuter
 func_0029cd98    # llm_draft
 baseelf_81    # llm_draft
 func_0023631c    # llm_draft
+func_002d8ce0    # cri_draft
+func_002a8cc8    # cri_draft
+func_003217d0    # cri_draft
