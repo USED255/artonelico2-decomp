@@ -72,6 +72,11 @@ reading the wrong artefact. A claim that holds at `-O2` and silently not at `-Os
 * **Tiers**: `T1` = located in the shipped `cc1` and re-verified in the binary; `T2` = measured behaviour;
   `T3` = context or negative knowledge. A law's tier is the honest statement of how much to trust it.
 
+**Live observation (optional).** `tools/compiler/ee-gcc-observe-alloc.py` drives the `cc1` under `gdb`.
+It was tested with gdb 16.3 on the pinned `cc1`; on any other build the hook addresses are resolved from
+that binary by symbol and the eight-byte entry guards are skipped with a warning. When gdb is absent the
+tool exits with a message, and the check suite reports its selftest as SKIP — never as a pass.
+
 ## Reporting a failure
 
 If a check fails on your machine, the useful report is: **which check**, the **`cc1` sha256**, and the

@@ -42,6 +42,7 @@ cannot run a Maintainer tool.
 | --- | --- | --- |
 | `tools/compiler/laws-query.py` | Queries the compiler handbook's laws by id, pass, symptom, lever or free text; `--json` for tooling. | Contributor needed |
 | `tools/compiler/ee-gcc-observe.py` | Compiles eighty-one synthetic fixtures and asserts what the handbook says must appear (`--selftest`), or prints frame/pool/mnemonic observations for your own file. | Contributor needed |
+| `tools/compiler/ee-gcc-observe-alloc.py` | Observes the global allocation decisions live under gdb (order, `find_reg` attempts, spill set, preference edits with `--prefs`) and cross-checks them against `-da` dispositions. `--selftest` needs gdb. | Contributor needed |
 | `tools/compiler/ee-gcc-anchor.py` | Resolves a symbol, address, struct or constant in the shipped `cc1`, so a rule can be anchored to the shipped compiler instead of to mainline. `selftest` checks the anchors this machine can verify. | Contributor needed |
 | `tools/compiler/ee-gcc-passdiff.py` | Compiles two spellings of one function and reports the first pass where they diverge. | Contributor needed |
 | `tools/compiler/ee-gcc-spill-map.py` | Maps a too-large frame onto its blocks and source lines, and traces each spill back to the line that defined the value. | Contributor needed |

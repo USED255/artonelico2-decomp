@@ -5,7 +5,7 @@
 本页记录**编译器怎么做**；由此推出的源写法杠杆在 [FIELD-GUIDE.md](FIELD-GUIDE.md)，定位流程在 [DIAGNOSTICS.md](DIAGNOSTICS.md)。
 英文版每条含完整模板（tier / 源码锚点 / 二进制锚点 / receipt / falsifies / scope）；本中文版按增量维护，先给条目与结论。
 
-**核验状态**：本手册引用的 **13 个二进制锚点**已全部用 `tools/compiler/ee-gcc-anchor.py` 对出厂 `cc1` 复核，地址全部一致（另两条 law 无二进制锚点，属 `T3`）。工具链变动后请重跑此检查。
+**核验状态**：本手册引用的 **40 条符号声明**（22 条 law，含 related 锚点）已全部用 `tools/compiler/ee-gcc-anchor.py` 对出厂 `cc1` 复核，地址全部一致；另有 4 条 law 属 `T3`（仅行为证据）。`tools/check/test_compiler_laws.py` 会在本机有工具链时逐条复核；工具链变动后请重跑此检查。
 注意一个**重名陷阱**：`find_reg` 在出厂 cc1 里有两个——`0x08134570`（`reload1.c:1685`）与 `0x081acd64`（`global.c:1329`）——**一律按地址消歧，不要按名字**。
 
 **证据路径约定**：每条 law 的 `evidence` 写明 receipt 在哪。**裸路径**表示在本仓库内；`private:` 指向项目的**私有研究仓库**（原始证据 dump，故不公开）；`party:` 指向私有仓库里**本项目自己的研究报告**。
@@ -208,7 +208,9 @@ falsifies：「凡是既要传给调用、调用后又要用的值，都必须�
 | 80–111 | `COP0_REGS` |
 | 112–143 | `VU0_REGS` |
 
-`ALL_REGS` 共 **140** 个（`FIRST_PSEUDO_REGISTER`），`N_REG_CLASSES` = **29**，`HARD_REG_SET` = 192 位。
+`ALL_REGS` 共 **140** 个（这是**成员数**，不是伪寄存器边界：编号到 143，72–75 保留），
+`N_REG_CLASSES` = **29**，`HARD_REG_SET` = 192 位；**第一个伪寄存器是 144**，这也正是它按 `3 × 64` 位取整的原因。
+活读 `debug_reg_names`（`0x0821f280`）只有 0..143 项，下一格已不是名字。
 GPR 里被 `fixed_reg_set` 固定的是 `0,1,26,27,28,29,31`；`call_used_reg_set` 剩下 `2–15,24,25` 为调用者保存
 ⇒ **可分配的 callee-saved GPR 恰好是 `{16..23, 30}`**（8 个 `$s0`–`$s7` + `$fp`），加上 `$ra` 正好 **10 个保存槽**，与 [L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers) 的实测上限吻合。
 
@@ -275,6 +277,11 @@ falsifies：「按 mainline 的 `find_reg` 写的重放能复现出厂决策」�
 **T2**｜源码锚点 `global.c:400`（[L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--a-two-step-ladder-whose-decision-is-a-side-effect) 的阶梯；规则本身是**实测**而非读出）｜二进制锚点 `reg_renumber @ 0x082ea1ec`、`allocno @ 0x082e8a54`、`allocno_order @ 0x082e8a58`｜
 falsifies：「把所有已分配的寄存器都禁掉是安全的」（掉约 6 点），以及「mainline 的两趟扫描就是出厂算法」（12.8%）。
 **杠杆**：按上面的池与禁止集预测分配；**剩余误差主要是级联**——早期一次选错会污染后面的冲突集（41.0% → 82.7%）。
+
+**偏好列表在排序前先被编辑**：`expand_preferences` 先把复制相关的 allocno 偏好合并进来，`prune_preferences` 再去掉冲突、固定、
+跨调用的调用者保存与类外寄存器，并填 `regs_someone_prefers`——两步都能用 `ee-gcc-observe-alloc.py --prefs` 观测
+（[L-EE-053](LAWS.md#l-ee-053--a-copy-records-a-hard-register-preference-on-whichever-side-is-a-global-pseudo) 记录、[L-EE-054](LAWS.md#l-ee-054--preferences-are-pruned-before-ordering-conflicts-fixed-caller-saved-for-call-crossing-values-and-out-of-class-registers-are-removed) 剪枝）。
+上面的候选/选择规则吃的是**剪枝后**的列表，所以 RTL 里看得到的偏好不一定是选择规则看到的那个。
 
 **首选语义（精确量测）**：427 个带首选列表的 allocno 中，**323 个取「候选内第一个首选」，取更后面首选的为 0**——「取候选内第一个首选」就是全部规则。
 没有首选时，选中的**不是**最小候选（461 例中有 334 例如此，且真值**都在候选集内**），说明另有东西决定扫描。
@@ -1244,10 +1251,40 @@ falsifies：「浮点装载与其首次使用之间应当出现 load-delay 或 C
 
 ---
 
+## L-EE-053 · 复制把硬寄存器偏好记在「全局伪寄存器」那一侧
+
+`set_preference(dest, src)` 对每次 store 运行，方向决定归属：dest 是硬寄存器、src 是全局伪寄存器 ⇒ 偏好记在 **src** 的 allocno；
+反之记在 **dest** 的 allocno。会先查 `reg_renumber`，所以被局部着色的伪寄存器贡献的是它的**硬寄存器**，不是伪寄存器号。
+
+实测（`func_001d4b88`，`-Os -fno-thread-jumps`，effect-diff）：842 次可解码调用、84 次改变了掩码；allocno 2 得到 `{5}`（来自 `$a1`）；
+allocno 24 得到 `{13,14}`——`$t5/$t6` 是**目的侧**的硬寄存器，位却记在源 allocno 上；allocno 13/11 得到 `{15}`（`$t7`）。
+返回点差分与 prune 入口快照一致 ⇒ 方向是**观测**到的，不是重放出来的。
+
+**T2**｜源码锚点 `global.c:1615`（出厂解析到 `global.c:1967`）｜二进制锚点 `set_preference @ 0x081ae780`｜
+falsifies：「偏好只来自形参 ABI home 或同向复制」。
+**杠杆**：追 effect-diff，不要重放源码；`reg_renumber` 可能让它指向源码里根本没出现过的寄存器。
+
+## L-EE-054 · 排序前先剪枝：冲突、固定、跨调用的调用者保存、类外寄存器都会被去掉
+
+`prune_preferences` 在 `allocno_order` 排好序之后、第一次 `find_reg` 之前，按优先级**从高到低**对每个 allocno：
+去掉 `hard_reg_conflicts`；去掉 `fixed_reg_set`，跨调用（`calls_crossed>0`）时再去掉 `call_used_reg_set`；
+去掉类外寄存器；空了就恢复整类重试；并由仍等待分配的冲突 allocno 填 `regs_someone_prefers`。
+dump 的 `;; N preferences:` 是**剪枝后**打印的，所以它显示的是结果列表。
+
+实测（同一函数）：expand 改变 **83** 个 allocno 的偏好掩码，prune 改变 **112** 个；6 个没拿到寄存器的 allocno 里，
+4 个只带调用者保存偏好（`{5}`/`{13,14}`/`{15}`，`calls_crossed` 2–30）且剪枝后**全空**；另外 2 个（allocno 12/9）本就无偏好——纯压力。
+
+**T2**｜源码锚点 `global.c:903`（出厂解析到 `global.c:1236`）｜二进制锚点 `prune_preferences @ 0x081ac580`｜
+falsifies：「dump 里打印的偏好列表就是选择规则看到的列表」。
+**杠杆**：先判断偏好是否活过剪枝，再怀疑选择规则；调用者保存偏好扛不过调用，要缩短活跃期或挪走复制。
+
+---
+
 ## 仍未解决
 
 * `$L` 计数器精确公式（多标签函数）。
-* ~~EE 构建的 `FIRST_PSEUDO_REGISTER`~~ —— **已结清：140**，从活 `cc1` 读出（[L-EE-016](LAWS.md#l-ee-016--the-ee-register-file-140-hard-registers-in-29-classes)）。
+* ~~EE 构建的 `FIRST_PSEUDO_REGISTER`~~ —— **已结清**：`ALL_REGS` 有 **140 个成员**，第一个伪寄存器是 **144**
+  （72–75 保留），从活 `cc1` 读出（[L-EE-016](LAWS.md#l-ee-016--the-ee-register-file-140-hard-registers-in-29-classes)）。
 * **着色已部分建模。** [L-EE-018](LAWS.md#l-ee-018--global-allocation-preference-first-then-the-lowest-register-left-after-two-passes-that-first-avoid-registers-other-allocnos-prefer) 用实测出的候选/选择规则复现留出集 **46.5%** 的决策（此前启发式 34.3%、按 mainline 写的两趟重放 9.1%）；把动态冲突集换成真值后同一规则达 **82.7%** ⇒ 剩余误差主要是**级联**，不是单次判断错。
   [L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--a-two-step-ladder-whose-decision-is-a-side-effect) 解释了为什么照搬 mainline 不行：出厂的 `find_reg` 带 `losers` 与三个标志、并按重试阶梯调用（`alt_regs_p` 在切换）。
   下一步：钉住**处理顺序**（`allocno_compare`）与阶梯的精确语义。

@@ -43,12 +43,16 @@ python3 tools/compiler/ee-gcc-observe.py --src candidate.c --flags="-O2 -G0"
 # 6. 帧太大？**先分解再动代码**：每次溢出都溯回定义它的那一行，而**最后一次使用**决定活跃区间。
 python3 tools/compiler/ee-gcc-spill-map.py --src candidate.c --flags="-O2 -G0"
 
-# 7. 出厂编译器在决策点**实际**怎么做？
+# 7. 寄存器分配残留？直接拿编译器的答案：顺序、每次 find_reg 尝试、没拿到寄存器的 allocno，
+#    以及剪枝去掉了哪些偏好。需要 gdb。
+python3 tools/compiler/ee-gcc-observe-alloc.py --src candidate.c --flags="-O2 -G0" --prefs
+
+# 8. 出厂编译器在决策点**实际**怎么做？
 python3 tools/compiler/ee-gcc-anchor.py --cc1 "$CC1" symbol allocno_compare --disasm 64
 python3 tools/compiler/ee-gcc-anchor.py --cc1 "$CC1" struct allocno
 python3 tools/compiler/ee-gcc-anchor.py --cc1 "$CC1" const 0x821e360 --bytes 8
 
-# 8. 复测。没移动读数的杠杆不是杠杆。
+# 9. 复测。没移动读数的杠杆不是杠杆。
 ```
 
 ## 读一条 law 时看什么

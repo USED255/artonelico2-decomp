@@ -2,8 +2,9 @@
 
 [English](README.md) · [laws](LAWS.zh-CN.md) · [实战案例](CASE-STUDY.zh-CN.md) · [源码研究](SOURCE-STUDY.zh-CN.md) · [agent 技能](AGENT-SKILL.zh-CN.md) · [pass 地图](PASSES.zh-CN.md) · [诊断流程](DIAGNOSTICS.zh-CN.md) · [杠杆表](FIELD-GUIDE.zh-CN.md) · 机器可读索引：[`laws.json`](laws.json)
 
-**对出厂编译器核验过**：本手册引用的 **13 个**二进制锚点已全部对出厂 `cc1` 复核、地址一致；
-`python3 tools/check/test_compiler_laws.py` 会强制分级前置条件，并在本机有工具链时逐条复核锚点。
+**对出厂编译器核验过**：本手册引用的 **40 条符号声明**（22 条 law，含 related 锚点）已全部对出厂 `cc1` 复核、
+地址一致；另有 4 条 law 属 `T3`（仅行为证据）。`python3 tools/check/test_compiler_laws.py` 会强制分级前置条件，
+并在本机有工具链时逐条复核。
 
 本手册记录 **`ee-gcc 3.2-ee-040921`** 的行为——本项目 PS2 Emotion Engine 代码所用的编译器，
 构建参数为 `-O2 -falign-functions=4 -ffunction-sections`。
@@ -40,6 +41,7 @@
 | `tools/compiler/ee-gcc-spill-map.py` | 把过大的帧映射到区块与源码行，并把每次溢出溯源到定义该值的那一行 |
 | `tools/compiler/ee-gcc-coverage.py` | 测量手册解释了一份反汇编的多少，并把剩下的分成「只能来自汇编」与「尚未解释」 |
 | `tools/compiler/ee-gcc-observe.py` | 编译 81 组合成夹具并断言「本手册说必须出现的东西」（`--selftest`），或对你自己的文件打印帧/常量池/助记符观测 |
+| `tools/compiler/ee-gcc-observe-alloc.py` | 在 gdb 下**实时观测**全局分配决策：分配顺序、每次 `find_reg` 尝试、溢出集合，`--prefs` 还给出偏好修改；并与 `-da` 的 dispositions 自校验（`--selftest` 需要 gdb） |
 
 `make check` 会跑 law 数据校验、二进制锚点复核，以及上述每条命令的冒烟测试。
 

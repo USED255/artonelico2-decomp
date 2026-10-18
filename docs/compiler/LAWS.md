@@ -20,9 +20,10 @@ each law live in [FIELD-GUIDE.md](FIELD-GUIDE.md); the workflow that finds the o
 **The rule that matters most:** cite the line number `addr2line` reports for the **shipped** `cc1`,
 and keep the mainline line only as a cross-reference with its measured offset.
 
-**Verification status.** All **13** binary anchors cited in this handbook have been resolved against the
-shipped `cc1` with `tools/compiler/ee-gcc-anchor.py` and match their addresses (two laws cite no binary
-anchor and are `T3`). Run the same check after any toolchain change. Beware one **ambiguous name**:
+**Verification status.** All **40** symbol claims (22 laws, related anchors included) have been resolved
+against the shipped `cc1` with `tools/compiler/ee-gcc-anchor.py` and match their addresses; four laws are
+`T3` (behaviour-only). `tools/check/test_compiler_laws.py` re-verifies every claim whenever the toolchain is
+present. Run the same check after any toolchain change. Beware one **ambiguous name**:
 `find_reg` occurs twice — `0x08134570` (`reload1.c:1685`) and `0x081acd64` (`global.c:1329`) — so always
 disambiguate by address, not by name.
 
@@ -355,8 +356,10 @@ Read from a **live** `cc1` (gdb, breakpoint at `local_alloc`, after `init_reg_se
 | 80–111 | `COP0_REGS` |
 | 112–143 | `VU0_REGS` |
 
-`ALL_REGS` spans **140** registers (`FIRST_PSEUDO_REGISTER`), `N_REG_CLASSES` is **29**, and a
-`HARD_REG_SET` is 192 bits.
+`ALL_REGS` spans **140** registers, `N_REG_CLASSES` is **29**, and a `HARD_REG_SET` is 192 bits. The 140 is
+a **member count**, not the pseudo boundary: the numbering runs to 143 (72–75 are reserved), so
+`FIRST_PSEUDO_REGISTER` is **144** — which is also why the set rounds to `3 × 64` bits. Read live, the
+register-name table `debug_reg_names` (`0x0821f280`) has entries 0..143 and the next slot is not a name.
 
 `fixed_reg_set` leaves `0, 1, 26, 27, 28, 29, 31` fixed among the GPRs (zero, at, k0, k1, gp, sp, ra);
 `call_used_reg_set` leaves `2–15, 24, 25` caller-saved. Therefore the **allocatable callee-saved GPRs are
@@ -451,6 +454,14 @@ The rule, fitted by measurement (see the receipt):
   **cascade** — one wrong early pick poisons the later conflict sets (41.0% → 82.7% with a correct
   context), so getting the processing order and each decision right matters more than widening the pool
 * **Scope** `ee-gcc 3.2-ee-040921`, GPR allocnos, served-out split on this machine
+
+**Preferences are edited before this rule runs.** `expand_preferences` unions the preferences of
+copy-related allocnos; `prune_preferences` then clears conflicts, fixed, caller-saved (for a call-crossing
+allocno) and out-of-class registers, and fills `regs_someone_prefers`. Both phases are observable with
+`tools/compiler/ee-gcc-observe-alloc.py --prefs`: [L-EE-053](#l-ee-053--a-copy-records-a-hard-register-preference-on-whichever-side-is-a-global-pseudo)
+records preferences, [L-EE-054](#l-ee-054--preferences-are-pruned-before-ordering-conflicts-fixed-caller-saved-for-call-crossing-values-and-out-of-class-registers-are-removed)
+prunes them. Rules 1–4 consume the **post-prune** list, so a preference visible in the RTL is not
+necessarily the one the choice sees.
 
 **Preference semantics, measured exactly:** of the 427 allocnos that carry a preference list, **323 pick the first entry
 that is still available** and **none picks a later entry** — "first available preference" is the whole rule. Where there
@@ -1661,12 +1672,67 @@ offsets **0, 4, 12, 8**, and an FP accumulation loop is ordered differently at `
 * **Scope** `ee-gcc 3.2-ee-040921` at `-O1`/`-O2`/`-Os` with `-G0`, five FP shapes plus a `double` load;
   integer load delays and 2.96 were not measured here
 
+## L-EE-053 · A copy records a hard-register preference on whichever side is a global pseudo
+
+`set_preference(dest, src)` runs for every store while conflicts are collected. Two directions matter:
+
+* `dest` is a hard register and `src` is a global pseudo → the preference is recorded **on the src allocno**;
+* `src` is a hard register and `dest` is a global pseudo → the preference is recorded **on the dest allocno**.
+
+`reg_renumber` is consulted first, so a pseudo that local allocation already placed contributes its **hard
+register**, not its pseudo number. The recorded preferences are inputs to
+[L-EE-018](#l-ee-018--global-allocation-preference-first-then-the-lowest-register-left-after-two-passes-that-first-avoid-registers-other-allocnos-prefer)
+and are pruned by [L-EE-054](#l-ee-054--preferences-are-pruned-before-ordering-conflicts-fixed-caller-saved-for-call-crossing-values-and-out-of-class-registers-are-removed)
+before ordering.
+
+Measured on `func_001d4b88` (`-Os -fno-thread-jumps`, effect-diff at the return point): 842 decoded calls,
+84 changed a preference mask. Allocno 2 gained `{5}` from `$a1`; allocno 24 gained `{13,14}` although
+`$t5`/`$t6` were the **destination** side — the bits land on the source allocno; allocnos 13 and 11 gained
+`{15}` (`$t7`). The diff agrees with the prune-entry snapshot, so the direction is observed, not replayed.
+
+* **Tier T2** · **Source anchor** `global.c:1615` (mainline `set_preference`; the shipped binary resolves it
+  to `global.c:1967`) · **Binary anchor** `set_preference @ 0x081ae780`
+* **Falsifies** the assumption that a preference only comes from a parameter's ABI home or from a same-direction copy
+* **Lever** trace the effect (mask diff) instead of replaying the source; `reg_renumber` can make the
+  recorded register one that never appears in the C source
+* **Scope** `ee-gcc 3.2-ee-040921` at `-Os -fno-thread-jumps` on one reconstruction (`func_001d4b88`);
+  the rule text is mainline gcc-3.2.3
+
+---
+
+## L-EE-054 · Preferences are pruned before ordering: conflicts, fixed, caller-saved for call-crossing values, and out-of-class registers are removed
+
+`prune_preferences` runs after `allocno_order` is sorted and before the first `find_reg`. For every allocno,
+in descending priority order, it:
+
+1. removes the registers in the allocno's `hard_reg_conflicts`;
+2. removes `fixed_reg_set`, plus `call_used_reg_set` when `calls_crossed > 0`;
+3. removes registers outside the allocno's preferred class;
+4. if nothing is left, restores the full class and retries;
+5. fills `regs_someone_prefers` from the allocnos that conflict with it and still wait for a register.
+
+The dump's `;; N preferences:` lines are printed **after** this step, so they show the post-prune list.
+
+Measured on `func_001d4b88` (`-Os -fno-thread-jumps`): 83 allocnos changed a preference mask at expand and
+112 at prune. Of the 6 allocnos that got no register, 4 carried only caller-saved preferences
+(`{5}` / `{13,14}` / `{15}`, `calls_crossed` 2–30) and left prune with **empty** sets; the other two
+(allocnos 12 and 9) had no preference at all — pure pressure.
+
+* **Tier T2** · **Source anchor** `global.c:903` (mainline `prune_preferences`; the shipped binary resolves it
+  to `global.c:1236`) · **Binary anchor** `prune_preferences @ 0x081ac580`
+* **Falsifies** the reading that the preference list printed in a dump is the list the choice rule sees
+* **Lever** check whether a preference survives pruning before blaming the choice rule; a caller-saved
+  preference cannot survive a call, so shorten the live range or move the copy instead
+* **Scope** `ee-gcc 3.2-ee-040921` at `-Os -fno-thread-jumps` on one reconstruction (`func_001d4b88`);
+  the rule text is mainline gcc-3.2.3
+
 ---
 
 ## Open items
 
 * The exact `$L` counter formula (multi-label functions).
-* ~~`FIRST_PSEUDO_REGISTER` for the EE build~~ — **settled**: **140**, read from a live `cc1`
+* ~~`FIRST_PSEUDO_REGISTER` for the EE build~~ — **settled**: `ALL_REGS` has **140 members** and the first
+  pseudo register is **144** (72–75 are reserved), read from a live `cc1`
   ([L-EE-016](LAWS.md#l-ee-016--the-ee-register-file-140-hard-registers-in-29-classes)).
 * **Colouring is now partially modelled.** [L-EE-018](LAWS.md#l-ee-018--global-allocation-preference-first-then-the-lowest-register-left-after-two-passes-that-first-avoid-registers-other-allocnos-prefer)
   reproduces **46.5%** of held-out decisions with a measured candidate/selection rule, against 34.3% for

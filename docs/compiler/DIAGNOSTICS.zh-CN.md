@@ -49,27 +49,31 @@ python3 tools/compiler/ee-gcc-passdiff.py a.c b.c --cc ~/eecc/ee-gcc2.96/bin/ee-
 
 ## 3.5 直接问编译器（真值）
 
-当问题是「这个值被分到哪个寄存器」时，不要从反汇编猜——去问编译器。`global_alloc` 跑完后分配才定，
-结果写进 **`reg_renumber`**（`short` 数组，`-1` 表示没拿到寄存器）。在 `global_alloc` 返回后的那条指令
-（`toplev.c:3316` 调用它）下断点，然后读表：
+当问题是「这个值被分到哪个寄存器、为什么」时，不要从反汇编猜——去问编译器。打包好的配方是一条命令：
 
 ```sh
-# 先找到调用点
-objdump -d "$CC1" | grep 'call .*<global_alloc>'
-# 再在 gdb 里于返回地址处：
-#   for i < max_allocno:  num = allocno_order[i]
-#                         pseudo = allocno[num].reg
-#                         chosen = reg_renumber[pseudo]
+python3 tools/compiler/ee-gcc-observe-alloc.py --src candidate.c --flags="-O2 -G0" --prefs
 ```
 
-这样确立三件事（已在同一输入的 `-da` dump 上核对）：`allocno_order[i]` 是 **allocno 下标**、
-`allocno[num].reg` 是**伪寄存器号**、`reg_renumber[pseudo]` 是决策。`-da` dump 打印的
-（`;; Register dispositions: 169 in 2 …`）就是这张表，因此「从 dump 量出的」与「运行时读到的」一致——
-这正是本手册里重放精度可信的前提。
+它报告分配顺序、每次 `find_reg` 尝试（含 `alt_regs_p`）、没拿到寄存器的 allocno，以及 `--prefs` 下
+排序之前 `expand_preferences` / `prune_preferences` 做的偏好修改
+（[L-EE-053](LAWS.md#l-ee-053--a-copy-records-a-hard-register-preference-on-whichever-side-is-a-global-pseudo)、
+[L-EE-054](LAWS.md#l-ee-054--preferences-are-pruned-before-ordering-conflicts-fixed-caller-saved-for-call-crossing-values-and-out-of-class-registers-are-removed)）。
+它还会用同样的旗标再编译一次 `-da`，把运行时读数与 `;; Register dispositions:` 逐条对拍——两条测量路径是
+**比较**出来的，不是假设一致。
 
-注意：**逐次追 `find_reg` 不是办法**——它是两级阶梯、结果是副作用
-（[L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--a-two-step-ladder-whose-decision-is-a-side-effect)），
-长轨迹还会把调试器绊倒。分配后一个断点就能回答。
+这样确立三件事：`allocno_order[i]` 是 **allocno 下标**、`allocno[num].reg` 是**伪寄存器号**、
+`reg_renumber[pseudo]` 是决策。`-da` dump 打印的（`;; Register dispositions: 169 in 2 …`）就是这张表。
+
+**顺序要在第一次 `find_reg` 时读，不要在 `global_alloc` 返回后读。** `allocno_order` 在 `global_alloc`
+末尾被 `free`；返回后读到的表可能「看起来合理但错」——实测过的失败形态是「前几项对、后面是已释放的堆」。
+第一次 `find_reg` 发生在 `qsort` 之后、`free` 之前。`reg_renumber` 是静态数组，决策本身两个时点都能读；
+观测器在每次 `find_reg` 返回点读。
+
+**自己写追踪器时的两个坑**：gdb 的 `FinishBreakpoint` 在 `--batch` 下**不会触发**，要用显式的返回地址断点；
+入口实参在栈上（`$esp+4/8/12/16/20`），在 `*addr` 断点用 DWARF 形参名会解析到错误作用域（实测 `alt=16`）。
+两个 `find_reg` 一律按地址消歧
+（[L-EE-006](LAWS.md#l-ee-006--line-numbers-are-not-portable-between-trees)）。
 
 ## 3.6 大小/偏移不符 ≠ 指令不符
 

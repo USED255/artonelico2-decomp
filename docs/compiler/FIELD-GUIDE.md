@@ -64,6 +64,16 @@ store to the line that last defined the stored register:
 So the tool answers "what is being kept alive, and where was it computed" — which is what you need in
 order to recompute it after the call instead of before.
 
+**Why these values lose the register — the preference layer.** The observer shows what the dump cannot:
+of the six allocnos that got no register in this function, four carried only caller-saved preferences
+(`{$a1}`, `{$t5,$t6}`, `{$t7}`) and left `prune_preferences` with empty sets, because they cross 2–30 calls
+and `call_used_reg_set` is removed from every call-crossing allocno
+([L-EE-054](LAWS.md#l-ee-054--preferences-are-pruned-before-ordering-conflicts-fixed-caller-saved-for-call-crossing-values-and-out-of-class-registers-are-removed));
+the other two had no preference at all (pure pressure). The preferences themselves came from copies
+([L-EE-053](LAWS.md#l-ee-053--a-copy-records-a-hard-register-preference-on-whichever-side-is-a-global-pseudo)),
+which is why they point at registers the source never names. So the target list is not "registers that
+look wrong" but "values whose entire preference set is caller-saved and call-crossing".
+
 **Dose-response** (synthetic, k values live across calls): frame 32/48/64/80/96/112/128/144 for
 k = 2/4/6/8/10/14/18/24, with `regs=` 4/6/8/10/10/10/10/10 — **8 B per saved register, and the save
 area caps at 10 registers**. Past that only `vars` grows. The saved set is `$s0`–`$s7`, `$fp` and
@@ -201,6 +211,11 @@ rejected — a rotating scan start and live-range-derived occupancy — so do no
 
 **Caution**: an early wrong pick cascades. When a prediction disagrees with the target, check whether
 an *earlier* allocno was predicted wrongly before concluding the rule is wrong.
+
+**Measured warning about micro-edits**: on the same function, removing one redundant load (a
+semantics-preserving CSE) moved objdiff from 83.338394 to 79.79552 — the allocator re-planned homes
+across the whole function. Re-run `ee-gcc-observe-alloc.py` before keeping such an edit; a single
+"obvious" local improvement can be a global regression.
 
 ## Lever 10 — Get `gp_rel` addressing when the unit is built with `-G0`
 

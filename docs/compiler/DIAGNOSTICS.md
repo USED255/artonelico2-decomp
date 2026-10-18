@@ -55,30 +55,35 @@ The first diverging pass names the decision family. Pass names are from 3.2; see
 
 ## 3.5 Getting the compiler's own answer (ground truth)
 
-When a question is "which register did the compiler pick for this value?", do not infer it from the
-disassembly — ask the compiler. `global_alloc` runs before register allocation is finalised, and the
-result is written into `reg_renumber` (a `short` array; `-1` means the value got no register). Break at
-the instruction after `global_alloc` returns (`toplev.c:3316` calls it), then read the table:
+When a question is "which register did the compiler pick, and why?", do not infer it from the
+disassembly — ask the compiler. The packaged recipe is one command:
 
 ```sh
-# find the call site once
-objdump -d "$CC1" | grep 'call .*<global_alloc>'
-
-# then, under gdb, at the return address:
-#   for i < max_allocno:  num = allocno_order[i]
-#                         pseudo = allocno[num].reg
-#                         chosen = reg_renumber[pseudo]
+python3 tools/compiler/ee-gcc-observe-alloc.py --src candidate.c --flags="-O2 -G0" --prefs
 ```
 
-Two facts this establishes, both verified against a `-da` dump on the same input: `allocno_order[i]`
-holds an **allocno index**, `allocno[num].reg` holds the **pseudo register number**, and
-`reg_renumber[pseudo]` holds the decision. The dispositions a `-da` dump prints
-(`;; Register dispositions: 169 in 2 …`) are exactly this table, so a dump-derived measurement and a
-live reading agree — which is what makes the recorded replay scores trustworthy.
+It reports the allocation order, every `find_reg` attempt (with `alt_regs_p`), the allocnos that got no
+register, and — with `--prefs` — the preference edits made by `expand_preferences` and
+`prune_preferences` before ordering ([L-EE-053](LAWS.md#l-ee-053--a-copy-records-a-hard-register-preference-on-whichever-side-is-a-global-pseudo),
+[L-EE-054](LAWS.md#l-ee-054--preferences-are-pruned-before-ordering-conflicts-fixed-caller-saved-for-call-crossing-values-and-out-of-class-registers-are-removed)).
+It also compiles a second time with `-da` and checks its live reading against the
+`;; Register dispositions:` lines, so the two measurement paths are compared rather than assumed to agree.
 
-Note: tracing *every* `find_reg` call is not the way to do this — the function is a two-step ladder whose
-result is a side effect ([L-EE-017](LAWS.md#l-ee-017--the-shipped-find_reg-is-not-mainlines--a-two-step-ladder-whose-decision-is-a-side-effect)),
-and a long trace trips over the debugger. One breakpoint after allocation answers the question.
+Three facts this establishes: `allocno_order[i]` holds an **allocno index**, `allocno[num].reg` holds the
+**pseudo register number**, and `reg_renumber[pseudo]` holds the decision. The dispositions a `-da` dump
+prints (`;; Register dispositions: 169 in 2 …`) are exactly that table.
+
+**Read the order at the first `find_reg`, not after `global_alloc` returns.** `allocno_order` is freed at
+the end of `global_alloc`; a dump taken after the return can look plausible and be wrong — a measured
+failure mode is "the first entries match, the rest is stale heap". The first `find_reg` runs after
+`qsort` and before the free. `reg_renumber` is a static array, so the decisions themselves can be read at
+either point; the observer reads them at each `find_reg` return.
+
+**If you write your own tracer**, two traps: gdb's `FinishBreakpoint` never fires under `--batch`, so use
+explicit return-address breakpoints; and the entry arguments are on the stack (`$esp+4/8/12/16/20`),
+because reading DWARF parameter names at a `*addr` breakpoint resolves to the wrong scope (measured:
+`alt=16`). Disambiguate the two `find_reg` symbols by address
+([L-EE-006](LAWS.md#l-ee-006--line-numbers-are-not-portable-between-trees)).
 
 ## 3.6 A size or offset mismatch is not an instruction mismatch
 

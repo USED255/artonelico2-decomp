@@ -77,6 +77,8 @@
 | 指令一致但大小/偏移不符 | [L-EE-022](LAWS.md#l-ee-022--function-alignment-8-bytes-by-default-4-with--falign-functions4)，再看 [L-EE-024](LAWS.md#l-ee-024--a-saved-fp-is-not-a-frame-pointer) |
 | 源码是 CRI 中间件 | [CROSS-2.96.zh-CN.md](CROSS-2.96.zh-CN.md) —— 哪些规则可迁移、哪些不能 |
 | 指令全对但寄存器不同 | [L-EE-018](LAWS.md#l-ee-018--global-allocation-preference-first-then-the-lowest-register-left-after-two-passes-that-first-avoid-registers-other-allocnos-prefer) —— 并先读它记录的两条**被否证**的杠杆，别重复发明 |
+| expand dump 里有的 caller-saved 偏好，排序时没了 | [L-EE-054](LAWS.md#l-ee-054--preferences-are-pruned-before-ordering-conflicts-fixed-caller-saved-for-call-crossing-values-and-out-of-class-registers-are-removed) —— 被 `prune_preferences` 剪掉了；dump 的偏好列表是剪枝**之后**才打印的 |
+| 值偏好了复制**另一侧**用过的寄存器 | [L-EE-053](LAWS.md#l-ee-053--a-copy-records-a-hard-register-preference-on-whichever-side-is-a-global-pseudo) —— 偏好记在「哪一侧是全局伪寄存器」上，且 `reg_renumber` 可能把它换成硬寄存器 |
 | `;; N regs to allocate:` 行里没有 `(N)` 尺寸后缀 | [L-EE-002](LAWS.md#l-ee-002--allocnosize-is-in-words-and-prints-only-when-it-is-not-1) —— `size` 以**字**为单位，且仅在不为 1 时打印 |
 | 按 mainline 标定的压力模型算错溢出数 | [L-EE-003](LAWS.md#l-ee-003--register-pressure-is-wider-on-ee-struct-allocno-is-144-b-hard_reg_set-is-192-bits) —— 这里 `struct allocno` 是 144 B、`HARD_REG_SET` 是 192 位 |
 | 从 mainline `config/mips/mips.c` 取的规则复现不出 EE 的选码 | [L-EE-004](LAWS.md#l-ee-004--ee-ships-its-own-backend-configmipsmips5900c) —— EE 有自己独有的 `mips5900.c` |

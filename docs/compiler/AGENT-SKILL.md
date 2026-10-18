@@ -51,12 +51,16 @@ python3 tools/compiler/ee-gcc-observe.py --src candidate.c --flags="-O2 -G0"
 #    that defined it, and the last use is what sets the live range.
 python3 tools/compiler/ee-gcc-spill-map.py --src candidate.c --flags="-O2 -G0"
 
-# 7. What is the compiler *actually* doing at the decision point?
+# 7. Register-allocation residual? Get the compiler's own answer: the order, every find_reg
+#    attempt, the allocnos with no register, and which preferences pruning removed. Needs gdb.
+python3 tools/compiler/ee-gcc-observe-alloc.py --src candidate.c --flags="-O2 -G0" --prefs
+
+# 8. What is the compiler *actually* doing at the decision point?
 python3 tools/compiler/ee-gcc-anchor.py --cc1 "$CC1" symbol allocno_compare --disasm 64
 python3 tools/compiler/ee-gcc-anchor.py --cc1 "$CC1" struct allocno
 python3 tools/compiler/ee-gcc-anchor.py --cc1 "$CC1" const 0x821e360 --bytes 8
 
-# 8. Re-measure. A lever that does not move the reading is not a lever.
+# 9. Re-measure. A lever that does not move the reading is not a lever.
 ```
 
 ## Reading a law when you have one

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "2026-10-14",
+  "updated": "2026-10-18",
   "note": "EE GCC 3.2 codegen handbook, machine-readable index. Every law carries source_anchor (mainline file:line) and/or binary_anchor (shipped cc1 symbol/address). tier T1 = source rule + factory-binary anchor + matching behaviour; T2 = source rule OR binary anchor, plus behaviour; T3 = behaviour evidence only. No game content: anchors are compiler-internal symbols, addresses, line numbers and constants.",
   "toolchain": {
     "id": "ee-gcc-3.2-ee-040921",
@@ -707,7 +707,7 @@
         "allocate only inside reg_class_contents[class] minus fixed_reg_set; for a call-crossing allocno also remove call_used_reg_set",
         "the allocatable callee-saved GPRs are exactly {16..23, 30}: eight $s0-$s7 plus $fp, so with $ra the save area is 10 slots"
       ],
-      "receipt": "Read from a live cc1 (gdb, breakpoint at local_alloc, where init_reg_sets_1 has already filled the tables): 29 classes, ALL_REGS = 140 registers, HARD_REG_SET = 3 x 64 = 192 bits. GR_REGS = 0-31 (32), FP_REGS = 32-63 (32), HI/LO/HI1/LO1 = 64-67, ST = 68, ELIM = 69-70, FP_ACC = 71, 72-75 reserved, VU0_ACC = 76, VU0_Q/I/R = 77/78/79, COP0 = 80-111 (32), VU0 = 112-143 (32). fixed_reg_set leaves 0,1,26,27,28,29,31 fixed among the GPRs; call_used_reg_set leaves 2-15, 24, 25 caller-saved, so the allocatable callee-saved GPRs are {16..23, 30}.",
+      "receipt": "Read from a live cc1 (gdb, breakpoint at local_alloc, where init_reg_sets_1 has already filled the tables): 29 classes, ALL_REGS = 140 registers, HARD_REG_SET = 3 x 64 = 192 bits. GR_REGS = 0-31 (32), FP_REGS = 32-63 (32), HI/LO/HI1/LO1 = 64-67, ST = 68, ELIM = 69-70, FP_ACC = 71, 72-75 reserved, VU0_ACC = 76, VU0_Q/I/R = 77/78/79, COP0 = 80-111 (32), VU0 = 112-143 (32). fixed_reg_set leaves 0,1,26,27,28,29,31 fixed among the GPRs; call_used_reg_set leaves 2-15, 24, 25 caller-saved, so the allocatable callee-saved GPRs are {16..23, 30}. The 140 is the number of registers in ALL_REGS; the numbering itself runs to 143 (72-75 are reserved and carry no class), so the first pseudo register is 144 - which is why HARD_REG_SET rounds to 3 x 64 = 192 bits. Read live: the register-name table `debug_reg_names` (0x0821f280) has entries 0..143 and the next slot is not a name.",
       "falsifies": "the assumption that the shipped EE register file can be approximated by the mainline MIPS one, and the earlier guess that the runtime tables were unreadable (they are readable from a live process; only the static read returns zeros)",
       "scope": "ee-gcc 3.2-ee-040921; read from a live cc1 on this machine. The class contents are compiler constants, not per-function decisions.",
       "evidence": [
@@ -839,7 +839,7 @@
         "the printed order is already the allocation order; do not re-sort it, and treat proxy sorts as noise",
         "run two passes: the first also avoids the registers other allocnos prefer (regs_someone_prefers), the second drops that exclusion - this is what alt_regs_p toggles in the observed ladder"
       ],
-      "receipt": "On a 60/40 split of 75 functions (527 held-out allocnos with a recorded disposition): this rule reproduces 41.0% of the decisions, against 34.3% for the earlier preference-first heuristic and 9.1% for a replay modelled on mainline's find_reg two passes. Holding the dynamic conflict set at ground truth raises the same rule to 82.7%, so the residual is dominated by cascade from earlier wrong picks, not by the per-decision rule. Rule sweep over 888 allocnos: banning hard conflicts + dynamic conflicts 36.6%, adding the caller-saved exclusion for call-crossing allocnos 38.9%, banning all assigned registers 30.9%, and the two-pass 'someone prefers' variant 12.8%. Mismatch split: 160 the true register was banned, 368 the true register was a candidate but another was chosen, 15 the true register was outside the pool. Addressing detail verified live: allocno_order[i] holds an allocno index and allocno[index].reg holds the pseudo register number, so the dump's ';; N regs to allocate:' list prints the pseudos in allocation order; for the branchy fixture the live order [3,1,2,0,...] maps to the printed 152 150 151 149 ..., confirming that the printed list is the priority order. An attempt to substitute an external proxy order (n_refs descending 41.8%, live_length ascending 42.0%, against 38.9% for the printed order) is therefore a change of error pattern, not a better rule: the order is not the lever. Preference semantics measured exactly: of the 427 allocnos that carry a preference list, 323 pick the first entry that is still available and none picks a later entry, so 'first available preference' is the whole rule. A rotation start (scan from pseudo mod 32) lifts the corpus score to 49.1%, but it is a compensation artifact, not the scan order: with the dynamic conflict set held at ground truth the rotation scores 60.5% against 63.5% without it. Of the 334 no-preference mismatches, the true register was inside the computed candidate set in every case (none was banned), so the residual is the occupancy set, not the ban set or the scan order. A second pass structure was tested: adding 'avoid the registers that other allocnos prefer' (the EE-only regs_someone_prefers field) to the first pass raises the held-out score from 41.0% to 46.5% (corpus 38.9% -> 42.1%) while leaving the oracle-context score unchanged at 82.7%, i.e. it is a genuine rule rather than a compensation for the replay's own errors. (Contrast the rejected 'rotating start', which scores 60.5% against 63.5% under the oracle.) This matches both the EE-only struct field and the observed two-step ladder: alt_regs_p = 0 then 1. A final negative result closes the occupancy question: rebuilding the conflict set from the block-level live sets in the 16.life dump scores 30.6% against 42.1% for the dumped conflicts list, because block granularity merges allocnos that are live at different points, so the dumped list stays the better source. Two levers have therefore been tried and rejected (the rotating start, and live-range-derived occupancy); the remaining gap to the oracle ceiling is cascade, which needs instruction-level live ranges or the shipped source.",
+      "receipt": "On a 60/40 split of 75 functions (527 held-out allocnos with a recorded disposition): this rule reproduces 41.0% of the decisions, against 34.3% for the earlier preference-first heuristic and 9.1% for a replay modelled on mainline's find_reg two passes. Holding the dynamic conflict set at ground truth raises the same rule to 82.7%, so the residual is dominated by cascade from earlier wrong picks, not by the per-decision rule. Rule sweep over 888 allocnos: banning hard conflicts + dynamic conflicts 36.6%, adding the caller-saved exclusion for call-crossing allocnos 38.9%, banning all assigned registers 30.9%, and the two-pass 'someone prefers' variant 12.8%. Mismatch split: 160 the true register was banned, 368 the true register was a candidate but another was chosen, 15 the true register was outside the pool. Addressing detail verified live: allocno_order[i] holds an allocno index and allocno[index].reg holds the pseudo register number, so the dump's ';; N regs to allocate:' list prints the pseudos in allocation order; for the branchy fixture the live order [3,1,2,0,...] maps to the printed 152 150 151 149 ..., confirming that the printed list is the priority order. An attempt to substitute an external proxy order (n_refs descending 41.8%, live_length ascending 42.0%, against 38.9% for the printed order) is therefore a change of error pattern, not a better rule: the order is not the lever. Preference semantics measured exactly: of the 427 allocnos that carry a preference list, 323 pick the first entry that is still available and none picks a later entry, so 'first available preference' is the whole rule. A rotation start (scan from pseudo mod 32) lifts the corpus score to 49.1%, but it is a compensation artifact, not the scan order: with the dynamic conflict set held at ground truth the rotation scores 60.5% against 63.5% without it. Of the 334 no-preference mismatches, the true register was inside the computed candidate set in every case (none was banned), so the residual is the occupancy set, not the ban set or the scan order. A second pass structure was tested: adding 'avoid the registers that other allocnos prefer' (the EE-only regs_someone_prefers field) to the first pass raises the held-out score from 41.0% to 46.5% (corpus 38.9% -> 42.1%) while leaving the oracle-context score unchanged at 82.7%, i.e. it is a genuine rule rather than a compensation for the replay's own errors. (Contrast the rejected 'rotating start', which scores 60.5% against 63.5% under the oracle.) This matches both the EE-only struct field and the observed two-step ladder: alt_regs_p = 0 then 1. A final negative result closes the occupancy question: rebuilding the conflict set from the block-level live sets in the 16.life dump scores 30.6% against 42.1% for the dumped conflicts list, because block granularity merges allocnos that are live at different points, so the dumped list stays the better source. Two levers have therefore been tried and rejected (the rotating start, and live-range-derived occupancy); the remaining gap to the oracle ceiling is cascade, which needs instruction-level live ranges or the shipped source. Preferences are inputs to this rule and are edited before it runs: `expand_preferences` unions copy-related allocnos, then `prune_preferences` clears conflicts, fixed, caller-saved (for a call-crossing allocno) and out-of-class registers, and fills `regs_someone_prefers` (L-EE-053 records preferences, L-EE-054 prunes them). On the reconstruction used there, 4 of the 6 allocnos that got no register had lost their caller-saved preferences at prune.",
       "falsifies": "the two assumptions behind the earlier replays: that banning every already-assigned register is safe (it costs ~6 points), and that mainline's two-pass scan with a 'someone prefers' first pass is the shipped algorithm (12.8%); and the 'rotating start' reading (scan from pseudo mod 32) - it improves the end-to-end score by compensating for the replay's own errors, but it is worse than no rotation once the dynamic set is correct",
       "scope": "ee-gcc 3.2-ee-040921, -O2/-Os corpus on this machine; the rule is measured for GPR allocnos and the readings come from a served-out split",
       "evidence": [
@@ -2554,15 +2554,97 @@
       "evidence": [
         "private:out/evidence/ee_gcc_no_latency_nops.txt"
       ]
+    },
+    {
+      "id": "L-EE-053",
+      "title": "A copy records a hard-register preference on whichever side is a global pseudo",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "global.c",
+        "line": 1615,
+        "note": "mainline gcc-3.2.3 set_preference (the shipped binary resolves set_preference to global.c:1967). T2, not T1: the shipped body was located and its effects observed, but its two branches were not read line by line in the disassembly."
+      },
+      "binary_anchor": {
+        "symbol": "set_preference",
+        "addr": "0x081ae780",
+        "constants": [],
+        "struct": {
+          "name": "allocno",
+          "byte_size": 144,
+          "fields": {
+            "hard_reg_preferences": 48
+          }
+        }
+      },
+      "pass": [
+        "23.greg"
+      ],
+      "symptom": [
+        "a value prefers the register used on the other side of a copy, in the direction you did not expect",
+        "a preference appears that no source-level copy seems to justify"
+      ],
+      "lever": [
+        "do not replay the preference: record the mask before and after the call and read the bits that changed",
+        "reg_renumber already maps locally placed values to hard registers, so the recorded preference can point at a register that never appears in the source"
+      ],
+      "receipt": "func_001d4b88 at -Os -fno-thread-jumps: 842 decoded set_preference calls, 84 changed a preference mask. Examples (effect-diff): allocno 2 +{5} (dest pseudo 151 -> src $a1); allocno 24 +{13,14} (the preferences point at $t5/$t6, the hard registers of the *destination* side, and are recorded on the source allocno); allocno 13/11 +{15} ($t7). The return-point diff agrees with the prune-entry snapshot.",
+      "falsifies": "the assumption that a preference only comes from a parameter's ABI home or from a same-direction copy",
+      "scope": "ee-gcc 3.2-ee-040921 at -Os -fno-thread-jumps on one reconstruction (func_001d4b88); the rule text is mainline gcc-3.2.3 global.c",
+      "evidence": [
+        "private:out/evidence/ee_gcc_alloc_setpref_001d4b88.txt",
+        "party:R39-ee-gcc-3.2-分配决策在线观测器.md"
+      ]
+    },
+    {
+      "id": "L-EE-054",
+      "title": "Preferences are pruned before ordering: conflicts, fixed, caller-saved for call-crossing values, and out-of-class registers are removed",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "global.c",
+        "line": 903,
+        "note": "mainline gcc-3.2.3 prune_preferences (the shipped binary resolves it to global.c:1236). T2, not T1: the shipped body was located and its effects observed, but not read line by line."
+      },
+      "binary_anchor": {
+        "symbol": "prune_preferences",
+        "addr": "0x081ac580",
+        "constants": [],
+        "struct": {
+          "name": "allocno",
+          "byte_size": 144,
+          "fields": {
+            "hard_reg_preferences": 48
+          }
+        }
+      },
+      "pass": [
+        "23.greg"
+      ],
+      "symptom": [
+        "a caller-saved preference visible in an expand dump is gone by the time ordering runs",
+        "a value that crosses a call keeps no preference at all"
+      ],
+      "lever": [
+        "check whether the preference survives pruning before blaming the choice rule",
+        "for a call-crossing value, shorten the live range or move the copy; a respelled copy cannot keep a caller-saved preference across the call"
+      ],
+      "receipt": "func_001d4b88 at -Os -fno-thread-jumps: 83 allocnos changed a preference mask at expand, 112 at prune. Of the 6 allocnos that got no register, 4 carried only caller-saved preferences ({5} / {13,14} / {15}, calls_crossed 2-30) and left prune with empty sets; the other 2 (allocnos 12 and 9) had no preference at all. The greg dump prints its `;; N preferences:` lines after prune.",
+      "falsifies": "the reading that the preference list printed in a dump is the list the choice rule sees",
+      "scope": "ee-gcc 3.2-ee-040921 at -Os -fno-thread-jumps on one reconstruction (func_001d4b88); the rule text is mainline gcc-3.2.3 global.c",
+      "evidence": [
+        "private:out/evidence/ee_gcc_alloc_prefs_001d4b88.txt",
+        "party:R39-ee-gcc-3.2-分配决策在线观测器.md"
+      ]
     }
   ],
   "verification": {
-    "anchors_checked": 13,
-    "anchors_ok": 13,
+    "anchors_checked": 40,
+    "anchors_ok": 40,
     "ambiguous_names": [
       "find_reg"
     ],
     "method": "tools/compiler/ee-gcc-anchor.py symbol <name> against the shipped cc1; a law verifies when any candidate's address equals the cited one",
-    "note": "re-run after any toolchain change; two laws cite no binary anchor (T3)"
+    "note": "40 symbol claims across 22 laws (related anchors included); four laws are T3 (behaviour only). Re-run after any toolchain change."
   }
 }

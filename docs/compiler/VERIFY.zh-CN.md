@@ -66,6 +66,10 @@ python3 tools/compiler/ee-gcc-coverage.py --selftest  # 覆盖率分类器（不
 * **Tier**：`T1` = 已在出厂 `cc1` 中定位并在二进制里复核；`T2` = 实测行为；`T3` = 背景或否定性知识。
   law 的 tier 就是「可信度有多少」的诚实陈述。
 
+**实时观测（可选）。** `tools/compiler/ee-gcc-observe-alloc.py` 在 `gdb` 下驱动 `cc1`。本手册只在钉定的
+`cc1` 上用 gdb 16.3 实测过；换构建时 hook 地址按该二进制的符号解析，8 字节入口 guard 会跳过并给出警告。
+没有 gdb 时工具直接报错退出，检查套件把它的自检记为 **SKIP**（绝不记成 pass）。
+
 ## 报告失败
 
 如果你的机器上某个校验失败，有用的报告是：**哪个校验**、**`cc1` 的 sha256**、**objdump 版本**。

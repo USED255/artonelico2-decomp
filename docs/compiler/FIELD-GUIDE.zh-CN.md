@@ -56,6 +56,15 @@ python3 tools/compiler/ee-gcc-spill-map.py --cc "$EE_GCC" --src candidate.c \
 
 ⇒ 工具回答「保活的是什么、它在哪里算出来的」——这正是「把计算挪到调用之后」所需的信息。
 
+**这些值为什么丢寄存器——偏好层。** 观测器能看到 dump 看不到的东西：本函数 6 个没拿到寄存器的 allocno 里，
+4 个只带着调用者保存偏好（`{$a1}`、`{$t5,$t6}`、`{$t7}`），跨 2–30 次调用后被 `prune_preferences` 清空
+（跨调用的 allocno 会去掉 `call_used_reg_set`，
+[L-EE-054](LAWS.md#l-ee-054--preferences-are-pruned-before-ordering-conflicts-fixed-caller-saved-for-call-crossing-values-and-out-of-class-registers-are-removed)）；
+另外 2 个压根没有偏好（纯压力）。偏好本身来自复制
+（[L-EE-053](LAWS.md#l-ee-053--a-copy-records-a-hard-register-preference-on-whichever-side-is-a-global-pseudo)），
+所以它指向的寄存器在源码里根本没出现过。⇒ 靶点清单不是「看起来不对的寄存器」，而是「整套偏好都是调用者保存、
+且跨调用」的那些值。
+
 **剂量-响应**（合成，k 个跨调用活跃值）：k = 2/4/6/8/10 对应帧 32/48/64/80/96，`regs=` 4/6/8/10/10 —— **每保存一个寄存器 8 B，在 10 处饱和**。
 
 **实测：机制成立、路线被否证。** 去掉一个跨调用携带的值（一个只为了后面递归调用而留着的 `struct` 拷贝，改成直接传形参）：
@@ -139,6 +148,10 @@ python3 tools/compiler/ee-gcc-spill-map.py --cc "$EE_GCC" --src candidate.c \
 已试并否证两条杠杆（旋转起点、活跃区间占用集）——别再花时间。
 
 **注意**：早期一次选错会**级联**。预测与目标不一致时，先检查是不是**更早**的 allocno 预测错了，再怀疑规则。
+
+**关于微改动的实测警告**：同一函数上，删掉一处冗余装载（看起来语义安全的 CSE）让 objdiff 从 83.338394
+掉到 79.79552——分配器把整函数的 home 全部重排了。保留这类改动前先跑一遍 `ee-gcc-observe-alloc.py`；
+一个「显然」的局部改进可能是全局回退。
 
 ## 杠杆 10 —— 在 `-G0` 的编译单元里拿到 `gp_rel`
 

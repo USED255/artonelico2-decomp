@@ -2,11 +2,11 @@
 
 [简体中文](README.zh-CN.md) · [Laws](LAWS.md) · [Case study](CASE-STUDY.md) · [Source study](SOURCE-STUDY.md) · [Agent skill](AGENT-SKILL.md) · [Pass map](PASSES.md) · [Diagnostics](DIAGNOSTICS.md) · [Field guide](FIELD-GUIDE.md) · machine-readable index: [`laws.json`](laws.json)
 
-**Verified against the shipped compiler.** All **13** binary anchors cited here have been resolved
-against the shipped `cc1` and match their addresses; `python3 tools/check/test_compiler_laws.py`
-enforces the tiers and re-verifies the anchors whenever the toolchain is present, and
-`tools/check/test_compiler_tools.py` smoke-tests every command this handbook documents (both run inside
-`make check`).
+**Verified against the shipped compiler.** All **40** symbol claims (22 laws, related anchors included)
+have been resolved against the shipped `cc1` and match their addresses; four laws are `T3`
+(behaviour-only). `python3 tools/check/test_compiler_laws.py` enforces the tiers and re-verifies every
+claim whenever the toolchain is present, and `tools/check/test_compiler_tools.py` smoke-tests every
+command this handbook documents (both run inside `make check`).
 
 This handbook records the behaviour of **`ee-gcc 3.2-ee-040921`** — the compiler that built the
 PlayStation 2 Emotion Engine code in this project — at the flags this project builds with:
@@ -45,6 +45,7 @@ such question with evidence, and each lever names the source spelling that moves
 | `tools/compiler/ee-gcc-spill-map.py` | map a too-large frame onto its blocks and source lines, and trace each spill to the line that defined the value |
 | `tools/compiler/ee-gcc-coverage.py` | measure how much of a disassembly the handbook explains, and split what is left into assembly-only and unexplained |
 | `tools/compiler/ee-gcc-observe.py` | compile eighty-one synthetic fixtures and assert what this handbook says must appear (`--selftest`), or print frame/pool/mnemonic observations for your own file |
+| `tools/compiler/ee-gcc-observe-alloc.py` | observe the global allocation decisions live under gdb: allocation order, every `find_reg` attempt, the spill set, and (with `--prefs`) the preference edits; cross-checks itself against `-da` dispositions (`--selftest` needs gdb) |
 
 `make check` runs the law data check, the binary-anchor re-verification and a smoke test of every command
 above.
