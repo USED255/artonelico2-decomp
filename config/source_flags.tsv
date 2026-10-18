@@ -1217,6 +1217,7 @@ func_00257ef4	-Os
 func_00258518	-Os
 func_002587e4	-O2 -fno-schedule-insns2
 func_00258840	-Os
+func_00258898	-Os
 func_002594a0	-Os
 func_00259578	-O2
 func_00259918	-Os
