@@ -4126,3 +4126,9 @@ func_001efa9c    # mmi_asm
 func_001f3580    # mmi_asm
 func_0029eeec    # mmi_asm
 func_002bb498    # mmi_asm
+func_0013c198    # mmi_asm
+func_0016ed7c    # mmi_asm
+func_001ed334    # mmi_asm
+func_001eddc8    # mmi_asm
+func_00266a48    # mmi_asm
+func_002db068    # mmi_asm
