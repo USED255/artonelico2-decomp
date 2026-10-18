@@ -4058,3 +4058,12 @@ func_00325db0    # cri_draft
 func_001002f8    # hand_c
 func_00100370    # hand_c
 func_0035ee88    # hand_c
+func_002b3828    # cri_draft
+func_002b38d8    # cri_draft
+func_002b38e8    # cri_draft
+func_002b3a78    # cri_draft
+func_002b3ab0    # cri_draft
+func_002b3af0    # cri_draft
+func_002b3c08    # cri_draft
+func_002b3c18    # cri_draft
+func_002b3c50    # cri_draft
