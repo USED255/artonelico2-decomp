@@ -1116,6 +1116,7 @@ func_00239584	-Os
 func_00239604	-O2
 func_0023ab04	-Os
 func_0023abe0	-Os
+func_0023b010	-Os
 func_0023b074	-Os
 func_0023b404	-Os
 func_0023c748	-O2
