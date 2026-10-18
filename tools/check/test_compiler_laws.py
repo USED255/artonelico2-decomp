@@ -29,6 +29,7 @@ import importlib.util
 import json
 import re
 import os
+import shutil
 import subprocess
 import tempfile
 import sys
@@ -38,6 +39,7 @@ ROOT = Path(__file__).resolve().parents[2]
 LAWS_JSON = ROOT / "docs" / "compiler" / "laws.json"
 LAWS_MD = ROOT / "docs" / "compiler" / "LAWS.md"
 ANCHOR_TOOL = ROOT / "tools" / "compiler" / "ee-gcc-anchor.py"
+OBSERVE_ALLOC = ROOT / "tools" / "compiler" / "ee-gcc-observe-alloc.py"
 
 FAILURES: list[str] = []
 COUNT = 0
@@ -145,6 +147,7 @@ def main() -> int:
         check_tiers(data)
         check_binary_anchors(data)
     check_anchors()
+    check_allocation_observer()
     check_build_flags(data)
     check_quick_reference(data)
     print()
@@ -335,6 +338,24 @@ def _gh_slug(heading: str) -> str:
     text = heading.lstrip("#").strip().lower()
     text = re.sub(r"[^\w\s-]", "", text)
     return text.replace(" ", "-")
+
+
+def check_allocation_observer() -> None:
+    """L-EE-053 / L-EE-054 are executable: the observer's selftest asserts that the
+    preference phases ran and that its decisions match the compiler's own dump."""
+    cc1 = Path.home() / "eecc" / "ee-gcc3.2-040921" / "lib" / "gcc-lib" / "ee" / "3.2-ee-040921" / "cc1"
+    if not OBSERVE_ALLOC.is_file():
+        return
+    if not cc1.is_file() or shutil.which("gdb") is None:
+        print("[skip] allocation observer selftest (no cc1 or no gdb)")
+        return
+    with tempfile.TemporaryDirectory(prefix="alloc-observer-") as td:
+        out = subprocess.run([sys.executable, str(OBSERVE_ALLOC), "--cc1", str(cc1),
+                              "--selftest", "--work", td],
+                             capture_output=True, text=True, cwd=ROOT, timeout=900)
+    check("allocation observer selftest (L-EE-053/L-EE-054 executable)",
+          out.returncode == 0 and "selftest: pass" in out.stdout,
+          (out.stdout + out.stderr).strip()[-160:])
 
 
 def check_anchors() -> None:

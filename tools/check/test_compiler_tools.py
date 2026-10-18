@@ -30,6 +30,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -42,6 +43,7 @@ ANCHOR = ROOT / "tools" / "compiler" / "ee-gcc-anchor.py"
 PASSDIFF = ROOT / "tools" / "compiler" / "ee-gcc-passdiff.py"
 SPILLMAP = ROOT / "tools" / "compiler" / "ee-gcc-spill-map.py"
 OBSERVE = ROOT / "tools" / "compiler" / "ee-gcc-observe.py"
+OBSERVE_ALLOC = ROOT / "tools" / "compiler" / "ee-gcc-observe-alloc.py"
 COVERAGE = ROOT / "tools" / "compiler" / "ee-gcc-coverage.py"
 
 DEFAULT_CC1 = Path.home() / "eecc" / "ee-gcc3.2-040921" / "lib" / "gcc-lib" / "ee" / "3.2-ee-040921" / "cc1"
@@ -203,6 +205,15 @@ def tier_toolchain(tmp: Path) -> None:
               (out.stdout + out.stderr).strip()[-120:])
         out = run([str(ANCHOR), "--cc1", str(DEFAULT_CC1), "symbol", "allocno_compare"])
         check("ee-gcc-anchor symbol resolves", out.returncode == 0 and "0x" in out.stdout)
+
+        # The allocation observer needs gdb as well as the cc1; a plain CI runner has neither.
+        if shutil.which("gdb") is None:
+            skip("ee-gcc-observe-alloc selftest", "no gdb on PATH")
+        else:
+            out = run([str(OBSERVE_ALLOC), "--cc1", str(DEFAULT_CC1), "--selftest",
+                       "--work", str(tmp / "alloc")])
+            check("ee-gcc-observe-alloc selftest", out.returncode == 0 and "selftest: pass" in out.stdout,
+                  (out.stdout + out.stderr).strip()[-140:])
 
     if not DEFAULT_EE_GCC.exists():
         skip("ee-gcc-passdiff", f"no compiler at {DEFAULT_EE_GCC}")
