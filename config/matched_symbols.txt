@@ -634,6 +634,7 @@ func_0017e6a8    # llm_draft
 func_0017e790    # llm_draft
 func_0017eb84    # llm_draft
 func_0017ec50    # ghidra_draft:-O2
+func_0017ec70    # permuter
 func_00180624    # permuter
 func_001806b8    # wrapper_o2_tail
 func_001806cc    # permuter
