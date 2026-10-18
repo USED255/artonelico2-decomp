@@ -4102,3 +4102,13 @@ func_002e8308    # cri_draft
 func_00303a50    # cri_draft
 func_00303a78    # cri_draft
 func_0013f39c    # permuter_zero
+func_002425dc    # cri_draft
+func_0026b00c    # cri_draft
+func_002e7aa8    # cri_draft
+func_002e8d48    # cri_draft
+func_002f9aa0    # cri_draft
+func_00305f38    # cri_draft
+func_00322880    # cri_draft
+func_0032d060    # cri_draft
+func_00334670    # cri_draft
+func_00344788    # cri_draft
