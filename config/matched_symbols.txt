@@ -4114,3 +4114,15 @@ func_00334670    # cri_draft
 func_00344788    # cri_draft
 func_001dc708    # flag_matrix
 func_0028c320    # flag_matrix
+func_0013b850    # mmi_asm
+func_0015f67c    # mmi_asm
+func_0018c304    # mmi_asm
+func_001a9f64    # mmi_asm
+func_001b9728    # mmi_asm
+func_001e89ec    # mmi_asm
+func_001ed198    # mmi_asm
+func_001ed1cc    # mmi_asm
+func_001efa9c    # mmi_asm
+func_001f3580    # mmi_asm
+func_0029eeec    # mmi_asm
+func_002bb498    # mmi_asm

@@ -1,0 +1,17 @@
+__asm__(
+  ".set noreorder\n"
+  ".globl func_0018c304\n"
+  "func_0018c304:\n"
+  "move $14,$6\n"
+  "addiu $15,$4,48\n"
+  "lq $6,0($5)\n"
+  "sq $6,0($15)\n"
+  "addiu $15,$4,80\n"
+  "lq $6,0($14)\n"
+  "sq $6,0($15)\n"
+  "addiu $4,$4,64\n"
+  "lq $6,0($7)\n"
+  "sq $6,0($4)\n"
+  "jr $31\n"
+  "nop\n"
+  ".set reorder\n");
