@@ -622,6 +622,7 @@ func_001d2284	-Os
 func_001d29c8	-Os
 func_001d2a40	-O2
 func_001d6338	-O1
+func_001d6478	-Os
 func_001d6704	-Os
 func_001d70cc	-Os
 func_001d7154	-Os

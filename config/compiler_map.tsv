@@ -1,14 +1,14 @@
-source-basename	compiler
-func_002b3878	cri
-func_002f1910	cri
-func_002f2820	cri
-func_002f66a0	cri
-func_002f7a50	cri
-func_002fb088	cri
-func_002fcc10	cri
-func_003195b8	cri
-func_0031a9c0	cri
-func_0031cbc8	cri
-func_0032c030	cri
-func_00342a38	cri
-func_003436e0	cri
+source-basename	compiler	备注
+func_002b3878	cri	CRI 编译单元；仅 ee-gcc 2.96 下 100% 匹配
+func_002f1910	cri	CRI 编译单元；仅 ee-gcc 2.96 下 100% 匹配
+func_002f2820	cri	CRI 编译单元；仅 ee-gcc 2.96 下 100% 匹配
+func_002f66a0	cri	CRI 编译单元；仅 ee-gcc 2.96 下 100% 匹配
+func_002f7a50	cri	CRI 编译单元；仅 ee-gcc 2.96 下 100% 匹配
+func_002fb088	cri	CRI 编译单元；仅 ee-gcc 2.96 下 100% 匹配
+func_002fcc10	cri	CRI 编译单元；仅 ee-gcc 2.96 下 100% 匹配
+func_003195b8	cri	CRI 编译单元；仅 ee-gcc 2.96 下 100% 匹配
+func_0031a9c0	cri	CRI memcpy2（ADXB）；仅 ee-gcc 2.96 下 100% 匹配
+func_0031cbc8	cri	CRI adxf_wait_1ms（ADXF）；仅 ee-gcc 2.96 下 100% 匹配
+func_0032c030	cri	CRI 编译单元；仅 ee-gcc 2.96 下 100% 匹配
+func_00342a38	cri	CRI 编译单元；仅 ee-gcc 2.96 下 100% 匹配
+func_003436e0	cri	CRI 编译单元；仅 ee-gcc 2.96 下 100% 匹配
