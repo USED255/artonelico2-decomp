@@ -104,6 +104,8 @@ check-tools:
 # 范围，所以它的测试放进 `make check`。其余测试守同一类静默失败：台账解析（跳过条目却报 100%）、
 # 公开仓库检查（禁材列表与 git -z 路径处理）、共用路径/原子写助手。
 check-tests:
+	@$(PY) tools/check/test_obj_gate.py
+	@$(PY) tools/check/test_data_patch.py
 	@$(PY) tools/check/test_classify_change.py
 	@$(PY) tools/check/test_splat_snapshot.py
 	@$(PY) tools/check/test_matched_ledger.py

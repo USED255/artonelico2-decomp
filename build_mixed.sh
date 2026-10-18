@@ -159,11 +159,24 @@ mkdir -p "$OUT/obj"
 FLAGSFILE="$HERE/config/source_flags.tsv"
 SRCTSV="$OUT/sources.tsv"
 : > "$SRCTSV"
+# <source><TAB><symbol> for the data patch. The ledger may name a source differently from the
+# symbol, so the mapping is explicit (compile_sources keys objects by the source basename).
+# 数据改指用的 <源码><TAB><符号>。台账允许源码名与符号名不同，所以映射显式给出
+# （compile_sources 用源码基名做对象名）。
+SYMTSV="$OUT/symbols.tsv"
+: > "$SYMTSV"
 declare -A compiled=()
 for i in "${!SYMS[@]}"; do
     src="${SRCS[$i]}"
     [ -n "${compiled[$src]:-}" ] && continue
     compiled[$src]=1
+    # `${SYMS[$i]}`, not `$sym`: `sym` still holds the last ledger line from the loop above.
+    # Measured 2026-10-17: using `$sym` mapped every source to the last symbol, so the data
+    # patch used the wrong asm block and 14 words of the payload changed.
+    # 必须用 `${SYMS[$i]}`，不能用 `$sym`——`$sym` 还是上面 while 循环最后一次的值。
+    # 2026-10-17 实测：用 `$sym` 会把所有源都映射到最后一个符号，数据改指拿错 asm 块，
+    # 载荷因此有 14 个字不同。
+    printf '%s\t%s\n' "$src" "${SYMS[$i]}" >> "$SYMTSV"
     if [ -f "$SRCDIR/$src.s" ]; then
         printf '%s\tas\t%s\n' "$src" "$SRCDIR/$src.s" >> "$SRCTSV"
     elif [ -f "$SRCDIR/$src.c" ]; then
@@ -173,11 +186,39 @@ for i in "${!SYMS[@]}"; do
     fi
 done
 # shellcheck disable=SC2086
+# Data patch (O-01 (1)): redirect a C object's own data references to the splat symbols.
+# It subsumes the jtbl patch, so the jtbl table is not applied when it is on. Set
+# HYBRID_DATA_PATCH=0 for the negative control (the old jtbl-only path).
+# 数据改指（O-01 ①）：把 C 对象自产的数据引用改指到 splat 符号。它覆盖 jtbl 补丁，因此开启时
+# 不再应用跳转表；负面对照用 HYBRID_DATA_PATCH=0 回到旧的 jtbl 路径。
+DATA_PATCH="${HYBRID_DATA_PATCH:-1}"
+BASE_ELF="$HERE/build/SLPS_258.19.elf"
+# The data patch reads the baseline link to redirect a C object's own data references. The CI
+# runs `make build-fast` for source-only pull requests: it assembles the baseline but skips the
+# link, so the ELF is absent. Fall back to the jtbl path instead of failing - the mixed payload
+# check that follows still compares the final image against the retail payload byte for byte, so
+# a source that genuinely needs the data patch cannot slip through unnoticed.
+# 数据改指要读基线链接；CI 的 `make build-fast`（纯源码 PR）只装配不链接，故 ELF 不存在。
+# 此时回退到 jtbl 路径而不是直接失败——后面的混合载荷检查仍会与零售载荷逐字节比对，
+# 真正需要数据改指的源不可能蒙混过关。
+if [ "$DATA_PATCH" = 1 ] && [ ! -f "$BASE_ELF" ]; then
+    echo "notice: the baseline link is absent (fast mode); the data patch falls back to the jtbl path"
+    DATA_PATCH=0
+fi
+if [ "$DATA_PATCH" = 1 ]; then
+    DP_ARGS=(--data-patch --symbols-tsv "$SYMTSV" --image "$BASE_ELF")
+    JTBL_ARGS=()
+else
+    DP_ARGS=()
+    JTBL_ARGS=(${JTBLTABLES:+--jtbl-tables "$JTBLTABLES"})
+fi
+[ "$(wc -l < "$SYMTSV")" = "${#compiled[@]}" ] || {
+    echo "FAIL: $SYMTSV has $(wc -l < "$SYMTSV") rows for ${#compiled[@]} sources (the src->symbol map is wrong)"; exit 1; }
 python3 "$HERE/tools/project/compile_sources.py" \
     --sources "$SRCTSV" --objdir "$OUT/obj" \
     --gcc "$GCC" --gcc-cri "$GCC_CRI" --cc-map "$CCMAP" --as "$AS" --include include \
     --cflags "$MATCHED_CFLAGS" --flags-file "$FLAGSFILE" \
-    ${JTBLTABLES:+--jtbl-tables "$JTBLTABLES"} \
+    "${JTBL_ARGS[@]}" "${DP_ARGS[@]}" \
     --jobs "${JOBS:-4}" ${HYBRID_NO_CACHE:+--no-cache} --label "source" || exit 1
 # The compiler map has a header row on line 1. Skip it before the count.
 # 编译器表第 1 行是表头；先跳过再计数。
@@ -244,239 +285,10 @@ echo "== 3/6 Safety gate: a C object must not add a non-empty allocatable sectio
 #    得到的是「静默错码」而不是链接错误）。
 # 2) 被替换掉的 asm 对象必须只有 .text（否则摘掉它会丢数据/丢 bss）。
 # 3) 每个符号必须真的在它的 C 对象里定义。
-python3 - "$READELF" "$OUT/obj" "$SRCDIR" "$MODES" "$OUT/residual" "${SYMS[@]}" -- "${SRCS[@]}" <<'PY'
-import os, re, subprocess, sys
-from concurrent.futures import ThreadPoolExecutor
-readelf = sys.argv[1]
-objdir  = sys.argv[2]
-srcdir  = sys.argv[3]
-modes_f = sys.argv[4]
-residdir = sys.argv[5]
-rest = sys.argv[6:]
-sep = rest.index('--')
-syms, srcs = rest[:sep], rest[sep+1:]
-
-modes = {}
-for line in open(modes_f, encoding='utf-8'):
-    p = line.rstrip('\n').split('\t')
-    if len(p) >= 3:
-        modes[p[0]] = p[2]
-
-# Memoised readelf. The gate reads the same object several times (`-SW` from `sections` and
-# from `sym_bindings`, `-sW` from `sym_bindings` and `defined_syms`), which is about 2.3e4
-# process starts for one run (1.1-1.5 ms each). The cache removes the duplicates; the worker
-# pool below removes the serial part. Both keep the output byte for byte identical.
-# 记忆化 readelf：闸门会反复读同一个对象（`sections` 与 `sym_bindings` 各跑一次 `-SW`，
-# `sym_bindings` 与 `defined_syms` 各跑一次 `-sW`），一次运行约 2.3 万次进程启动
-# （每次 1.1~1.5 ms）。缓存去掉重复，下面的线程池去掉串行部分；两者都保证输出逐字不变。
-_readelf_cache = {}
-
-def readelf_out(args, c_locale=False):
-    key = (tuple(args), c_locale)
-    hit = _readelf_cache.get(key)
-    if hit is None:
-        env = dict(os.environ, LC_ALL='C') if c_locale else None
-        hit = subprocess.run([readelf, *args], capture_output=True, text=True, env=env).stdout
-        _readelf_cache[key] = hit
-    return hit
-
-def sections(obj):
-    out = readelf_out(('-SW', obj))
-    res = []
-    for line in out.splitlines():
-        parts = line.replace('[', ' ').replace(']', ' ').split()
-        ti = None
-        for i, t in enumerate(parts):
-            if t in ('PROGBITS', 'NOBITS', 'MIPS_REGINFO', 'MIPS_DEBUG'):
-                ti = i; break
-        if ti is None or ti < 1:
-            continue
-        name = parts[ti-1]; size = int(parts[ti+3], 16)
-        # The readelf flags can contain lowercase letters (for example .sdata = "WAp").
-        # A test for uppercase letters only would miss .sdata and .sbss. The gate would then
-        # allow C-generated small data, and the link reports 'discarded section' later (P-24).
-        flg = parts[ti+5] if ti+5 < len(parts) and re.fullmatch(r'[A-Za-z]+', parts[ti+5]) else ''
-        res.append((name, size, flg))
-    return res
-
-def defined_syms(obj):
-    out = readelf_out(('-sW', obj))
-    names = set()
-    for line in out.splitlines():
-        p = line.split()
-        if len(p) >= 8 and p[0].endswith(':') and p[3] in ('FUNC', 'OBJECT') and p[6] != 'UND':
-            names.add(p[7].split('@')[0])
-    return names
-
-def sym_bindings(obj):
-    """[(name, bind, secname, size)] of the defined FUNC and OBJECT symbols only.
-
-    只含已定义的 FUNC/OBJECT。
-    """
-    sec_of = {}
-    out = readelf_out(('-SW', obj))
-    for line in out.splitlines():
-        m = re.match(r'\s*\[\s*(\d+)\]\s+(\S+)', line)
-        if m:
-            sec_of[m.group(1)] = m.group(2)
-    res = []
-    out = readelf_out(('-sW', obj))
-    for line in out.splitlines():
-        p = line.split()
-        if len(p) >= 8 and p[0].endswith(':') and p[3] in ('FUNC', 'OBJECT') and p[6] != 'UND':
-            try:
-                size = int(p[2], 16)
-            except ValueError:
-                size = 0
-            res.append((p[7].split('@')[0], p[4], sec_of.get(p[6], '?'), size))
-    return res
-
-def text_referenced(obj):
-    """Names that a relocation from a `.text*` section refers to (section symbols and normal symbols).
-
-    2026-10-07 (jtbl pool): after tools/project/jtbl_patch.py redirects the %hi/%lo relocations
-    of the C jump table to the existing jtbl_* symbols, no `.text*` relocation refers to the
-    `.rodata` in the C object any more. /DISCARD/ therefore drops it, and it cannot change the
-    code generation. The gate can allow it. The function counts `.rel.text*` only. A
-    `.rel.rodata` section refers back to `.text`, so it does not count.
-
-    2026-10-07（jtbl 池）：`tools/project/jtbl_patch.py` 把 C 自产跳转表的 `%hi/%lo`
-    重定位改指到既有的 `jtbl_*` 符号后，C 对象里的 `.rodata` 就**没有任何 `.text*`
-    重定位指向**了 ⇒ 它必然被 `/DISCARD/` 丢掉，不可能改变代码生成 ⇒ 可以放行。
-    只统计 `.rel.text*`（`.rel.rodata` 是反过来引用 `.text`，不算）。
-    """
-    out = readelf_out(('-rW', obj), c_locale=True)
-    refs, cur = set(), None
-    for line in out.splitlines():
-        if 'R_MIPS_' not in line:
-            m = re.search(r'\.rel\.[\w.]+', line)
-            if m:
-                cur = m.group(0)
-            continue
-        p = line.split()
-        if len(p) >= 5 and cur and cur.startswith('.rel.text'):
-            refs.add(p[4])
-    return refs
-
-def bad_sections(obj):
-    """Sections that a C object may not hold.
-
-    P2a (2026-10-03): the gate can allow `.sdata*` and `.sbss*` under one condition. The C
-    side defines small data symbols as WEAK in these sections, and that definition produces
-    the `%gp_rel` code generation. These sections are not in the mixed build linker script, so
-    /DISCARD/ drops them. The original asm data object still supplies the real storage and the
-    address, because a strong definition wins.
-    Condition: every symbol that the section defines must be WEAK. Otherwise the C side
-    creates its own data, and the gate refuses it.
-    2026-10-07 (jtbl, [P-52]): the gate also allows any non-`.text` allocatable section when no
-    `.text*` relocation refers to it (neither a section symbol nor a symbol inside the section
-    is named). /DISCARD/ drops it, and no code depends on it.
-    Negative control: a `.rodata` section that holds a string literal is referred to by a
-    `%hi/%lo` relocation from `.text`, so the gate still refuses it.
-
-    C 对象里「不允许」的段。
-    P2a（2026-10-03）：`.sdata*` / `.sbss*` **可以有条件放行** —— C 侧在这些段里 **weak 定义**
-    小数据符号，用来拿到 `%gp_rel` 代码生成；这些段不在 mixed build 链接脚本里，会被 /DISCARD/ 丢掉，
-    真实存储与地址仍由原 asm 数据对象提供（强定义胜出）。
-    条件：该段内定义的**每一个符号都必须是 WEAK**，否则就是「C 自产数据」→ 仍然拒绝。
-    2026-10-07（jtbl，[P-52]）：任何非 `.text` 可分配段，只要**没有任何 `.text*` 重定位指向它**
-    （节符号或段内符号都没有被提到），同样放行 —— 它会被 /DISCARD/ 丢掉，且没有代码依赖它。
-    负面对照：字符串字面量所在 `.rodata` 会被 `.text` 的 `%hi/%lo` 引用 ⇒ 仍然拒绝。
-    """
-    bad = []
-    binds = sym_bindings(obj)          # [(name, bind, secname, size)]
-    refs = text_referenced(obj)
-    dead = set()
-    for (n, s, f) in sections(obj):
-        if not ('A' in f and s > 0 and not n.startswith('.text')):
-            continue
-        if n not in refs and not any(x[0] in refs for x in binds if x[2] == n):
-            dead.add(n)
-    for (n, s, f) in sections(obj):
-        if not ('A' in f and s > 0 and not n.startswith('.text')):
-            continue
-        if n in dead:
-            continue          # no .text* reference, so /DISCARD/ drops it, and the gate is safe
-        if n.startswith(('.sdata', '.sbss')):
-            # Allow a small data section only when the whole section holds WEAK definitions.
-            # The section size must equal the sum of the weak symbol sizes. A string literal has
-            # no named symbol (or has LOCAL symbols only), so the sizes differ, and the gate
-            # refuses it (the P-24 repair).
-            weak = sum(x[3] for x in binds if x[2] == n and x[1] == 'WEAK')
-            named = [x for x in binds if x[2] == n]
-            nonweak = [x[0] for x in named if x[1] != 'WEAK']
-            if weak != s or nonweak:
-                bad.append((n, s, 'weak coverage fails (weak=%d/nonweak=%s)' % (weak, ','.join(nonweak[:3]) or '-')))
-            continue
-        bad.append((n, s, ''))
-    return bad
-
-def strict_bad_sections(obj):
-    """The strict form for an asm object and a residual object: no non-empty allocatable section outside .text*.
-
-    严格版（asm / residual 对象用）：除 .text* 外不得有任何非空可分配段。
-    """
-    return [(n, s) for (n, s, f) in sections(obj)
-            if 'A' in f and s > 0 and not n.startswith('.text')]
-
-def check_one(pair):
-    """The failure messages of one symbol. The work is independent per symbol, so a pool can run it.
-
-    单个符号的失败消息。逐符号独立，可放进线程池。
-    """
-    sym, src = pair
-    msgs = []
-    cobj = os.path.join(objdir, src + '.o')
-    if not os.path.exists(cobj):
-        msgs.append("  [FAIL] the C object does not exist: %s" % cobj)
-        return msgs
-    bad = bad_sections(cobj)
-    if bad:
-        msgs.append("  [FAIL] %s holds a non-empty allocatable section outside .text: %s (the current mechanism does not place them)" % (cobj, bad))
-    if sym not in defined_syms(cobj):
-        msgs.append("  [FAIL] %s is not defined in %s" % (sym, cobj))
-
-    aobj = 'build/asm/cod/%s.o' % sym
-    if not os.path.exists(aobj):
-        msgs.append("  [FAIL] the asm object to replace does not exist: %s" % aobj)
-        return msgs
-    # The gate treats an asm object and a residual object strictly: no non-empty allocatable section outside .text.
-    abad = strict_bad_sections(aobj)
-    if abad:
-        msgs.append("  [FAIL] %s holds a non-empty allocatable section outside .text: %s. A full removal loses content." % (aobj, abad))
-
-    if modes.get(sym) == 'residual':
-        robj = os.path.join(residdir, sym + '.o')
-        if not os.path.exists(robj):
-            msgs.append("  [FAIL] the residual object does not exist: %s" % robj)
-            return msgs
-        rbad = strict_bad_sections(robj)
-        if rbad:
-            msgs.append("  [FAIL] %s holds a non-empty allocatable section outside .text: %s" % (robj, rbad))
-        a_defs = defined_syms(aobj)
-        r_defs = defined_syms(robj)
-        if sym in r_defs:
-            msgs.append("  [FAIL] the residual object still defines the target symbol %s (the C object would redefine it)" % sym)
-        expected = {n for n in a_defs if n not in (sym, sym + '.NON_MATCHING')}
-        missing = sorted(expected - r_defs)
-        if missing:
-            msgs.append("  [FAIL] the residual object lost the symbol definitions of the original object: %s (removal breaks the link)" % missing)
-    return msgs
-
-fail = False
-gate_jobs = max(1, int(os.environ.get('GATE_JOBS') or (os.cpu_count() or 4)))
-with ThreadPoolExecutor(max_workers=gate_jobs) as pool:
-    # `map` keeps the input order, so the messages print in the same order as the serial loop did.
-    # `map` 保序，打印顺序与改造前的串行循环一致。
-    for msgs in pool.map(check_one, zip(syms, srcs)):
-        for m in msgs:
-            print(m)
-            fail = True
-if fail:
-    sys.exit(1)
-print("  passed: %d C objects supply .text* only, %d replaced asm objects hold .text only, the residual objects keep all symbols"
-      % (len(syms), len(syms)))
-PY
+python3 "$HERE/tools/project/obj_gate.py" \
+    --readelf "$READELF" --objdir "$OUT/obj" --srcdir "$SRCDIR" \
+    --modes "$MODES" --residual-dir "$OUT/residual" --asm-cod-dir "build/asm/cod" \
+    "${SYMS[@]}" -- "${SRCS[@]}" || exit 1
 
 echo "== 4/6 Write the mixed build linker script (in-place replacement, same link order) =="
 python3 - "$BASE_LDS" "$LDS" "$OUT/obj" "$OUTREL" "$MODES" "${SYMS[@]}" -- "${SRCS[@]}" <<'PY'

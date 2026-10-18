@@ -72,6 +72,17 @@ from auto_match_trivial import (  # noqa: E402
 from at2_paths import OBJDUMP  # noqa: E402  section-size guard (P-97)
 import split_asm as SPLIT  # noqa: E402  block boundary rule shared with the mixed build
 import jtbl_patch as JTP  # noqa: E402  jump-table reference redirect (P-52)
+try:                                    # data-reference redirect (O-01 (1)); the build uses the same module
+    import data_patch as DTP            # noqa: E402
+except Exception:                       # pragma: no cover
+    DTP = None
+import obj_gate as GATE                 # noqa: E402  the mixed-build safety gate (P-135: verify() must cover it)
+
+# Why a skip is recorded: before 2026-10-17 `verify()` could report 100 for an object that the
+# build gate refuses (P-135). The reason now travels with the symbol so a batch report can show it.
+# 记录跳过原因：2026-10-17 之前 `verify()` 可能给「构建闸门会拒收」的对象 100 分（P-135）。
+# 现在原因跟着符号走，批次报告能看到。
+VERIFY_SKIPS: dict[str, str] = {}
 
 # A jtbl function compiles into its own .rodata jump table, so the reference in .text points at
 # the wrong symbol and the score saturates below 100 (measured 99.33 for the best candidate,
@@ -230,13 +241,28 @@ def setup_dir(sym: str, frontend: str = "ghidra") -> tuple[Path | None, str]:
         print(f"  [skip] {sym}: {e}", file=sys.stderr)
         return None, "unsafe_name"
     d.mkdir(parents=True, exist_ok=True)
+    # `_gprel` is filled in the Ghidra branch below but consumed after all branches (the gp_rel
+    # selection rule), so it must exist for every frontend - `--frontend m2c` used to raise
+    # UnboundLocalError here. / 该变量在下面的 ghidra 分支里填，但所有分支之后都会用到（gp_rel
+    # 选择规则），因此必须对每种前端都存在——`--frontend m2c` 以前会在这里抛 UnboundLocalError。
+    _gprel: set = set()
     cands = []
     if frontend in ("m2c", "best", "best3"):
         s = M2C.emit(sym, d)
         if s is not None:
             cands.append(("m2c", s))
     if frontend in ("ghidra", "best", "best3"):
-        s = GD.emit(sym, d)
+        # gp_rel 类：汇编里用 `%gp_rel(D_x)($28)` 做 gp 相对寻址。纯 C 发不出这种寻址，
+        # 必须让草稿把小数据符号写成 **weak 定义**（放 .sdata/.sbss，混合链接脚本会 /DISCARD/ 掉，
+        # 存储仍来自原数据对象）。`auto_match_ghidra.py` 一直这么做，但本工具此前没传 gprel_syms
+        # ⇒ gp_rel 候选拿到的草稿**永远不可能**产生 gp 相对寻址，在 permuter 里必然 0 命中
+        # （实测：62 个已跑候选汇编里都有 %gp_rel，base.c 里一个 weak 定义都没有）。
+        # gp_rel class: `%gp_rel(D_x)($28)` needs the draft to write those small data symbols as
+        # **weak definitions**; without it the C can never emit gp-relative addressing.
+        _asmf = ROOT / "asm" / "cod" / f"{sym}.s"
+        if _asmf.is_file():
+            _gprel = set(re.findall(r"%gp_rel\((\w+)\)", _asmf.read_text(encoding="utf-8", errors="replace")))
+        s = GD.emit(sym, d, gprel_syms=_gprel or None)
         if s is not None:
             cands.append(("ghidra", s))
     if frontend in ("llm", "best3"):
@@ -311,12 +337,24 @@ def setup_dir(sym: str, frontend: str = "ghidra") -> tuple[Path | None, str]:
             name, ps = line.split("\t", 1)
             m = _score(sym, Path(ps), d)
             scored.append((m if m is not None else -1.0, name, ps))
-        if len(scored) > 1 and scored:
-            scored.sort(reverse=True)
-            if scored[0][0] >= 0:
-                shutil.copyfile(scored[0][2], d / "base.c")
+        scored.sort(reverse=True)
+        # gp_rel 候选：目标用 `%gp_rel(D_x)($28)`，**只有带 shim 的 ghidra 草稿在结构上能产出它**
+        # （m2c/llm 草稿发不出 gp 相对寻址）。按分数选会让 m2c 胜出（分数往往更高）⇒ 该候选必然失败：
+        # 实测同一批 gp_rel 用 m2c 草稿 0/12，用带 shim 的 ghidra 草稿 4/10（R32 §21）。
+        # 所以在 gp_rel 上把**选择域限制为 ghidra 草稿**，并把三者的分数照旧写进 `_frontend.txt` 供审计。
+        # gp_rel: only the shimmed Ghidra draft can express gp-relative addressing, so restrict the
+        # selection to it even when another draft scores higher.
+        chosen = scored[0] if scored else None
+        if _gprel:
+            _cap = [t for t in scored if t[1] == "ghidra"]
+            if _cap:
+                chosen = _cap[0]
+        if chosen is not None and chosen[0] >= 0:
+            shutil.copyfile(chosen[2], d / "base.c")
+        if scored:
             (d / "_frontend.txt").write_text(
-                "\n".join(f"{n}\t{m:.2f}" for m, n, _ in scored), encoding="utf-8")
+                "\n".join(f"{n}\t{m:.2f}" for m, n, _ in scored)
+                + (f"\n# chosen: {chosen[1]}" if chosen else ""), encoding="utf-8")
     return d, ""
 
 
@@ -435,13 +473,28 @@ def verify(sym: str, source: Path) -> float | None:
         c_sz, ref_sz = _text_size(c_o), _text_size(ref)
         if c_sz is None or ref_sz is None or c_sz != ref_sz:
             continue
-        if tbl:
-            # Same redirect as the build does, so the verification sees the object that will be
-            # linked. The patch keeps the .rodata bytes but removes every .text reference to them.
-            # 与构建同一步改指；补丁保留 .rodata 字节，只去掉 .text 对它的引用。
+        # Same redirects as the build does, so the verification sees the object that will be
+        # linked. The data patch subsumes the jtbl patch; fall back to jtbl_patch only when the
+        # asm block or the baseline link is absent (for example an out-of-tree experiment).
+        # 与构建同一步改指；数据改指覆盖 jtbl 改指，只有 asm 块或基线链接缺失时才退回 jtbl_patch。
+        asm_f = ROOT / "asm" / "cod" / f"{sym}.s"
+        image_f = ROOT / "build" / "SLPS_258.19.elf"
+        if DTP is not None and asm_f.is_file() and image_f.is_file():
+            ok, why = DTP.patch(c_o, sym, asm_f, image_f)
+            if not ok:
+                VERIFY_SKIPS[sym] = "data patch refused: " + why
+                continue
+        elif tbl:
             ok, _why = JTP.patch(c_o, tbl, c_o)
             if not ok:
                 continue
+        # P-135: objdiff 100 does not prove that the build gate accepts the object. Check it
+        # here, with the same implementation the build uses.
+        # P-135：objdiff 100 不代表构建闸门收它。这里用构建的同一份实现检查。
+        bad = GATE.bad_sections(str(c_o))
+        if bad:
+            VERIFY_SKIPS[sym] = "the mixed-build gate would refuse the object: %s" % (bad,)
+            continue
         m = _match_of(sym, c_o, d)
         if m is not None and (best is None or m > best):
             best = m
@@ -589,12 +642,13 @@ def do_apply(winners: dict):
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("mode", nargs="?", default="run", choices=["run", "apply-workdir"])
+    ap.add_argument("mode", nargs="?", default="run", choices=["run", "apply-workdir", "sweep"])
     ap.add_argument("--from", dest="src_json", default="matching-jp/build/m2/ghidra_batch/result.json")
     ap.add_argument("--min-match", type=float, default=95.0)
     ap.add_argument("--max-match", type=float, default=99.999)
     ap.add_argument("--classes", default="")
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--results", default="", help="sweep: 额外的 result.json（如批次结束的快照）")
     ap.add_argument("--symbols-file", default="")
     ap.add_argument("--timeout", type=int, default=120)
     ap.add_argument("--jobs", type=int, default=3)
@@ -625,6 +679,84 @@ def main() -> int:
         print(f"workdir harvest: {len(winners)} at objdiff 100%")
         if args.apply and winners:
             do_apply(winners)
+        (WORK / "accepted.json").write_text(json.dumps(winners, indent=1, ensure_ascii=False), encoding="utf-8")
+        return 0
+
+    if args.mode == "sweep":
+        # P-124: a candidate can verify at 100 and still never reach the ledger. `verify()` writes
+        # `_flags.txt` only when it really reaches 100, so a recorded 100.00 is a strong hint of an
+        # unlanded winner -- but the record can be stale, hence the re-verify below.
+        # P-124：候选可能验到 100 却一直没落库。`verify()` 只在真到 100 时才写 `_flags.txt`，
+        # 所以记录着 100.00 是「未落库赢家」的强信号——但记录可能是陈旧的，所以下面要重验一次。
+        landed = set()
+        if MATCHED_LIST.is_file():
+            for line in MATCHED_LIST.read_text(encoding="utf-8").splitlines():
+                a = line.split("#", 1)[0].strip()
+                if a:
+                    landed.add(a.split()[0])
+        # Candidate sources come from three places. The third one closes the P-101 gap: a winner is
+        # NOT always `output-0-*` - the permutation can stop at a non-zero score (say 10 differing
+        # bytes) while some flag level still reproduces the target exactly (`output-10-1/source.c`).
+        # 候选来源有三处。第三处堵上 P-101 的漏：赢家**不一定**在 `output-0-*`——permuter 可能在非零分
+        # （比如 10 个失配字节）停下，而某个档位仍能精确复现目标（`output-10-1/source.c`）。
+        cands: dict[str, Path] = {}
+        n_dirs = 0
+        for d in sorted(WORK.glob("*")):
+            sym = d.name
+            if not at2_io.symbol_ok(sym) or sym in landed:
+                continue
+            outs = sorted(d.glob("output-0-*"))
+            if outs and (outs[-1] / "source.c").is_file():
+                cands[sym] = outs[-1] / "source.c"
+                n_dirs += 1
+                continue
+            # No converged output: only worth a compile when `_flags.txt` claims 100 (P-124).
+            fl = d / "_flags.txt"
+            if fl.is_file() and "100.00" in fl.read_text(encoding="utf-8", errors="replace") \
+                    and (d / "base.c").is_file():
+                cands[sym] = d / "base.c"
+                n_dirs += 1
+        res_paths = [Path(args.results)] if args.results else []
+        default_res = WORK / "result.json"
+        if default_res.is_file() and default_res not in res_paths:
+            res_paths.append(default_res)
+        n_res = 0
+        for rp in res_paths:
+            try:
+                recs = json.loads(rp.read_text(encoding="utf-8"))
+            except (OSError, ValueError) as e:
+                print(f"  [skip] {rp}: {e}", file=sys.stderr)
+                continue
+            for r in recs:
+                sym = r.get("sym")
+                if not sym or sym in landed or not at2_io.symbol_ok(sym):
+                    continue
+                src, od = r.get("source"), r.get("objdiff")
+                if od == 100.0 and src and Path(src).is_file():
+                    # **Override** any candidate from the work-directory heuristics: this is the
+                    # run's own recorded winner, and its permuter score may be non-zero, so it need
+                    # not be `output-0-*` (measured: `output-130-1`, `output-10-1`). Skipping it just
+                    # because `base.c` was already queued is how `func_002a1fd4` stayed unlanded.
+                    # 覆盖工作目录启发式给出的候选：这是该次运行**自己记录的赢家**，其 permuter 分可能
+                    # 非零（实测有 `output-130-1`、`output-10-1`），因此不在 `output-0-*`。此前因为
+                    # `base.c` 已在队列里就跳过它——`func_002a1fd4` 正是这样被漏掉的。
+                    if cands.get(sym) != Path(src):
+                        n_res += 1
+                    cands[sym] = Path(src)
+        print(f"sweep: sources - {n_dirs} from work dirs, {n_res} from result files")
+        winners, checked = {}, 0
+        for sym, cand in sorted(cands.items()):
+            checked += 1
+            m = verify(sym, cand)
+            if m == 100.0:
+                winners[sym] = {"source": str(cand), "objdiff": m}
+        print(f"sweep: checked {checked} unlanded candidates, {len(winners)} are landable")
+        for sym in sorted(winners):
+            print(f"  {sym}\t{winners[sym]['source']}")
+        (WORK / "sweep_new.json").write_text(json.dumps(winners, indent=1, ensure_ascii=False), encoding="utf-8")
+        if args.apply and winners:
+            do_apply(winners)
+        return 0
         (WORK / "accepted.json").write_text(json.dumps(winners, indent=1, ensure_ascii=False), encoding="utf-8")
         return 0
 
