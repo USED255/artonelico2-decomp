@@ -40,7 +40,7 @@
 
 | 量 | 规则 |
 | --- | --- |
-| 帧大小 | `round16(vars + 8 × regs + args)`（[L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers)） |
+| 帧大小 | `round16(vars + 8 × regs + args)`（[L-EE-012](LAWS.md#l-ee-012--frame-composition-outgoing-argsvars8-b-per-saved-register-saturating-at-10-saved-registers)） |
 | 保存寄存器 | 每个 8 字节，上限 **10**（`$s0`–`$s7`、`$fp`、`$ra`） |
 | 出参区 | `round16(8 × max(0, n − 8))`（[L-EE-028](LAWS.md#l-ee-028--eight-integer-arguments-travel-in-4-11-and-eight-float-arguments-in-f12-f19-a-long-long-or-double-takes-one-64-bit-gpr-the-rest-go-on-the-stack-in-8-byte-slots)） |
 | 帧指针 | 默认省略；`.frame $fp,…` 表示 `alloca`/VLA 或 `-fno-omit-frame-pointer`（[L-EE-024](LAWS.md#l-ee-024--a-saved-fp-is-not-a-frame-pointer)） |

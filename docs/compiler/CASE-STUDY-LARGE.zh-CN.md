@@ -16,7 +16,7 @@
 
 结果完全相同，帧大小**相差 6.5 倍**，`-O2` 与 `-Os` 都一样。
 
-用 [L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers) 核对算术：`frame = round16(vars + 8 × 保存的寄存器 + 传出实参区)`。
+用 [L-EE-012](LAWS.md#l-ee-012--frame-composition-outgoing-argsvars8-b-per-saved-register-saturating-at-10-saved-registers) 核对算术：`frame = round16(vars + 8 × 保存的寄存器 + 传出实参区)`。
 A 是 `128 + 8 × 10 = 208` ✓。⇒ 那 128 字节的 `vars` 区是 **16 个溢出值**，帧在告诉你：**源码有 16 个值同时活着**。
 
 ## 第一步 —— 先分解帧，再动任何代码
@@ -92,6 +92,6 @@ python3 tools/compiler/ee-gcc-observe.py --src A.c --flags="-O2 -G0"
 python3 tools/compiler/ee-gcc-spill-map.py --src A.c --flags="-O2 -G0"
 ```
 
-相关 law：[L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers)（帧的组成）、[L-EE-013](LAWS.md#l-ee-013--signedness-picks-slt-vs-sltu-a-narrower-type-adds-andi-or-sllsra-xori-marks-equality)（传出实参区）、
+相关 law：[L-EE-012](LAWS.md#l-ee-012--frame-composition-outgoing-argsvars8-b-per-saved-register-saturating-at-10-saved-registers)（帧的组成）、[L-EE-013](LAWS.md#l-ee-013--signedness-picks-slt-vs-sltu-a-narrower-type-adds-andi-or-sllsra-xori-marks-equality)（传出实参区）、
 [L-EE-015](LAWS.md#l-ee-015--the-outgoing-argument-area-doubles-as-storage-for-a-value-used-after-the-call)（既传出又保留的值）、[L-EE-025](LAWS.md#l-ee-025--loops-count-down-at--o2-os-at--o1-they-keep-slt-and-are-not-unrolled)/[L-EE-026](LAWS.md#l-ee-026--the-constant-pool-is-per-function)
 （`-O1` 与 `-Os` 的帧行为）、[L-EE-018](LAWS.md#l-ee-018--global-allocation-preference-first-then-the-lowest-register-left-after-two-passes-that-first-avoid-registers-other-allocnos-prefer)（分配器会选哪个寄存器）。

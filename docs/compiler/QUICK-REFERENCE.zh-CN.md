@@ -13,8 +13,8 @@
 | 同样保存槽下，目标帧**正好大 16 字节** | [L-EE-024](LAWS.md#l-ee-024--a-saved-fp-is-not-a-frame-pointer) |
 | 序言里 `lw …,0($4)`，或函数返回结构体 | [L-EE-030](LAWS.md#l-ee-030--aggregates-8-bytes-by-value-larger-by-reference-returns-use-a-hidden-pointer) —— >8 字节聚合按引用；返回时 `$4` 是返回槽 |
 | 实参被放在 `8($sp)` 而不是 `4($sp)` | [L-EE-028](LAWS.md#l-ee-028--eight-integer-arguments-travel-in-4-11-and-eight-float-arguments-in-f12-f19-a-long-long-or-double-takes-one-64-bit-gpr-the-rest-go-on-the-stack-in-8-byte-slots) —— 第 9 个实参起按 8 字节槽入栈 |
-| 你在数保存槽 | [L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers) —— 每个 8 B，上限 10 |
-| 保存超过 10 个值但帧不再涨 | [L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers) —— 多出的进 `vars` |
+| 你在数保存槽 | [L-EE-012](LAWS.md#l-ee-012--frame-composition-outgoing-argsvars8-b-per-saved-register-saturating-at-10-saved-registers) —— 每个 8 B，上限 10 |
+| 保存超过 10 个值但帧不再涨 | [L-EE-012](LAWS.md#l-ee-012--frame-composition-outgoing-argsvars8-b-per-saved-register-saturating-at-10-saved-registers) —— 多出的进 `vars` |
 | 目标延迟槽里是 `nop`、你的却是真指令 | [L-EE-009](LAWS.md#l-ee-009--the-delay-slot-is-filled-the-leftover-nop-is-the-function-ending-jr-ra) —— 延迟槽几乎总被填满；剩下的 `nop` 是函数末尾那一个 |
 | 对一个既传给调用、又要在调用后使用的值，帧多出一个 8 B 槽 | [L-EE-015](LAWS.md#l-ee-015--the-outgoing-argument-area-doubles-as-storage-for-a-value-used-after-the-call) —— 经出参区传出的值会在调用后**从该槽重读** |
 | 需要知道哪些寄存器可分配、调用者保存或被保留 | [L-EE-016](LAWS.md#l-ee-016--the-ee-register-file-140-hard-registers-in-29-classes) —— 140 个硬寄存器、29 个类；可分配的被调用者保存 GPR 是 `$16`–`$23` 与 `$30` |

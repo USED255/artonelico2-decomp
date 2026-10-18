@@ -17,7 +17,7 @@ Compile two spellings of the same arithmetic and read `.frame`:
 
 Identical results, **6.5× apart in frame size**, at both `-O2` and `-Os`.
 
-Check the arithmetic against [L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers): `frame = round16(vars + 8 × saved regs +
+Check the arithmetic against [L-EE-012](LAWS.md#l-ee-012--frame-composition-outgoing-argsvars8-b-per-saved-register-saturating-at-10-saved-registers): `frame = round16(vars + 8 × saved regs +
 outgoing args)`. For A: `128 + 8 × 10 = 208` ✓. So the 128-byte `vars` block is **16 spilled values**, and the
 frame is telling you the source had sixteen live values at once.
 
@@ -101,7 +101,7 @@ python3 tools/compiler/ee-gcc-observe.py --src A.c --flags="-O2 -G0"
 python3 tools/compiler/ee-gcc-spill-map.py --src A.c --flags="-O2 -G0"
 ```
 
-Related laws: [L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers) (frame composition), [L-EE-013](LAWS.md#l-ee-013--signedness-picks-slt-vs-sltu-a-narrower-type-adds-andi-or-sllsra-xori-marks-equality) (the
+Related laws: [L-EE-012](LAWS.md#l-ee-012--frame-composition-outgoing-argsvars8-b-per-saved-register-saturating-at-10-saved-registers) (frame composition), [L-EE-013](LAWS.md#l-ee-013--signedness-picks-slt-vs-sltu-a-narrower-type-adds-andi-or-sllsra-xori-marks-equality) (the
 outgoing argument area), [L-EE-015](LAWS.md#l-ee-015--the-outgoing-argument-area-doubles-as-storage-for-a-value-used-after-the-call) (a value that is both passed and kept),
 [L-EE-025](LAWS.md#l-ee-025--loops-count-down-at--o2-os-at--o1-they-keep-slt-and-are-not-unrolled)/[L-EE-026](LAWS.md#l-ee-026--the-constant-pool-is-per-function) (`-O1` and `-Os` frame behaviour), and
 [L-EE-018](LAWS.md#l-ee-018--global-allocation-preference-first-then-the-lowest-register-left-after-two-passes-that-first-avoid-registers-other-allocnos-prefer) (which register the allocator picks).

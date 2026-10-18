@@ -40,7 +40,7 @@ Alignment equals size, so an 8-byte member is 8-aligned.
 
 | quantity | rule |
 | --- | --- |
-| frame size | `round16(vars + 8 × regs + args)` ([L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers)) |
+| frame size | `round16(vars + 8 × regs + args)` ([L-EE-012](LAWS.md#l-ee-012--frame-composition-outgoing-argsvars8-b-per-saved-register-saturating-at-10-saved-registers)) |
 | saved registers | 8 bytes each, saturating at **10** (`$s0`–`$s7`, `$fp`, `$ra`) |
 | outgoing args | `round16(8 × max(0, n − 8))` ([L-EE-028](LAWS.md#l-ee-028--eight-integer-arguments-travel-in-4-11-and-eight-float-arguments-in-f12-f19-a-long-long-or-double-takes-one-64-bit-gpr-the-rest-go-on-the-stack-in-8-byte-slots)) |
 | frame pointer | omitted by default; `.frame $fp,…` means `alloca`/VLA or `-fno-omit-frame-pointer` ([L-EE-024](LAWS.md#l-ee-024--a-saved-fp-is-not-a-frame-pointer)) |
