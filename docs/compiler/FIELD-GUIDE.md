@@ -38,8 +38,8 @@ call in registers.
 | **vars (the spilled block)** | **48 B** | **16 B** |
 
 Both prologues save exactly the same ten registers, so **the entire +32 B is the variable block**
-([L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers)).
-Two extra 8-byte slots are held by values that could not take one of the nine `$s` registers.
+([L-EE-012](LAWS.md#l-ee-012--frame-composition-outgoing-argsvars8-b-per-saved-register-saturating-at-10-saved-registers)).
+The values in that block could not take one of the nine `$s` registers.
 
 **Find the targets first.** `tools/compiler/ee-gcc-spill-map.py` compiles with `-gdwarf-2 -fverbose-asm`
 and maps every stack access back to a source line, split by block:
@@ -49,16 +49,21 @@ python3 tools/compiler/ee-gcc-spill-map.py --cc "$EE_GCC" --src candidate.c \
     --include include --flags=-Os
 ```
 
-On `func_001d4b88` the candidate writes **5 slots** at **each of 12 recursive call sites**, while the
-retail target's `vars` block is only **2 slots** (16 B). That is the target list: those 12 lines are
-where values are kept alive across the recursive call.
+On `func_001d4b88` the candidate writes **5–6 outgoing-argument slots at each of 12 recursive call
+sites** — that is the `args` block, stores only. The **actual spilled locals** live in the `vars`
+block: the candidate keeps locals at offsets 48/52 (one slot), 64 and 80, giving a 48 B block; the
+retail target's `vars` block is 16 B and holds **one** local, `a1` (`param_2`) at vars+48 (one store,
+15 reloads). So the target list is the `vars` block, not the call sites: our extra locals against the
+target's single one.
 
-`-fverbose-asm` also labels each spill with the variable's name, and `--trace-values` attributes a
+`-fverbose-asm` also labels each access with the variable's name, and `--trace-values` attributes a
 store to the line that last defined the stored register:
 
 ```
-    line  store  load  offsets / spilled variable names
-     513      5     0  [8, 16, 24, 32, 40]   param_11
+    line  store  load  offsets / variable names
+     520      1     0  [48]        new_var4
+     533      0     2  [48, 84]   new_var6, new_var8, new_var4
+      65      0     1  [80]        param_2
 ```
 
 So the tool answers "what is being kept alive, and where was it computed" — which is what you need in

@@ -33,8 +33,8 @@
 | **变量区（溢出块）** | **48 B** | **16 B** |
 
 两个 prologue 保存的寄存器**完全相同**，所以 **+32 B 全在变量区**
-（[L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers)）：
-两个 8 B 槽被「没拿到 9 个 `$s` 之一」的值占着。
+（[L-EE-012](LAWS.md#l-ee-012--frame-composition-outgoing-argsvars8-b-per-saved-register-saturating-at-10-saved-registers)）：
+变量块里是「没拿到 9 个 `$s` 之一」的值。
 
 **先找靶点**：`tools/compiler/ee-gcc-spill-map.py` 用 `-gdwarf-2 -fverbose-asm` 编译，把每一处栈访问
 映射回源码行，并按区块（vars / args / 保存寄存器）分类：
@@ -44,14 +44,18 @@ python3 tools/compiler/ee-gcc-spill-map.py --cc "$EE_GCC" --src candidate.c \
     --include include --flags=-Os
 ```
 
-在 `func_001d4b88` 上，候选在 **12 个递归调用点各写 5 个槽**，而零售目标的 `vars` 只有 **2 个槽**（16 B）。
-这 12 行就是靶点清单：值在那里被跨递归调用保活。
+在 `func_001d4b88` 上，候选在 **12 个递归调用点各写 5–6 个传出实参槽**——那是 `args` 区（只写）。
+**真正的溢出局部**在 `vars` 区：候选取值落在偏移 48/52（同一槽）、64、80，共 48 B；零售目标的 `vars`
+只有 16 B，且只放**一个**局部 `a1`（`param_2`，在 vars+48，1 次写、15 次读）。
+所以靶点清单是 `vars` 区，不是调用点：多出来的是我们这几个局部。
 
-`-fverbose-asm` 还会把**变量名**写在溢出指令后面，`--trace-values` 则把某次 store 归因到「最后定义该寄存器的那一行」：
+`-fverbose-asm` 还会把**变量名**写在访问指令后面，`--trace-values` 则把某次 store 归因到「最后定义该寄存器的那一行」：
 
 ```
-    line  store  load  offsets / spilled variable names
-     513      5     0  [8, 16, 24, 32, 40]   param_11
+    line  store  load  offsets / variable names
+     520      1     0  [48]        new_var4
+     533      0     2  [48, 84]   new_var6, new_var8, new_var4
+      65      0     1  [80]        param_2
 ```
 
 ⇒ 工具回答「保活的是什么、它在哪里算出来的」——这正是「把计算挪到调用之后」所需的信息。

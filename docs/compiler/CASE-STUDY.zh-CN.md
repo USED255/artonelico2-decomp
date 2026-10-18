@@ -19,7 +19,7 @@ objdiff            80.18
 
 ## 第 1 步 —— 分解帧（L-EE-012）
 
-帧 = `[vars][传出参数][每个保存寄存器 8 B]`。两边读数：
+帧 = `[传出参数][vars][每个保存寄存器 8 B]`。两边读数：
 
 | 区块 | 候选 | 目标 |
 | --- | ---: | ---: |
@@ -49,7 +49,7 @@ frame=176 B  vars=48  regs=10 (8 B each)  args=48
 
 两条 law 命中：
 
-* [L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers)：帧布局与 10 个保存寄存器的上限（第 1 步已用）。
+* [L-EE-012](LAWS.md#l-ee-012--frame-composition-outgoing-argsvars8-b-per-saved-register-saturating-at-10-saved-registers)：帧布局与 10 个保存寄存器的上限（第 1 步已用）。
 * [L-EE-015](LAWS.md#l-ee-015--the-outgoing-argument-area-doubles-as-storage-for-a-value-used-after-the-call)：**写进传出参数区的聚合体，调用之后会从该槽重读**（额外帧开销 0）；而标量会占一个 callee-saved 寄存器（8 B）。
 
 L-EE-015 直接给出一个**便宜**的改法：一个值如果既传给调用、调用后还要用，就**两处都用同一个表达式**，别拷进局部变量。

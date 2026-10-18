@@ -130,7 +130,11 @@ falsifies：「≥5 个不同 case 就生成跳转表」（dds-decomp，2.96，�
 receipt：14 个 float + 9 个 double @ `-O2 -G0`，全部与上表一致；**低位半字为零的 float（`0.5f`/`1.0f`/`2.5f`/`1.5f`）照样走池**｜
 falsifies：IDO 5.3 的「浮点常量低位半字决定内联还是池」（n64-decomp-workbench L62，CC0）——在 ee-gcc 3.2 上这个分裂**只对双精度成立**。
 
-## L-EE-012 · 帧构成 = `[vars][传出参数][每个保存寄存器 8 B]`，保存寄存器在 10 个处饱和
+## L-EE-012 · 帧构成 = `[传出参数][vars][每个保存寄存器 8 B]`，保存寄存器在 10 个处饱和
+
+**2026-10-18 实测的布局顺序**：区块实际是 `[传出参数][vars][保存寄存器]` —— 传出实参区在最低偏移，`vars` 紧随其后。
+合成探针：无栈传参时 `vars` 在 0..15；有四个栈传参时同一批局部移到 32..63，`args` 占 0..31、保存寄存器从 64 开始。
+此前标题把组件顺序写反了；`ee-gcc-spill-map.py` 已按此改正。
 
 **T2**｜源码锚点 `global.c:991`（`find_reg`；出厂二进制解析到 `global.c:1329`）｜二进制锚点 `find_reg @ 0x081acd64`｜
 receipt（合成剂量-响应，`-O2 -G0`，k 个跨调用活跃值）：
@@ -212,7 +216,7 @@ falsifies：「凡是既要传给调用、调用后又要用的值，都必须�
 `N_REG_CLASSES` = **29**，`HARD_REG_SET` = 192 位；**第一个伪寄存器是 144**，这也正是它按 `3 × 64` 位取整的原因。
 活读 `debug_reg_names`（`0x0821f280`）只有 0..143 项，下一格已不是名字。
 GPR 里被 `fixed_reg_set` 固定的是 `0,1,26,27,28,29,31`；`call_used_reg_set` 剩下 `2–15,24,25` 为调用者保存
-⇒ **可分配的 callee-saved GPR 恰好是 `{16..23, 30}`**（8 个 `$s0`–`$s7` + `$fp`），加上 `$ra` 正好 **10 个保存槽**，与 [L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers) 的实测上限吻合。
+⇒ **可分配的 callee-saved GPR 恰好是 `{16..23, 30}`**（8 个 `$s0`–`$s7` + `$fp`），加上 `$ra` 正好 **10 个保存槽**，与 [L-EE-012](LAWS.md#l-ee-012--frame-composition-outgoing-argsvars8-b-per-saved-register-saturating-at-10-saved-registers) 的实测上限吻合。
 
 **T1**｜源码锚点 `config/mips/mips5900.c`｜二进制锚点 `reg_class_contents @ 0x08309140`、`reg_class_size @ 0x083094c0`、`fixed_reg_set @ 0x0830a310`、`call_used_reg_set @ 0x083093f8`｜
 receipt：上表（活进程读出）。这些数组在 `.bss`、启动时填充，**静态读为 0**｜
@@ -515,7 +519,7 @@ falsifies：「把常量池的 per-function 规则推广到字符串」与「对
   即 `args = round16(8 × max(0, n − 8))`。
 
 **整帧** = `round16(vars + 8 × regs + args)`
-（[L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers)）：九个实参时和为 24、帧为 32。
+（[L-EE-012](LAWS.md#l-ee-012--frame-composition-outgoing-argsvars8-b-per-saved-register-saturating-at-10-saved-registers)）：九个实参时和为 24、帧为 32。
 
 **浮点用另一套额度**：最多 8 个 `float` 实参走 **`$f12`–`$f19`**——所以「8 个 int + 4 个 float」会**同时**占满 `$4`–`$11` 与 `$f12`–`$f15`。
 `long long` / `double` 则**各占一个 64 位 GPR**（`dli $4,1`、`dli $5,2` 传两个 `long long`；被调用方用 `daddiu a0,a0,1` 读 `long long z`），**不是寄存器对**。

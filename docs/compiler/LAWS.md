@@ -244,7 +244,13 @@ otherwise                                    -> compare chain
   pattern for doubles; for floats, expect the pool and look elsewhere.
 * **Scope** `ee-gcc 3.2-ee-040921` at `-O2 -G0`; 23 synthetic constants.
 
-## L-EE-012 · Frame composition: `[vars][outgoing args][8 B per saved register]`, saturating at 10 saved registers
+## L-EE-012 · Frame composition: `[outgoing args][vars][8 B per saved register]`, saturating at 10 saved registers
+
+**Measured layout order (2026-10-18).** The blocks sit at `[outgoing args][vars][saves]`: the
+outgoing-argument area occupies the lowest offsets and `vars` follows it. Synthetic probes: with no
+stack arguments `vars` sits at 0..15; with four stack arguments the same locals move to 32..63 while
+`args` occupies 0..31 and the saves start at 64. The earlier title listed the components in the wrong
+order; `ee-gcc-spill-map.py` now labels the regions this way.
 
 * **Tier T2** · **Source anchor** `global.c:991` (`find_reg`; the shipped binary resolves it to
   `global.c:1329`). The 8-byte slot and the nine `$s` registers come from the ABI.
@@ -364,7 +370,7 @@ register-name table `debug_reg_names` (`0x0821f280`) has entries 0..143 and the 
 `fixed_reg_set` leaves `0, 1, 26, 27, 28, 29, 31` fixed among the GPRs (zero, at, k0, k1, gp, sp, ra);
 `call_used_reg_set` leaves `2–15, 24, 25` caller-saved. Therefore the **allocatable callee-saved GPRs are
 exactly `{16..23, 30}`** — eight `$s0`–`$s7` plus `$fp` — which is why the save area caps at **10 slots**
-once `$ra` is included ([L-EE-012](#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers)).
+once `$ra` is included ([L-EE-012](#l-ee-012--frame-composition-outgoing-argsvars8-b-per-saved-register-saturating-at-10-saved-registers)).
 
 * **Tier T1** · **Source anchor** `config/mips/mips5900.c` (the file that owns the EE register file; its
   `mips.h` `REG_CLASS_CONTENTS` is not on this machine) · **Binary anchors**
@@ -769,7 +775,7 @@ Sixteen callers, one to sixteen `int` arguments, `-O2 -G0`:
   15–16 → 64, i.e. `args = round16(8 × max(0, n − 8))`.
 
 The **whole frame** is `round16(vars + 8 × regs + args)`
-([L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers)):
+([L-EE-012](LAWS.md#l-ee-012--frame-composition-outgoing-argsvars8-b-per-saved-register-saturating-at-10-saved-registers)):
 a caller with nine arguments has a sum of 24 and a frame of 32.
 
 * **Tier T2** · **Source anchor** the MIPS backend's EABI argument layout (`config/mips/mips.c`; no line read

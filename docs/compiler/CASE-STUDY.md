@@ -22,7 +22,7 @@ first question is never "how do I shrink the frame" but "**which block of the fr
 
 ## Step 1 — decompose the frame (L-EE-012)
 
-The frame is `[vars][outgoing args][8 B per saved register]`. Current numbers for both sides:
+The frame is `[outgoing args][vars][8 B per saved register]`. Current numbers for both sides:
 
 | block | candidate | target |
 | --- | ---: | ---: |
@@ -54,7 +54,7 @@ before the call. So the shape is: **values computed before the recursive call, u
 
 Two laws apply:
 
-* [L-EE-012](LAWS.md#l-ee-012--frame-composition-varsoutgoing-args8-b-per-saved-register-saturating-at-10-saved-registers)
+* [L-EE-012](LAWS.md#l-ee-012--frame-composition-outgoing-argsvars8-b-per-saved-register-saturating-at-10-saved-registers)
   — the frame layout and the 10-register save cap. Already used in step 1.
 * [L-EE-015](LAWS.md#l-ee-015--the-outgoing-argument-area-doubles-as-storage-for-a-value-used-after-the-call)
   — a value passed in the outgoing argument area is **re-read from that slot** after the call when it is
