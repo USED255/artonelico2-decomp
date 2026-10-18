@@ -966,8 +966,11 @@ func_001b3a64    # llm_draft
 func_001b3af4    # permuter
 func_001b3b8c    # ghidra_draft:-O2
 func_001b3bc0    # permuter
+func_001b3f8c    # permuter
 func_001b3fd4    # permuter
+func_001b4588    # permuter
 func_001b4878    # permuter
+func_001b48d8    # permuter
 func_001b51a8    # permuter
 func_001b5354    # llm_draft
 func_001b53dc    # permuter
