@@ -1,0 +1,23 @@
+extern char D_00BB71D0[];
+__asm__(
+  ".set noreorder\n"
+  ".globl func_00292128\n"
+  "func_00292128:\n"
+  "lui $15, %hi(D_00BB71D0)\n"
+  "addiu $15,$15, %lo(D_00BB71D0)\n"
+  "addiu $15,$15,208\n"
+  "lq $6,0($15)\n"
+  "lq $7,16($15)\n"
+  "lq $8,32($15)\n"
+  "lq $9,48($15)\n"
+  "sq $6,0($5)\n"
+  "sq $7,16($5)\n"
+  "sq $8,32($5)\n"
+  "sq $9,48($5)\n"
+  "lqc2 $vf20,0($4)\n"
+  "lqc2 $vf21,16($4)\n"
+  "lqc2 $vf22,32($4)\n"
+  "lqc2 $vf23,48($4)\n"
+  "jr $31\n"
+  "nop\n"
+  ".set reorder\n");
