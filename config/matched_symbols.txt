@@ -3690,3 +3690,9 @@ func_00340518    # cri_draft
 func_00344270    # cri_draft
 func_002f2538    # cri_draft
 func_0032f530    # cri_draft
+func_002a5f38    # cri_draft
+func_002b3950    # cri_draft
+func_002b92a0    # cri_draft
+func_003059b0    # cri_draft
+func_00324718    # cri_draft
+func_0032c218    # cri_draft
