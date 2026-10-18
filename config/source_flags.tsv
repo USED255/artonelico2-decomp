@@ -541,6 +541,7 @@ func_001a103c	-Os
 func_001a1c4c	-O2
 func_001a1d6c	-Os
 func_001a1db4	-Os
+func_001a1fd4	-Os
 func_001a2e9c	-O1
 func_001a2ec4	-Os
 func_001a302c	-O1
