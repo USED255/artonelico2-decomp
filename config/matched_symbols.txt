@@ -1757,6 +1757,7 @@ func_00258130    # permuter
 func_00258174    # wrapper_o2_tail
 func_0025857c    # mem_pair
 func_00258808    # permuter
+func_00258898    # permuter
 func_00258b34    # ghidra_draft:-O2
 func_00258bec    # ghidra_draft:-O2
 func_00258c0c    # ghidra_draft:-O2
