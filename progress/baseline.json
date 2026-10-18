@@ -1,8 +1,8 @@
 {
  "schema": "at2-progress-baseline/1",
  "target_binary": "SLPS_258.19",
- "generated_at": "2026-10-18T12:56:28+0000",
- "source_commit": "9c773caab9f94c757ddef459fc85300f5f481b33",
+ "generated_at": "2026-10-18T13:21:31+0000",
+ "source_commit": "0e696ccfafc1b823ae3508fe49d1855e3a688da9",
  "source_dirty": false,
  "payload_check_sha1": "7cc42d275750600d1f232b2632447f77205f3fc0",
  "payload_check": {
@@ -15,31 +15,31 @@
  },
  "require_c100": true,
  "limit": 0,
- "report_sha256": "4a49dfdccbe39b60e49eacc95c7b76fd5f56e77216769a0207db3e95907e2a68",
+ "report_sha256": "53ad9a196c2d4f83824b1e2c69358503d0ca406dd452bc25119a21d1109f5561",
  "measures": {
-  "fuzzy_match_percent": 9.767654,
+  "fuzzy_match_percent": 9.773979,
   "total_code": "2276780",
-  "matched_code": "222388",
-  "matched_code_percent": 9.767654,
+  "matched_code": "222532",
+  "matched_code_percent": 9.773979,
   "matched_data_percent": 100.0,
   "total_functions": 10923,
-  "matched_functions": 4049,
-  "matched_functions_percent": 37.06857,
+  "matched_functions": 4058,
+  "matched_functions_percent": 37.150967,
   "complete_data_percent": 100.0,
   "total_units": 10923
  },
  "categories": {
   "c": {
    "fuzzy_match_percent": 100.0,
-   "total_code": "222388",
-   "matched_code": "222388",
+   "total_code": "222532",
+   "matched_code": "222532",
    "matched_code_percent": 100.0,
    "matched_data_percent": 100.0,
-   "total_functions": 4049,
-   "matched_functions": 4049,
+   "total_functions": 4058,
+   "matched_functions": 4058,
    "matched_functions_percent": 100.0,
    "complete_data_percent": 100.0,
-   "total_units": 4049
+   "total_units": 4058
   },
   "asm": {
    "fuzzy_match_percent": 100.0,
@@ -51,15 +51,15 @@
   }
  },
  "units_total": 10923,
- "units_with_base": 4049,
- "c_only_units": 4049,
+ "units_with_base": 4058,
+ "c_only_units": 4058,
  "c_units_below_100": 0,
  "accounting": {
   "unit_universe": "the type:func entries of config/symbol_addrs.txt (10923 functions; one function is one unit)",
-  "matched_symbols_entries_total": 4049,
-  "matched_symbols_entries_non_stub": 4049,
-  "matched_symbols_distinct_non_stub_symbols": 4049,
-  "c_only_entries_in_matched_symbols": 4049,
+  "matched_symbols_entries_total": 4058,
+  "matched_symbols_entries_non_stub": 4058,
+  "matched_symbols_distinct_non_stub_symbols": 4058,
+  "c_only_entries_in_matched_symbols": 4058,
   "stub_entries_excluded_from_decompiled": 0,
   "splat_glabels_total": 13250,
   "splat_glabels_absent_from_symbol_addrs": 2327,
@@ -71,25 +71,25 @@
    "total_units": 13250,
    "total_functions": 13250,
    "total_code": 2566064,
-   "matched_code": 222388,
-   "matched_code_percent": 8.6665,
-   "matched_functions": 4049,
-   "matched_functions_percent": 30.5585
+   "matched_code": 222532,
+   "matched_code_percent": 8.6721,
+   "matched_functions": 4058,
+   "matched_functions_percent": 30.6264
   },
   "note": "An entry with a stub_* tag is a copied assembly stub. The report does not count it as decompiled code, and its base_path stays null. The asm tree holds glabels that splat disassemble_all finds, but that symbol_addrs.txt does not list: 2327 glabels, 249924 B code, and 39360 B .incbin data, 289284 B in total. The report does not count these glabels in its denominator. See universe_all_projection."
  },
  "timing_seconds": {
-  "total": 24.7,
-  "assemble": 21.1,
-  "objdiff_report": 0.4
+  "total": 19.2,
+  "assemble": 16.7,
+  "objdiff_report": 0.3
  },
  "tool_versions": {
   "objdiff-cli": "objdiff-cli 3.8.2",
   "mips-ps2-decompals-as": "GNU assembler (GNU Binutils) 2.40"
  },
  "runner": {
-  "github_run_id": "39129070762",
-  "github_sha": "9c773caab9f94c757ddef459fc85300f5f481b33"
+  "github_run_id": "39130918524",
+  "github_sha": "0e696ccfafc1b823ae3508fe49d1855e3a688da9"
  },
  "generator": "tools/report/gen_function_report.py"
 }
