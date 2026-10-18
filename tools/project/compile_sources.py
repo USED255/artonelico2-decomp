@@ -17,7 +17,7 @@ Input (all files are temporary and derived):
   --flags-file    per-source extra flags file: a header row and data rows
                   (<src-basename><TAB><flags>). The key is key.
   --cc-map        per-source compiler file: a header row and data rows
-                  (<key><TAB><tag>). tag is game, cri, or an
+                  (<key><TAB><tag>[<TAB>note]). tag is game, cri, or an
                   absolute path. With no entry, the code uses --gcc for all sources
                   (backward compatible). Game code uses ee-gcc 3.2-ee-040921. The CRI
                   middleware uses ee-gcc 2.96-ee-001003-1. Both archives are in
@@ -48,7 +48,7 @@ Usage (build_mixed.sh calls this script. A manual run is a consistency check):
   --objdir DIR    输出对象目录（stamp 写 DIR/<key>.stamp）
   --cflags  ...   基础标志（C）
   --flags-file    每源额外标志文件：表头行 + 数据行（<src-basename><TAB><flags>），键 = key
-  --cc-map        每源编译器文件：表头行 + 数据行（<key><TAB><tag>），tag ∈ game|cri|<绝对路径>；
+  --cc-map        每源编译器文件：表头行 + 数据行（<key><TAB><tag>[<TAB>备注]），tag ∈ game|cri|<绝对路径>；
                   缺省时全部走 --gcc（向后兼容）。游戏代码 = ee-gcc 3.2-ee-040921，
                   CRI 中间件 = ee-gcc 2.96-ee-001003-1（两个归档都在 toolchain.lock.json 里，
                   CI 早已安装并导出 GCC_CRI）——见 docs/kb/reports/R17 §4.2。

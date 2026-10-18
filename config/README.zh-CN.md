@@ -128,21 +128,18 @@ sha1 变红。项目已实测该负面对照。
 一份 CRI C 用 `ee-gcc 2.96 -O2 -G0` 编译后与日版逐字节一致。例：
 `AIFF_GetInfo`，908 B，两侧 sha1 都是 `4e205079...`。
 
-本文件有表头行。表头行是 `source-basename<TAB>compiler`。每条数据行给出一个源的编译器：
+本文件有表头行：`source-basename<TAB>compiler<TAB>备注`。每条数据行给出一个源的编译器：
 
 ```
-<source-basename><TAB>game|cri
+<source-basename><TAB>game|cri<TAB>备注
 ```
 
 - `game` 走 `--gcc`（`ee-gcc 3.2-ee-040921`）。
 - `cri` 走 `--gcc-cri`（`ee-gcc 2.96-ee-001003-1`）。
 - 也可以直接写编译器绝对路径。
 - 只列非 game 的源。缺省为 `game`。
-
-两条 CRI 条目如下：
-
-- `func_0031a9c0` —— CRI memcpy2 函数（ADXB）。
-- `func_0031cbc8` —— CRI adxf_wait_1ms 函数。
+- 第三列 `备注` 是**自由文本说明**（为什么这个源要走 CRI 编译器、它是什么函数等）。
+  读取方只取前两列；注释里的空格不会影响解析。
 
 两个归档都在 `toolchain.lock.json` 里锁定。CI 安装两个归档并导出 `GCC_CRI`。
 

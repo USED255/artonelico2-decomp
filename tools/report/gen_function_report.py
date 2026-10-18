@@ -96,6 +96,26 @@ DEFAULT_CC_MAP = "config/compiler_map.tsv"
 DEFAULT_FLAGS_FILE = "config/source_flags.tsv"
 
 
+def parse_first_value_tsv(path: Path) -> dict[str, str]:
+    """Read a `<key><TAB><value>[<TAB>note...]` table, keeping ONLY the first value column.
+
+    Needed for `config/compiler_map.tsv`, whose third column is a free-form note: joining the
+    remaining columns would turn the tag `cri` into `cri <note>` and silently make the reader
+    treat a CRI source as a game source.
+    """
+    out: dict[str, str] = {}
+    if not path.is_file():
+        return out
+    for line in path.read_text(encoding="utf-8").splitlines()[1:]:
+        line = line.split("#", 1)[0].strip()
+        if not line:
+            continue
+        parts = line.split("\t") if "\t" in line else line.split()
+        if len(parts) >= 2:
+            out[parts[0]] = parts[1]
+    return out
+
+
 def parse_kv_tsv(path: Path) -> dict[str, str]:
     """Read a `<key><TAB><value...>` table. Line 1 is a header row and is skipped. `#` starts a comment (inline comments count). Empty lines are skipped. A later entry wins.
 
@@ -512,7 +532,7 @@ def main() -> int:
         print(f"FAIL: the ledger holds {len(bad_srcs)} source basename(s) that are not safe path "
               f"components (for example {bad_srcs[:5]})", file=sys.stderr)
         return 2
-    cc_map = parse_kv_tsv(project / args.cc_map)
+    cc_map = parse_first_value_tsv(project / args.cc_map)
     extra_flags = parse_kv_tsv(project / args.flags_file)
     scratch_stats = {"game": 0, "cri": 0}
     entry_total, entry_stub, distinct_nonstub = matched_entry_stats(project / "config" / "matched_symbols.txt")
