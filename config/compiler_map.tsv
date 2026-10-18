@@ -12,3 +12,6 @@ func_0031cbc8	cri	CRI adxf_wait_1ms（ADXF）；仅 ee-gcc 2.96 下 100% 匹配
 func_0032c030	cri	CRI 编译单元；仅 ee-gcc 2.96 下 100% 匹配
 func_00342a38	cri	CRI 编译单元；仅 ee-gcc 2.96 下 100% 匹配
 func_003436e0	cri	CRI 编译单元；仅 ee-gcc 2.96 下 100% 匹配
+func_002d8ce0	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹配
+func_002a8cc8	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹配
+func_003217d0	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹配
