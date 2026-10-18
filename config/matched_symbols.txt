@@ -4097,3 +4097,7 @@ func_002b3838    # cri_draft
 func_002b3858    # cri_draft
 func_002ed378    # cri_draft
 func_002ed398    # cri_draft
+func_002e8290    # cri_draft
+func_002e8308    # cri_draft
+func_00303a50    # cri_draft
+func_00303a78    # cri_draft
