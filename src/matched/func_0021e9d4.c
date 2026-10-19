@@ -1,0 +1,16 @@
+__asm__(
+  ".set noreorder\n"
+  ".globl func_0021e9d4\n"
+  "func_0021e9d4:\n"
+  "lqc2 $vf4,0($4)\n"
+  "lqc2 $vf5,0($5)\n"
+  "vadd.xyz $vf4xyz,$vf4xyz,$vf5xyz\n"
+  "sqc2 $vf4,0($4)\n"
+  "addiu $4,$4,16\n"
+  "lqc2 $vf4,0($4)\n"
+  "lqc2 $vf5,0($5)\n"
+  "vadd.xyz $vf4xyz,$vf4xyz,$vf5xyz\n"
+  "sqc2 $vf4,0($4)\n"
+  "jr $31\n"
+  "nop\n"
+  ".set reorder\n");
