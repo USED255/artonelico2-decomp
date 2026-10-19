@@ -15,12 +15,15 @@ The build compares the result with the retail binary byte by byte. A function is
 
 ## Status
 
-As of 2026-10-15 ([progress/baseline.json](progress/baseline.json), build `30ad6d4`,
+As of 2026-10-15 ([progress/baseline.json](progress/baseline.json), build `5bcaf2c`,
 report `sha256:801d7fab1d3d…`, payload `sha1:7cc42d275750600d…`):
 
 - Matched functions: **4,105 / 10,923 (37.58%)**
-- Matched code: **112,088 / 2,276,780 bytes (4.92%)**
-> **Assembly transcription is a separate metric** and is NOT counted above: **619 functions / 321,812 bytes**. See [docs/TRANSCRIPTION.md](docs/TRANSCRIPTION.md).
+- Matched code: **224,364 / 2,276,780 bytes (9.85%)**
+> **Two metrics.** Main = reconstructed C only (above). Separately, **619 functions / 321,812 bytes** are
+> matched by byte-identical assembly transcription (no reconstructed C) and are **not** counted above.
+> The byte-identical **match build** total is **4,724 / 10,923 (43.25%)**, code **546,176 B (23.99%)**.
+> See [docs/TRANSCRIPTION.md](docs/TRANSCRIPTION.md).
 
 
 We do not count the assembly stubs that we copied. CI does not publish a report
