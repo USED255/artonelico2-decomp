@@ -561,9 +561,15 @@ def main() -> int:
             is_stub = tag.startswith("stub_")
             is_transcription = (sym in transcription_set) and not is_stub
             if is_transcription:
-                # Transcription: the object exists and is byte-identical, but there is no
-                # reconstructed C code, so it is excluded from the main progress metric.
-                # 转录：对象存在且字节一致，但没有重建 C 代码，因此不计入主进度口径。
+                # Keep the object in the "match build" total; the MAIN metric is the c category.
+                base = mixed_obj / f"{src}.o"
+                if base.exists():
+                    unit["base_path"] = rel(base, out_dir)
+                # Transcription: byte-identical object, but NO reconstructed C. It stays in the
+                # match-build total and owns the `transcription` category; the published MAIN
+                # metric is the `c` category (docs/TRANSCRIPTION.md).
+                # 转录：字节一致但**无重建 C**。计入匹配构建总数并单独归类；
+                # 对外的**主口径**取 `c` 分类（见 docs/TRANSCRIPTION.md）。
                 stats["transcription"] = stats.get("transcription", 0) + 1
                 unit["metadata"] = {
                     "progress_categories": ["transcription"],
