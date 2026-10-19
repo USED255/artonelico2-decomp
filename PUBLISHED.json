@@ -2,7 +2,7 @@
  "schema": "at2-published/2",
  "project": "Ar tonelico II: Melody of Metafalica — matching decompilation",
  "target": "SLPS_258.19",
- "published_at": "2026-10-19T19:31:58+0800",
+ "published_at": "2026-10-19T19:48:06+0800",
  "source_revision": "5bcaf2c47246355baa55659d0e3b9371ed2dc8fc",
  "payload_sha1": "7cc42d275750600d1f232b2632447f77205f3fc0",
  "payload_verified": true,
@@ -16,16 +16,13 @@
  },
  "toolchain_lock_sha256": "0c4de09c6c8e76cfc45f95cae93aa5bdc1fbf4938f0511fb90fce9b6a4afb0ab",
  "measures_c_only": {
-  "fuzzy_match_percent": 100.0,
-  "total_code": "224364",
-  "matched_code": "224364",
-  "matched_code_percent": 100.0,
-  "matched_data_percent": 100.0,
-  "total_functions": 4105,
   "matched_functions": 4105,
-  "matched_functions_percent": 100.0,
-  "complete_data_percent": 100.0,
-  "total_units": 4105
+  "total_functions": 10923,
+  "matched_functions_percent": 37.5813,
+  "matched_code": "224364",
+  "total_code": "2276780",
+  "matched_code_percent": 9.8544,
+  "scope": "reconstructed C only; assembly transcriptions are the separate `transcription` metric"
  },
  "transcription": {
   "functions": 619,
