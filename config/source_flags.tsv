@@ -2164,6 +2164,7 @@ func_002c5600	-Os
 func_002c58b0	-Os
 func_002c7610	-Os
 func_002c7720	-Os
+func_002cb440	-O3
 func_002d0bf0	-O1
 func_002d0c10	-O1
 func_002d0c30	-O1
