@@ -2,18 +2,35 @@
  "schema": "at2-published/2",
  "project": "Ar tonelico II: Melody of Metafalica — matching decompilation",
  "target": "SLPS_258.19",
- "published_at": "2026-10-19T18:29:40+0800",
- "source_revision": "30ad6d446376d28c140821b0f53ead5200b25648",
+ "published_at": "2026-10-19T19:31:58+0800",
+ "source_revision": "5bcaf2c47246355baa55659d0e3b9371ed2dc8fc",
  "payload_sha1": "7cc42d275750600d1f232b2632447f77205f3fc0",
  "payload_verified": true,
  "report": {
   "path": "progress/SLPS_258.19_report.json",
-  "sha256": "801d7fab1d3d3340d1a908621fa8a6f5649f092ba6b248b2c02307f4afd19ca0"
+  "sha256": "6f9ed00bf3209ce79ef3160e92efcf720fd352b57f48d40f7668a5da764f6479"
  },
  "baseline": {
   "path": "progress/baseline.json",
-  "sha256": "ac980ada06232245a14d0dcd44dae2386249c8f7904cda67a1079b1931f4ebad"
+  "sha256": "16f3d3a05b1629d2d1bd5f23a50020d2d2a092ed0f9c9be988904c4f708c1350"
  },
  "toolchain_lock_sha256": "0c4de09c6c8e76cfc45f95cae93aa5bdc1fbf4938f0511fb90fce9b6a4afb0ab",
+ "measures_c_only": {
+  "fuzzy_match_percent": 100.0,
+  "total_code": "224364",
+  "matched_code": "224364",
+  "matched_code_percent": 100.0,
+  "matched_data_percent": 100.0,
+  "total_functions": 4105,
+  "matched_functions": 4105,
+  "matched_functions_percent": 100.0,
+  "complete_data_percent": 100.0,
+  "total_units": 4105
+ },
+ "transcription": {
+  "functions": 619,
+  "code_bytes": 321812,
+  "policy": "byte-identical assembly transcription; no reconstructed C; reported separately and NOT counted in the main progress"
+ },
  "policy": "docs/PUBLICATION-POLICY.md"
 }
