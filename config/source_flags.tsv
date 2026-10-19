@@ -977,6 +977,7 @@ func_001dc708	-Os -G0
 func_001dd9a8	-Os
 func_001ddfd0	-Os
 func_001de65c	-Os
+func_001de69c	-Os
 func_001de6e0	-Os
 func_001de864	-Os
 func_001de94c	-Os
@@ -1707,6 +1708,7 @@ func_0025ce88	-Os
 func_0025cfd4	-Os
 func_0025d244	-Os
 func_0025d378	-Os
+func_0025d748	-Os
 func_0025d7ac	-Os
 func_0025dca8	-Os
 func_0025e4dc	-Os
