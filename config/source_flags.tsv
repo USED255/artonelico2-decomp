@@ -2677,6 +2677,7 @@ func_0032c030	-Os
 func_0032c058	-Os
 func_0032c080	-Os
 func_0032c0b8	-Os
+func_0032c180	-O3
 func_0032c1b0	-O3
 func_0032c1f8	-Os
 func_0032c218	-O2 -G0

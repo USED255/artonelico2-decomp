@@ -4737,3 +4737,4 @@ func_00245d70    # permuter
 func_002e8f78    # permuter
 func_001de69c    # permuter
 func_0025d748    # permuter
+func_0032c180    # permuter
