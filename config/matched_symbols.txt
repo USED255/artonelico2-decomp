@@ -4744,3 +4744,4 @@ func_002cb440    # permuter
 func_0025fa78    # typefix
 func_0018ff48    # typefix
 func_0024eef0    # typefix
+func_0025bde8    # typefix
