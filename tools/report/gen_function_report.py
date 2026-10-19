@@ -522,6 +522,17 @@ def main() -> int:
 
     # ---- assemble objdiff.json ----
     matched = parse_matched(project / "config" / "matched_symbols.txt")
+    # Symbols matched by verbatim assembly transcription (no reconstructed C). They keep their
+    # object in the build but are NOT counted as decompiled in the main progress; the report
+    # carries them in their own `transcription` category.
+    # 逐字汇编转录（无重建 C）的符号：构建里仍有其对象，但不计入主进度，报告单列 `transcription` 类。
+    transcription_set = set()
+    _tp = project / "config" / "transcription_symbols.txt"
+    if _tp.exists():
+        for _l in _tp.read_text(encoding="utf-8").splitlines():
+            _l = _l.split("#", 1)[0].strip()
+            if _l:
+                transcription_set.add(_l.split()[0])
     # The source basename from the ledger becomes `build/mixed/obj/<src>.o` and a metadata path.
     # A name that is not a plain path component is refused, not skipped: skipping would shrink
     # the denominator silently (R30 finding B5).
@@ -538,7 +549,7 @@ def main() -> int:
     entry_total, entry_stub, distinct_nonstub = matched_entry_stats(project / "config" / "matched_symbols.txt")
     mixed_obj = project / "build" / "mixed" / "obj"
     units: list[dict] = []
-    stats = {"c": 0, "asm": 0, "no_base": 0, "missing_obj": 0, "stub_excluded": 0}
+    stats = {"c": 0, "asm": 0, "transcription": 0, "no_base": 0, "missing_obj": 0, "stub_excluded": 0}
     for sym in syms:
         target = units_dir / f"{sym}.target.o"
         unit = {"name": sym, "target_path": rel(target, out_dir), "base_path": None}
@@ -548,7 +559,24 @@ def main() -> int:
         else:
             src, tag = entry
             is_stub = tag.startswith("stub_")
-            if is_stub:
+            is_transcription = (sym in transcription_set) and not is_stub
+            if is_transcription:
+                # Keep the object in the "match build" total; the MAIN metric is the c category.
+                base = mixed_obj / f"{src}.o"
+                if base.exists():
+                    unit["base_path"] = rel(base, out_dir)
+                # Transcription: byte-identical object, but NO reconstructed C. It stays in the
+                # match-build total and owns the `transcription` category; the published MAIN
+                # metric is the `c` category (docs/TRANSCRIPTION.md).
+                # 转录：字节一致但**无重建 C**。计入匹配构建总数并单独归类；
+                # 对外的**主口径**取 `c` 分类（见 docs/TRANSCRIPTION.md）。
+                stats["transcription"] = stats.get("transcription", 0) + 1
+                unit["metadata"] = {
+                    "progress_categories": ["transcription"],
+                    "source_path": str(Path("src") / "matched" / f"{src}.c"),
+                    "transcription": True,
+                }
+            elif is_stub:
                 # Rule: a stub_* file (a line-by-line copy of the original
                 # disassembly) does not count as decompiled. base_path stays
                 # null, so the report counts the function as unmatched. Keep the
@@ -592,11 +620,12 @@ def main() -> int:
         "progress_categories": [
             {"id": "c", "name": "C (reconstructed)"},
             {"id": "asm", "name": "ASM (copied or stub; not counted as decompiled)"},
+            {"id": "transcription", "name": "ASM transcription (byte-identical, no reconstructed C; not counted)"},
         ],
     }
     (out_dir / "objdiff.json").write_text(json.dumps(config, indent=1, ensure_ascii=False) + "\n",
                                           encoding="utf-8")
-    print("[4/5] wrote {}: units={} (c={c} / asm={asm} / unmatched={no_base} / stub excluded={stub_excluded} / missing base={missing_obj} / scratch: game={gs} cri={cs})"
+    print("[4/5] wrote {}: units={} (c={c} / asm={asm} / transcription={transcription} / unmatched={no_base} / stub excluded={stub_excluded} / missing base={missing_obj} / scratch: game={gs} cri={cs})"
           .format(out_dir / "objdiff.json", len(units), **stats,
                   gs=scratch_stats["game"], cs=scratch_stats["cri"]))
 

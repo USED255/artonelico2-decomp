@@ -57,6 +57,10 @@ LOCK = ROOT / "toolchain.lock.json"
 # The provenance schema written by tools/report/gen_function_report.py --baseline-out.
 # tools/report/gen_function_report.py --baseline-out 写出的 provenance schema。
 PROVENANCE_SCHEMA = "at2-progress-baseline/1"
+# The transcription metric is reported separately from the main (C-reconstructed) progress.
+# 转录口径与主（C 重建）进度分开统计。
+TRANSCRIPTION_POLICY = ("byte-identical assembly transcription; no reconstructed C; reported "
+                        "separately and NOT counted in the main progress")
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 
 # The counters and denominators that must not regress. `total_*` are the denominators: a smaller
@@ -85,6 +89,46 @@ def _git_head() -> str:
 def _lock_payload_sha1() -> str:
     lock = at2_io.guarded_json_load(LOCK) or {}
     return str((lock.get("game") or {}).get("payload_sha1") or "")
+
+
+def transcription_measures() -> dict:
+    """Count the assembly-transcription symbols and their bytes.
+
+    These functions are matched by verbatim assembly transcription: the object is byte-identical
+    but there is NO reconstructed C code. They are a SEPARATE metric and are excluded from the
+    main (C-reconstructed) progress; `config/transcription_symbols.txt` is the authority.
+    逐字汇编转录的符号数与字节数。这些函数对象字节一致，但**没有重建的 C 代码**；它们是
+    **独立口径**，不计入主（C 重建）进度，`config/transcription_symbols.txt` 是权威清单。
+    """
+    tp = ROOT / "config" / "transcription_symbols.txt"
+    if not tp.is_file():
+        return {"functions": 0, "code_bytes": 0, "policy": TRANSCRIPTION_POLICY}
+    syms = []
+    for line in tp.read_text(encoding="utf-8").splitlines():
+        line = line.split("#", 1)[0].strip()
+        if line:
+            syms.append(line.split()[0])
+    sizes: dict[str, int] = {}
+    sa = ROOT / "config" / "symbol_addrs.txt"
+    if sa.is_file():
+        for line in sa.read_text(encoding="utf-8").splitlines():
+            m = re.search(r"^(\w+)\s*=.*?size:0x([0-9A-Fa-f]+)", line)
+            if m:
+                sizes[m.group(1)] = int(m.group(2), 16)
+    return {
+        "functions": len(syms),
+        "code_bytes": sum(sizes.get(s, 0) for s in syms),
+        "policy": TRANSCRIPTION_POLICY,
+    }
+
+
+def c_only_measures() -> dict:
+    """The C-reconstructed measures of the published report (its `c` progress category)."""
+    data = at2_io.guarded_json_load(REPORT) or {}
+    for cat in data.get("categories") or []:
+        if (cat.get("id") or "") == "c" or (cat.get("name") or "").startswith("C "):
+            return cat.get("measures") or {}
+    return {}
 
 
 def measures(p: Path) -> dict:
@@ -206,6 +250,11 @@ def write_published(*, source_revision: str, payload_sha1: str, payload_verified
         "report": {"path": str(REPORT.relative_to(ROOT)), "sha256": sha256(REPORT)},
         "baseline": {"path": str(BASELINE.relative_to(ROOT)), "sha256": sha256(BASELINE)},
         "toolchain_lock_sha256": sha256(LOCK),
+        # Two separate metrics: the main progress counts only reconstructed C, while the
+        # byte-identical assembly transcriptions are recorded here and kept out of it.
+        # 两个独立口径：主进度只计重建的 C；逐字汇编转录单独记录、不计入主进度。
+        "measures_c_only": c_only_measures(),
+        "transcription": transcription_measures(),
         "policy": "docs/PUBLICATION-POLICY.md",
     }
     if force_reason:
