@@ -123,6 +123,8 @@ def category_of(tag: str) -> str:
 
     把台账 tag 映射到一个报告分类；各分类单列，不要只报合计。
     """
+    if tag.startswith(("transcription_", "mmi_asm")):
+        return "asm transcription (no reconstructed C; separate metric)"
     if tag.startswith("stub_"):
         return "hand-written stub (inline assembly)"
     if not tag:
@@ -184,7 +186,12 @@ def main() -> int:
 
     total_n = len(syms)
     total_b = sum(r[2] for r in syms)
-    m_rows = [r for r in syms if r[0] in matched]
+    all_rows = [r for r in syms if r[0] in matched]
+    # The main progress counts reconstructed C only. Assembly transcriptions are a SEPARATE
+    # metric (see config/transcription_symbols.txt) and must not inflate the headline.
+    # 主进度只计重建的 C；汇编转录是**独立口径**（见 config/transcription_symbols.txt），不得灌进主数字。
+    m_rows = [r for r in all_rows
+              if not category_of(tags.get(r[0], "")).startswith("asm transcription")]
     matched_n = len(m_rows)
     matched_b = sum(r[2] for r in m_rows)
     unknown = sorted(matched - {r[0] for r in syms})
@@ -192,7 +199,7 @@ def main() -> int:
     # Subtotals by category. A stub must not count as reverse-engineered C.
     # 按分类小计；桩类不得混进「反推 C」的口径。
     by_cat: dict[str, list[int]] = {}
-    for name, _addr, size, _kind in m_rows:
+    for name, _addr, size, _kind in all_rows:
         cat = category_of(tags.get(name, ""))
         by_cat.setdefault(cat, [0, 0])
         by_cat[cat][0] += 1
@@ -220,6 +227,7 @@ def main() -> int:
 
     print(SCOPE)
     print()
+    print("Main metric = reconstructed C only; asm transcriptions are reported separately below.")
     print(f"Matched functions: {matched_n:,} of {total_n:,} ({pct_n:.4f} percent)")
     print(f"Matched bytes:     {matched_b:,} of {total_b:,} ({pct_b:.4f} percent)")
     print(f"Data source:       {MATCHED_LIST.relative_to(ROOT)} and {SYMBOL_ADDRS.relative_to(ROOT)}")
