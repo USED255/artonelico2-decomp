@@ -123,12 +123,38 @@ def transcription_measures() -> dict:
 
 
 def c_only_measures() -> dict:
-    """The C-reconstructed measures of the published report (its `c` progress category)."""
+    """Main metric = the report's `c` progress category, over the FULL universe denominators.
+
+    The category's own `total_*` fields are the category totals, so publishing them directly would
+    report 100 %. Recompute the percentage against the report's top-level denominators.
+    主口径 = 报告的 `c` 分类，但百分比必须用**全体分母**；分类自带的总数只有分类内规模，
+    直接用会报成 100 %。
+    """
     data = at2_io.guarded_json_load(REPORT) or {}
-    for cat in data.get("categories") or []:
-        if (cat.get("id") or "") == "c" or (cat.get("name") or "").startswith("C "):
-            return cat.get("measures") or {}
-    return {}
+    top = data.get("measures") or {}
+    cat = {}
+    for c in data.get("categories") or []:
+        if (c.get("id") or "") == "c" or (c.get("name") or "").startswith("C "):
+            cat = c.get("measures") or {}
+            break
+    if not cat:
+        return {}
+    try:
+        mf = int(cat.get("matched_functions") or 0)
+        mc = int(cat.get("matched_code") or 0)
+        tf = int(top.get("total_functions") or 0)
+        tc = int(top.get("total_code") or 0)
+    except (TypeError, ValueError):
+        return cat
+    return {
+        "matched_functions": mf,
+        "total_functions": tf,
+        "matched_functions_percent": round(100.0 * mf / tf, 4) if tf else 0.0,
+        "matched_code": str(mc),
+        "total_code": str(tc),
+        "matched_code_percent": round(100.0 * mc / tc, 4) if tc else 0.0,
+        "scope": "reconstructed C only; assembly transcriptions are the separate `transcription` metric",
+    }
 
 
 def measures(p: Path) -> dict:
