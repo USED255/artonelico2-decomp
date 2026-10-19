@@ -4101,7 +4101,7 @@ func_002e8290    # cri_draft
 func_002e8308    # cri_draft
 func_00303a50    # cri_draft
 func_00303a78    # cri_draft
-func_0013f39c    # permuter_zero
+func_0013f39c    # permuter
 func_002425dc    # cri_draft
 func_0026b00c    # cri_draft
 func_002e7aa8    # cri_draft
@@ -4733,3 +4733,5 @@ func_0029f6d0    # transcription_asm
 func_002d58a8    # transcription_asm
 func_002da388    # transcription_asm
 func_003554a8    # transcription_asm
+func_00245d70    # permuter
+func_002e8f78    # permuter
