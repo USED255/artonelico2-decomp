@@ -150,6 +150,7 @@ func_0010644c	-Os
 func_00106c3c	-Os
 func_00106fbc	-Os
 func_00107224	-Os
+func_00107338	-O2 -fno-optimize-sibling-calls
 func_00107624	-Os
 func_0010764c	-Os
 func_00107964	-Os
@@ -841,6 +842,7 @@ func_001b0cac	-Os
 func_001b0d10	-Os
 func_001b0e60	-Os
 func_001b0f00	-Os
+func_001b118c	-Os
 func_001b1290	-Os
 func_001b1530	-Os
 func_001b1a04	-Os
