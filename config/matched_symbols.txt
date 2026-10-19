@@ -4459,3 +4459,7 @@ func_002bb208    # mmi_asm
 func_00309168    # mmi_asm
 func_0035c2d0    # mmi_asm
 func_0035cdd0    # mmi_asm
+func_0012d6dc    # mmi_asm
+func_0012d968    # mmi_asm
+func_001ab5d4    # mmi_asm
+func_002ba4c0    # mmi_asm
