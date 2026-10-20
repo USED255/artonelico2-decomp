@@ -15,14 +15,14 @@ The build compares the result with the retail binary byte by byte. A function is
 
 ## Status
 
-As of 2026-10-15 ([progress/baseline.json](progress/baseline.json), build `51cb1e3`,
-report `sha256:1762749e4cfd…`, payload `sha1:7cc42d275750600d…`):
+As of 2026-10-15 ([progress/baseline.json](progress/baseline.json), build `92961a3`,
+report `sha256:3c06b6830343…`, payload `sha1:7cc42d275750600d…`):
 
-- Matched functions: **4,125 / 10,923 (37.77%)**
-- Matched code: **226,076 / 2,276,780 bytes (9.93%)**
+- Matched functions: **4,126 / 10,923 (37.77%)**
+- Matched code: **226,176 / 2,276,780 bytes (9.93%)**
 > **Two metrics.** Main = reconstructed C only (above). Separately, **619 functions / 321,812 bytes** are
 > matched by byte-identical assembly transcription (no reconstructed C) and are **not** counted above.
-> The byte-identical **match build** total is **4,744 / 10,923 (43.43%)**, code **547,888 B (24.07%)**.
+> The byte-identical **match build** total is **4,745 / 10,923 (43.44%)**, code **547,988 B (24.07%)**.
 > See [docs/TRANSCRIPTION.md](docs/TRANSCRIPTION.md).
 
 
