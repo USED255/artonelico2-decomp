@@ -71,3 +71,20 @@ If you hit something new, please open an issue with:
 3. the source variants you tried and their scores.
 
 That is enough for someone else to reproduce — and possibly to find the form that works.
+
+## 7. Verifying a report before publishing
+
+The published numbers must come from a **green `matching-gate` run on the merge commit**. Two checks
+gate that, and a mismatch means *do not publish*:
+
+1. `report_provenance.json` → `source_commit` equals the merge commit you are publishing;
+2. `payload_check.ok == true` (and `baseline_sha1 == mixed_sha1 == 7cc42d27…`).
+
+Two traps that produce a *plausible-looking but wrong* artifact:
+
+- Running `gh run download` with an **empty run id** silently falls back to "the latest run" — and a
+  pull-request run carries the **synthetic merge ref** (`refs/pull/N/merge`), whose SHA is not a commit
+  on `main`. Resolve the run id from the merge commit's **push** event and abort when it is empty.
+- A report job that cannot see the baseline binary reports `payload_check.ok = false` with
+  `baseline_sha1: null` — that artifact is not publishable even if every other number looks right.
+
