@@ -1656,6 +1656,7 @@ func_0024e400	-Os
 func_0024e754	-O1
 func_0024e770	-O1
 func_0024e794	-O2
+func_0024e7fc	-Os
 func_0024eb78	-Os
 func_0024eb94	-O2
 func_0024eef0	-Os
