@@ -4746,3 +4746,5 @@ func_0018ff48    # typefix
 func_0024eef0    # typefix
 func_0025bde8    # typefix
 func_00149004    # typefix
+func_0024eb78    # permuter
+func_001d9814    # permuter

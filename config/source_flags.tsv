@@ -969,6 +969,7 @@ func_001d87b0	-O1
 func_001d8a84	-Os
 func_001d936c	-Os
 func_001d9628	-O1
+func_001d9814	-Os
 func_001da34c	-Os
 func_001da5f8	-Os
 func_001da82c	-Os
@@ -1651,6 +1652,7 @@ func_0024e400	-Os
 func_0024e754	-O1
 func_0024e770	-O1
 func_0024e794	-O2
+func_0024eb78	-Os
 func_0024eb94	-O2
 func_0024eef0	-Os
 func_0024f0e8	-Os
