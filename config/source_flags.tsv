@@ -1427,6 +1427,7 @@ func_00222b4c	-O1
 func_00222b88	-Os
 func_00222fa8	-O1
 func_00222fd4	-O2
+func_0022394c	-Os
 func_00223960	-O1
 func_0022399c	-O1
 func_0022464c	-O2
@@ -1823,6 +1824,7 @@ func_00270824	-Os
 func_002708c0	-Os
 func_0027096c	-O2
 func_00270ba8	-O2
+func_00271120	-Os
 func_00271320	-Os
 func_0027138c	-Os
 func_00271974	-O1
