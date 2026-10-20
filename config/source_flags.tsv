@@ -967,6 +967,7 @@ func_001d8678	-Os
 func_001d8694	-Os
 func_001d8704	-Os
 func_001d87b0	-O1
+func_001d88fc	-Os
 func_001d8a84	-Os
 func_001d936c	-Os
 func_001d9628	-O1
