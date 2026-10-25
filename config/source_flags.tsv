@@ -2952,3 +2952,17 @@ func_00332cc0	-G0
 func_002a38d8	-G0
 iopldfl_6	-fno-optimize-sibling-calls
 iopldfl_4	-fno-optimize-sibling-calls
+func_002cb3c0	-O1
+func_002cb400	-O1
+func_002cb480	-O1
+func_002cb4c0	-O1
+func_002cb500	-O1
+func_002cb540	-O1
+func_002cb580	-O1
+func_002cb5c0	-O1
+func_002cb600	-O1
+func_002cb640	-O1
+func_002cb680	-O1
+func_002cb6c0	-O1
+func_002cb740	-O1
+func_002cb780	-O1
