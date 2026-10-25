@@ -4763,3 +4763,4 @@ func_0027ab84    # permuter
 # ---- matching batch: manual easy-to-hard (hand-written C; 2026-10-25) ----
 func_002f7500    # ghidra_draft manual
 func_0018cec0    # ghidra_draft manual
+func_001a1d8c    # ghidra_draft manual
