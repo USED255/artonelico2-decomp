@@ -2,26 +2,26 @@
  "schema": "at2-published/2",
  "project": "Ar tonelico II: Melody of Metafalica — matching decompilation",
  "target": "SLPS_258.19",
- "published_at": "2026-10-21T01:55:51+0800",
- "source_revision": "2d0385744be83809640457979f66a20ab826e0d9",
+ "published_at": "2026-10-25T22:47:01+0800",
+ "source_revision": "9bcebf1d65e3199465e098c9a19abed9eb8c704c",
  "payload_sha1": "7cc42d275750600d1f232b2632447f77205f3fc0",
  "payload_verified": true,
  "report": {
   "path": "progress/SLPS_258.19_report.json",
-  "sha256": "3dbcbcf937fd25320f021a2c94876cf94ea7e1d13d59e03fd80b8c0d99c7f204"
+  "sha256": "9b2eac62ebc2eb28c1dba51ca1864928f6f963eb49eb9410c62682b44c417bd1"
  },
  "baseline": {
   "path": "progress/baseline.json",
-  "sha256": "c86effa9f6376c5a525493861087713aacd678f448c8a32c932d7fee2b56ccfb"
+  "sha256": "256b6409c161107deea35f1bc2f5965773e79855d0bbf85ec746d0c5d9ca9ec2"
  },
  "toolchain_lock_sha256": "0c4de09c6c8e76cfc45f95cae93aa5bdc1fbf4938f0511fb90fce9b6a4afb0ab",
  "measures_c_only": {
-  "matched_functions": 4131,
+  "matched_functions": 4151,
   "total_functions": 10923,
-  "matched_functions_percent": 37.8193,
-  "matched_code": "226752",
+  "matched_functions_percent": 38.0024,
+  "matched_code": "227140",
   "total_code": "2276780",
-  "matched_code_percent": 9.9593,
+  "matched_code_percent": 9.9764,
   "scope": "reconstructed C only; assembly transcriptions are the separate `transcription` metric"
  },
  "transcription": {
