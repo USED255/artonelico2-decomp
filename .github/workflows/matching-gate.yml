@@ -75,7 +75,13 @@ concurrency:
 
 jobs:
   matching:
-    runs-on: ubuntu-latest
+    # Pinned on purpose. The prebuilt Debian 2.44 ld in the private toolchain archive loads
+    # libsframe.so.1 at run time. The ubuntu-24.04 image ships it; the 26.04 image does not,
+    # so ubuntu-latest turned the gate red on 2026-10-25. Keep 24.04 until the archive carries
+    # its own copy of the library (O-44 in the private knowledge base).
+    # 有意固定：私有工具链里的 Debian 2.44 ld 运行时依赖 libsframe.so.1。24.04 镜像自带，
+    # 26.04 镜像没有；ubuntu-latest 在 2026-10-25 因此把门禁变红。等归档自带该库再升级。
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
       HAS_ORIG: ${{ secrets.ORIG_DEPLOY_KEY != '' && vars.PRIVATE_ORIG_REPO != '' }}
