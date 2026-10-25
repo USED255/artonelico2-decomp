@@ -1,5 +1,7 @@
 # Known blockers and stop conditions
 
+[English](KNOWN-BLOCKERS.md) | [简体中文](KNOWN-BLOCKERS.zh-CN.md)
+
 This page records what **cannot** be closed with the current toolchain, so that contributors do not
 spend hours re-discovering it. Everything below was measured on the Japanese build
 (`SLPS_258.19`, payload `sha1:7cc42d275750600d…`) with `ee-gcc 3.2-ee-040921`.

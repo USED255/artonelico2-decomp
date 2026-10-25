@@ -1,5 +1,7 @@
 # Assembly transcription metric (separate from the main progress)
 
+[English](TRANSCRIPTION.md) | [简体中文](TRANSCRIPTION.zh-CN.md)
+
 Some functions in `SLPS_258.19` contain instructions that **no C expression can produce**:
 COP2/MMI vector ops (`lq`, `sq`, `vmulax`, `vadd`, `pcpyld`, `pmfhl`, …), COP2 register moves
 (`cfc2`, `ctc2`, `qmtc2`), and the raw `break`-based trap stubs.
