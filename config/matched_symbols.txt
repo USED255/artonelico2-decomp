@@ -4776,3 +4776,5 @@ func_002b3958    # ghidra_draft manual
 func_002e8cb8    # ghidra_draft manual
 func_003131a8    # ghidra_draft manual
 func_001d79ec    # ghidra_draft manual
+func_00239654    # ghidra_draft manual
+func_002a38d8    # ghidra_draft manual
