@@ -4847,3 +4847,8 @@ func_001b5204    # ghidra_draft manual
 func_001b5e0c    # ghidra_draft manual
 func_001b5e60    # ghidra_draft manual
 func_001b5eb4    # ghidra_draft manual
+func_00114890    # ghidra_draft manual
+baseelf_153    # ghidra_draft manual
+baseelf_89    # ghidra_draft manual
+baseelf_156    # ghidra_draft manual
+func_0011a918    # ghidra_draft manual
