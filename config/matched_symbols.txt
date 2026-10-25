@@ -4781,3 +4781,4 @@ func_002a38d8    # ghidra_draft manual
 func_0031f9b0    # ghidra_draft manual
 func_0013f618    # ghidra_draft manual
 func_001a21f4    # ghidra_draft manual
+func_00298318    # ghidra_draft manual
