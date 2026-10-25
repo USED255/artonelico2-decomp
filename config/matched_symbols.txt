@@ -4798,3 +4798,5 @@ func_0011f1f4    # ghidra_draft manual
 iopldfl_5    # ghidra_draft manual
 func_002f7f20    # ghidra_draft manual
 iopldfl_6    # ghidra_draft manual
+iopldfl_4    # ghidra_draft manual
+func_002e82b8    # ghidra_draft manual
