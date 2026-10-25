@@ -4759,3 +4759,25 @@ func_0029cde8    # permuter
 func_00233280    # permuter
 func_0019c238    # permuter
 func_0027ab84    # permuter
+
+# ---- matching batch: manual easy-to-hard (hand-written C; 2026-10-25) ----
+func_002f7500    # ghidra_draft manual
+func_0018cec0    # ghidra_draft manual
+func_001a1d8c    # ghidra_draft manual
+func_0023d8f4    # ghidra_draft manual
+func_003078e0    # ghidra_draft manual
+func_00332cc0    # ghidra_draft manual
+func_00335130    # ghidra_draft manual
+func_00344310    # ghidra_draft manual
+func_00344320    # ghidra_draft manual
+func_00184efc    # ghidra_draft manual
+func_0027395c    # ghidra_draft manual
+func_002b3958    # ghidra_draft manual
+func_002e8cb8    # ghidra_draft manual
+func_003131a8    # ghidra_draft manual
+func_001d79ec    # ghidra_draft manual
+func_00239654    # ghidra_draft manual
+func_002a38d8    # ghidra_draft manual
+func_0031f9b0    # ghidra_draft manual
+func_0013f618    # ghidra_draft manual
+func_001a21f4    # ghidra_draft manual
