@@ -2947,3 +2947,6 @@ modload_3	-O2 -G0
 sceSifSetDma	-Os
 sifcmd_5	-O2 -G0
 sysmem_3	-O2 -G0
+func_003078e0	-G0
+func_00332cc0	-G0
+func_002a38d8	-G0
