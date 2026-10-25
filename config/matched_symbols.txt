@@ -4861,3 +4861,14 @@ func_003292b0    # ghidra_draft manual
 func_0032d988    # ghidra_draft manual
 func_0032dac8    # ghidra_draft manual
 func_0032e790    # ghidra_draft manual
+func_00324ea8    # ghidra_draft manual
+func_002f2d90    # ghidra_draft manual
+func_00312820    # ghidra_draft manual
+func_00313c88    # ghidra_draft manual
+func_0030ed28    # ghidra_draft manual
+func_0033f028    # ghidra_draft manual
+func_00339d78    # ghidra_draft manual
+func_0033ab80    # ghidra_draft manual
+func_0033acb8    # ghidra_draft manual
+func_0033ad50    # ghidra_draft manual
+func_0033ade0    # ghidra_draft manual
