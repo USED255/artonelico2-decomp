@@ -2950,3 +2950,5 @@ sysmem_3	-O2 -G0
 func_003078e0	-G0
 func_00332cc0	-G0
 func_002a38d8	-G0
+iopldfl_6	-fno-optimize-sibling-calls
+iopldfl_4	-fno-optimize-sibling-calls
