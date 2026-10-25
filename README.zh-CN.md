@@ -18,12 +18,10 @@
 
 - 已匹配函数：**4,131 / 10,923（37.82%）**
 - 已匹配代码：**226,752 / 2,276,780 字节（9.96%）**
-> **两个口径。** 主口径 = 仅重建的 C（即上面的数字）。另有 **619 个函数 / 321,812 字节**
-> 由**逐字汇编转录**匹配（无重建 C），**不计入**上面的数字。
-> 字节一致的**匹配构建**总数为 **4,750 / 10,923（43.49%）**、代码 **548,564 B（24.09%）**。
-> 见 [docs/TRANSCRIPTION.md](docs/TRANSCRIPTION.md)。
 
-逐条转录的汇编桩**不计入**「已匹配」。比基线更差的报告，CI 不会发布。进度历史：<https://decomp.dev/USED255/artonelico2-decomp>。
+主口径只算重建的 C，详见 [docs/TRANSCRIPTION.zh-CN.md](docs/TRANSCRIPTION.zh-CN.md)。
+
+比基线更差的报告，CI 不会发布。进度历史：<https://decomp.dev/USED255/artonelico2-decomp>。
 
 ## 构建
 

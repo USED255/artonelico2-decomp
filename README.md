@@ -20,14 +20,10 @@ report `sha256:3dbcbcf937fd…`, payload `sha1:7cc42d275750600d…`):
 
 - Matched functions: **4,131 / 10,923 (37.82%)**
 - Matched code: **226,752 / 2,276,780 bytes (9.96%)**
-> **Two metrics.** Main = reconstructed C only (above). Separately, **619 functions / 321,812 bytes** are
-> matched by byte-identical assembly transcription (no reconstructed C) and are **not** counted above.
-> The byte-identical **match build** total is **4,750 / 10,923 (43.49%)**, code **548,564 B (24.09%)**.
-> See [docs/TRANSCRIPTION.md](docs/TRANSCRIPTION.md).
 
+The main metric counts reconstructed C only — see [docs/TRANSCRIPTION.md](docs/TRANSCRIPTION.md).
 
-We do not count the assembly stubs that we copied. CI does not publish a report
-that is worse than the baseline. Progress history:
+CI does not publish a report that is worse than the baseline. Progress history:
 <https://decomp.dev/USED255/artonelico2-decomp>.
 
 ## Build
