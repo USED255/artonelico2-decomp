@@ -2982,3 +2982,4 @@ func_0033ab80	-G0
 func_0033acb8	-G0
 func_0033ad50	-G0
 func_0033ade0	-G0
+func_0013f370	-fno-schedule-insns
