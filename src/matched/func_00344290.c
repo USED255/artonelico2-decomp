@@ -1,0 +1,1 @@
+int func_00344290(char *p){ unsigned long long a = *(unsigned long long *)(p + 8); unsigned long long c = (unsigned long long)(*(int *)(p + 0x28)) << 11; unsigned long long m; if (a >= c) m = c; else m = a; return (int)(m & 0xFFFFFFFF); }
