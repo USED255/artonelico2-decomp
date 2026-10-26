@@ -3059,3 +3059,4 @@ glue_11	-O3
 glue_14	-O3
 glue_15	-O3
 func_002e9a38	-O2 -fno-schedule-insns
+func_001efa74	-O1
