@@ -3168,8 +3168,6 @@ func_00279340	-O2
 func_00155cc8	-O2
 func_00286240	-Os
 func_001409a4	-O2
-func_001dd934	-Os
-func_001dd968	-Os
 func_00106388	-Os
 func_00106408	-Os
 func_001dcfbc	-O1
@@ -3177,6 +3175,5 @@ func_001dcfe8	-Os
 func_001b743c	-Os
 func_00106554	-O2
 func_0025097c	-O2
-func_0023d110	-Os
 func_00235960	-Os
 func_002fc530	-Os

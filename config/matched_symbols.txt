@@ -5355,8 +5355,6 @@ func_00155cc8    # ghidra_draft manual
 func_00286240    # ghidra_draft manual
 func_0033bdb0    # ghidra_draft manual
 func_001409a4    # ghidra_draft manual
-func_001dd934    # ghidra_draft manual
-func_001dd968    # ghidra_draft manual
 func_00106388    # ghidra_draft manual
 func_00106408    # ghidra_draft manual
 func_001dcfbc    # ghidra_draft manual
@@ -5364,6 +5362,5 @@ func_001dcfe8    # ghidra_draft manual
 func_001b743c    # ghidra_draft manual
 func_00106554    # ghidra_draft manual
 func_0025097c    # ghidra_draft manual
-func_0023d110    # ghidra_draft manual
 func_00235960    # ghidra_draft manual
 func_002fc530    # ghidra_draft manual
