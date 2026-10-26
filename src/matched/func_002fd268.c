@@ -1,0 +1,1 @@
+int func_002fd268(char *p){ int *q = (int *)(p + 0x1FA0); int i = q[5]; int *r = (int *)(p + 0x13D0 + i * 116); int v = *r; int *s = (int *)((char *)q + v * 68 + 0x20); int x = *s; if (x < 0) return -1; return x; }
