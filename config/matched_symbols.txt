@@ -5099,3 +5099,4 @@ func_002e5650    # ghidra_draft manual
 func_002e4860    # ghidra_draft manual
 func_002e4978    # ghidra_draft manual
 func_0013c7f4    # ghidra_draft manual
+func_002e7160    # ghidra_draft manual
