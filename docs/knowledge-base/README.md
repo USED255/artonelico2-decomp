@@ -8,27 +8,12 @@ transcription, contribution) stay one level up in [docs/](../README.md).
 ## 1. Compiler handbook
 
 The [EE GCC 3.2 code generation handbook](compiler/README.md) records what the compiler that built
-the game code does, at the flags this project builds with. Every entry carries a tier, a source
-anchor, a binary anchor, a receipt and a scope. `make check` verifies the data and re-checks every
-binary anchor against the `cc1` on your machine.
+the game code does, at the flags this project builds with. The handbook's own index lists every
+page: the laws, the pass map, the diagnostics workflow, the case studies, the ABI page, and the
+tools.
 
-| Page | Contents |
-| --- | --- |
-| [compiler/README.md](compiler/README.md) | the handbook index, the evidence tiers, and the tools |
-| [compiler/LAWS.md](compiler/LAWS.md) | what the compiler does: allocation order, struct widths, frequency accounting, the EE backend |
-| [compiler/QUICK-REFERENCE.md](compiler/QUICK-REFERENCE.md) | start from the shape in front of you and find the law that explains it |
-| [compiler/DIAGNOSTICS.md](compiler/DIAGNOSTICS.md) | from "the diff looks wrong" to "this pass owns it" |
-| [compiler/FIELD-GUIDE.md](compiler/FIELD-GUIDE.md) | the source spellings that move a measurement |
-| [compiler/CASE-STUDY.md](compiler/CASE-STUDY.md) | one function end to end, including a rejected edit |
-| [compiler/CASE-STUDY-LARGE.md](compiler/CASE-STUDY-LARGE.md) | a large function, read through its frame |
-| [compiler/ABI.md](compiler/ABI.md) | the calling convention on one page |
-| [compiler/PASSES.md](compiler/PASSES.md) | the `-da` dumps, and which source file owns each one |
-| [compiler/CROSS-2.96.md](compiler/CROSS-2.96.md) | which rules transfer to the 2.96 compiler that builds the CRI middleware |
-| [compiler/SOURCE-STUDY.md](compiler/SOURCE-STUDY.md) | what compiler source exists, and how a rule is anchored |
-| [compiler/COVERAGE.md](compiler/COVERAGE.md) | how much of a binary the handbook explains, measured |
-| [compiler/VERIFY.md](compiler/VERIFY.md) | the pinned toolchain, and what each check verifies |
-| [compiler/AGENT-SKILL.md](compiler/AGENT-SKILL.md) | the loop for an automated agent |
-| [compiler/laws.json](compiler/laws.json) | the same laws as data, for tools and agents |
+`laws.json` is the machine-readable copy. `make check` verifies it and re-checks every binary
+anchor against the `cc1` on your machine.
 
 ## 2. Project reference
 
