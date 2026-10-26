@@ -5014,3 +5014,5 @@ func_002e1e48    # ghidra_draft manual
 func_0033d7e0    # ghidra_draft manual
 func_002e8e98    # ghidra_draft manual
 func_002e8ef0    # ghidra_draft manual
+func_002fddb0    # ghidra_draft manual
+func_0033e1e0    # ghidra_draft manual
