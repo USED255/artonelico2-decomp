@@ -27,6 +27,9 @@ make check
 `configure.py` 检查原版可执行文件并写出构建配置。`make` 调用
 `tools/build/decomp_build.py` 与报告工具。这条链只需要你自备的游戏光盘与原版工具链。
 
+每个新增的 `src/matched/*.c` 文件都需要在 `config/matched_symbols.txt` 里有一行，`make build`
+与 `make delta` 才能看到它。见 [config/README.zh-CN.md](../config/README.zh-CN.md) 第 3 节。
+
 ## 2. 工具清单
 
 外部克隆可以跑「Contributor 需要」的工具。「Maintainer internal」的工具需要私有的

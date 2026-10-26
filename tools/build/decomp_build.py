@@ -28,7 +28,9 @@ Subcommands
       `tools/build/gen_objdiff_full.py` and writes a full objdiff.json.
   delta --base <git-ref>
       Compare each changed matched source with objdiff. Each function must
-      match 100 percent. A mismatch returns a non-zero code. A missing object
+      match 100 percent. A changed `.c` file that is not in the ledger is an
+      error (exit 1): add its ledger line first, or the build ignores the file
+      and the gate cannot verify it. A mismatch returns 1. A missing object
       returns 2. Run the build first.
   check-config
       Print each resolved path and its presence. Use this command to check the
@@ -65,7 +67,8 @@ The toolchain stays outside the workspace. See docs/knowledge-base/ENV.md. The s
                 `--stage assemble` 只装配（不链接、不校验基线载荷）；`--stage fast` 在此基础上
                 再跑 mixed 构建，只校验混合载荷 —— CI 对纯源码 PR 用 fast，其余一律 all。
   report        用 objdiff-cli 生成报告；`--full` 先生成全量 objdiff.json。
-  delta         只对 git diff 里改动的已匹配源逐个 objdiff，要求 100%。
+  delta         只对 git diff 里改动的已匹配源逐个 objdiff，要求 100%。未登记的改动 `.c`
+                以退出码 1 拒绝（先在台账加一行，否则构建忽略该文件、门禁无法验证）。
   check-config  打印解析出的全部路径与存在性，便于自检。
 
 布局约定
@@ -408,12 +411,27 @@ def _ledger(ctx: Ctx) -> dict:
     return index
 
 
-def _git_changed(ctx: Ctx, base: str, *paths: str) -> list[str]:
+def _git_changed(ctx: Ctx, base: str, *paths: str, include_untracked: bool = False) -> list[str]:
+    """Changed paths against `base`. With `include_untracked`, new files count as changed.
+
+    相对 `base` 改动的路径；`include_untracked=True` 时把未跟踪的新文件也算作改动（本地自查用）。
+    """
     cp = subprocess.run(["git", "-C", str(ctx.root), "diff", "--name-only", base, "--", *paths],
                         capture_output=True, text=True)
     if cp.returncode != 0:
         die(f"git diff failed (base={base}): {cp.stderr.strip()}", 2)
-    return [l.strip() for l in cp.stdout.splitlines() if l.strip()]
+    changed = [l.strip() for l in cp.stdout.splitlines() if l.strip()]
+    if include_untracked:
+        # A new source is usually untracked until the contributor commits it. A plain
+        # `git diff` cannot see it, which made `make delta` report "nothing to compare".
+        # 新源在提交前通常未被跟踪；`git diff` 看不到它，会让 `make delta` 误报「没有改动」。
+        cp = subprocess.run(["git", "-C", str(ctx.root), "ls-files", "--others",
+                             "--exclude-standard", "--", *paths],
+                            capture_output=True, text=True)
+        if cp.returncode != 0:
+            die(f"git ls-files failed (base={base}): {cp.stderr.strip()}", 2)
+        changed += [l.strip() for l in cp.stdout.splitlines() if l.strip()]
+    return sorted(set(changed))
 
 
 # A change to one of these inputs affects functions that the file name cannot
@@ -445,15 +463,35 @@ def cmd_delta(args) -> int:
         die("delta needs --base <git-ref>", 3)
     index = _ledger(ctx)
     rel_src = os.path.relpath(ctx.matched, ctx.root)
-    changed = _git_changed(ctx, args.base, rel_src)
+    changed = _git_changed(ctx, args.base, rel_src, include_untracked=True)
     shared = _git_changed(ctx, args.base, *SHARED_INPUTS)
     if not changed and not shared:
         print(f"delta: no change against {args.base} in {rel_src}/ or the build inputs; nothing to compare")
         return 0
 
+    # A deleted or renamed source is not an "unregistered new source": the build and the
+    # ledger changes handle it. Only paths that still exist in the working tree are compared.
+    # 删除/重命名不是「未登记新源」；只比较工作树里仍存在的路径。
+    changed = [x for x in changed if (ctx.root / x).is_file()]
     sources = [x for x in changed if x.endswith(".c")]
     headers = [x for x in changed if x.endswith(".h")]
     affected, unregistered = matched_ledger.resolve_changed(index, sources, rel_src)
+    if unregistered:
+        # Do not print "skip" and return 0. A contributor who changed a source that the
+        # ledger does not know would read the exit code as "all 100 percent", but the build
+        # never compiled that file and the gate never compared it.
+        # 不打印 skip 后返回 0：否则贡献者会把退出码读成「全部 100%」，而构建从未编译该文件。
+        print(f"FAIL: {len(unregistered)} changed source file(s) are not in "
+              f"config/matched_symbols.txt:", file=sys.stderr)
+        for u in unregistered[:20]:
+            print(f"  - {u}", file=sys.stderr)
+        if len(unregistered) > 20:
+            print(f"  ... {len(unregistered)} in total", file=sys.stderr)
+        print("Add one line for each file: '<symbol>' (the optional second column is the source "
+              "basename; a maintainer reviews the tag). Without that line, the build ignores the "
+              "file and the gate cannot verify it. See CONTRIBUTING.md section 7 and "
+              "config/README.md section 3.", file=sys.stderr)
+        return 1
     full = any(x in shared for x in FULL_ON_CHANGE)
 
     for h in headers:                                    # header file: find dependent sources by #include  头文件：按 #include 找依赖源
@@ -484,13 +522,6 @@ def cmd_delta(args) -> int:
     if full:
         affected = set(index)
         print(f"note: the ledger, the linker script, or a build entry changed; compare all {len(affected)} registered functions one by one")
-
-    if unregistered:
-        print(f"skip {len(unregistered)} unregistered files (not in config/matched_symbols.txt; register new files first):")
-        for u in unregistered[:10]:
-            print(f"  skip {u}")
-        if len(unregistered) > 10:
-            print(f"  ... {len(unregistered)} in total")
 
     if not affected:
         print("note: this change affects no registered function; no objdiff run (this is not a full 100 percent)")
@@ -525,7 +556,7 @@ def cmd_delta(args) -> int:
             print(f"  OK: {sym} 100%")
 
     print(f"\ndelta summary: affected {len(affected)} | compared {compared} | passed {passed} | "
-          f"failed {len(bad)} | missing objects {len(missing)} | skipped unregistered {len(unregistered)}")
+          f"failed {len(bad)} | missing objects {len(missing)}")
     if missing:
         print("FAIL: these functions have no objdiff object. Run 'decomp_build.py build' first:", file=sys.stderr)
         for x in missing:

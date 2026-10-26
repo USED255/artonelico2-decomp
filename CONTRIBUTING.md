@@ -31,6 +31,10 @@ make delta BASE=origin/main      # each changed file in src/matched/ must match 
 make check                       # repository checks
 ```
 
+A new `src/matched/*.c` file also needs one line in `config/matched_symbols.txt`.
+Add the line before you build. Without it, the build ignores the file and
+`make delta` stops with an error. See section 7.
+
 ## 3. How to match a function
 
 A match is a loop, not a single step. This is the loop:
@@ -40,7 +44,8 @@ A match is a loop, not a single step. This is the loop:
 2. **Write C that should produce it.** Reproduce the source shape the compiler saw: the types, the
    order of statements, and the way values are reused. The instruction selection follows.
 3. **Compile and compare.** Run `make delta BASE=<the base commit>`. Every changed file must report
-   100%. Read the diff in `objdiff` when it does not.
+   100%. Read the diff in `objdiff` when it does not. A new file needs its ledger line first;
+   otherwise `make delta` names the file and stops.
 4. **Diagnose before guessing.** Find where the two instruction streams first differ, then look up
    the compiler rule behind it: [DIAGNOSTICS](docs/knowledge-base/compiler/DIAGNOSTICS.md) routes a
    residual to the pass that owns it, and [FIELD-GUIDE](docs/knowledge-base/compiler/FIELD-GUIDE.md)
@@ -70,7 +75,13 @@ It is counted separately: see [docs/TRANSCRIPTION.md](docs/TRANSCRIPTION.md).
 | Workflow | Your pull request |
 | --- | --- |
 | `validate` | Runs in **contribution mode**. It allows an addition or a change in the contribution paths. It rejects a change outside them, a non-text file, a symbolic link, a file above 1 MiB, and any changed path that is not a regular file in the working tree (the check fails closed, so a path it cannot inspect is never accepted). A branch of this repository may also rename or delete a file. A pull request from an external fork must still only add or change files. |
-| `matching-gate` | Needs the retail executable and the Sony toolchain. A pull request from a fork cannot get them, so the job runs its notice step only; a manual run refuses a fork pull request outright, because the gate would otherwise execute a fork's scripts next to the private material. A maintainer then verifies your commit. An internal pull request picks a mode from your change set: documentation and pure tests run no build at all, and a change that only touches `src/matched/**`, `config/**` (except the two files `splat split` reads), and the progress report assembles the baseline and runs the mixed build, the per-function check, and the report, without the separate baseline link. Any change to a build input or to the tooling that decides how the gate runs takes the whole pipeline. A green run publishes the report and its provenance record; `tools/maintainer/publish_report.py` refuses to publish without a passing provenance. See [docs/BUILD.md](docs/BUILD.md) section 4. |
+| `matching-gate` | Needs the retail executable and the Sony toolchain. A pull request from a fork cannot get them. A fork change that needs a build **fails this check on purpose**; a fork change that is documentation or pure tests passes without a build. A manual run refuses a fork pull request, because the gate would otherwise execute a fork's scripts next to the private material. A maintainer reproduces the contribution on a branch of this repository and verifies it there. An internal pull request picks a mode from your change set: documentation and pure tests run no build at all, and a change that only touches `src/matched/**`, `config/**` (except the two files `splat split` reads), and the progress report assembles the baseline and runs the mixed build, the per-function check, and the report, without the separate baseline link. Any change to a build input or to the tooling that decides how the gate runs takes the whole pipeline. A green run publishes the report and its provenance record; `tools/maintainer/publish_report.py` refuses to publish without a passing provenance. See [docs/BUILD.md](docs/BUILD.md) section 4. |
+
+**If you forked this repository:** the `matching` check fails when your change needs a build.
+This failure is deliberate: a fork run cannot get the private material, and a green check must
+mean "verified". We copy only the contribution files onto a branch of this repository, verify
+the commit there, and merge that branch. We close the original pull request after the merge,
+and your authorship stays in the history.
 
 ## 6. What happens after CI
 
@@ -101,13 +112,24 @@ provenance record bound to the published report, and the numbers must not regres
 that mixes publication files with anything else is refused.
 
 You can change all other paths. The maintainers ask you to open an issue first
-for `config/`, `splat.yaml`, and the build scripts, because a change there can
-affect the whole build.
+for `config/` (except the one ledger line for your new function), `splat.yaml`,
+and the build scripts, because a change there can affect the whole build.
 
-**A note about a new function.** You do not add a `config/matched_symbols.txt`
-entry. A maintainer adds it for you. `config/matched_symbols.txt` and
-`config/symbol_addrs.txt` are read-only configuration. A maintainer fills them
-for you. Read [config/README.md](config/README.md).
+**A note about a new function.** Add one line to `config/matched_symbols.txt`
+for your new file. The line is the symbol name:
+
+```
+<symbol> [<source-basename>]        # <tag>
+```
+
+The second column is optional. Use it only when the source basename differs from
+the symbol name. The tag is an end-of-line comment that the report uses. Leave it
+out when you are not sure; a maintainer corrects it. Add the line at the end of
+the file. Do not edit `config/symbol_addrs.txt`; a maintainer fills it.
+
+If your function needs the CRI compiler or extra flags, add the rows in
+`config/compiler_map.tsv` and `config/source_flags.tsv`. Read
+[config/README.md](config/README.md).
 
 ## 8. Writing style
 

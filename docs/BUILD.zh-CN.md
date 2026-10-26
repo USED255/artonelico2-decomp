@@ -43,7 +43,7 @@ make report         # 生成进度报告
 
 ```bash
 make progress                    # 静态上界；不需要工具链
-make delta BASE=origin/main      # src/matched/ 里本次改动的文件必须 100% 匹配
+make delta BASE=origin/main      # src/matched/ 里本次改动的文件必须 100% 匹配（新文件须先登记台账）
 make check                       # 仓库自检；不需要原版可执行文件
 ```
 
@@ -62,7 +62,7 @@ make check                       # 仓库自检；不需要原版可执行文件
 | workflow | 何时跑 | 做什么 |
 | --- | --- | --- |
 | `validate` | 默认分支 push、每个 PR、手动触发 | push 校验**发布记录**（`PUBLISHED.json`）、禁止材料（含「名字看不出类别」的兜底尺寸线）、报告 schema 与基线；PR 允许任何改动，**只读** `progress/**` 与 `PUBLISHED.json`，且新增/修改的路径必须是 1 MiB 以内的普通 UTF-8 文本文件——符号链接、或工作树里不存在的路径一律拒绝。本仓库自己的分支还可以重命名或删除文件；外部 fork 的 PR 仍只能新增或修改。见 [CONTRIBUTING.zh-CN.md](../CONTRIBUTING.zh-CN.md) |
-| `matching-gate` | 默认分支 push、同仓库 PR、手动触发 | 从私有伴生仓库取原版可执行文件与工具链，跑 `make build` / `make delta` / `make report`；**全部通过才发布两个 artifact**：`SLPS_258.19_report`（报告）与 `SLPS_258.19_report_provenance`（证明量了什么的记录）。带 PR 号的手动运行会先核对 PR 来自本仓库**再**做任何 checkout，因此 fork 的脚本永远不会与私有材料同处一个 job |
+| `matching-gate` | 默认分支 push、同仓库 PR、手动触发 | 从私有伴生仓库取原版可执行文件与工具链，跑 `make build` / `make delta` / `make report`；**全部通过才发布两个 artifact**：`SLPS_258.19_report`（报告）与 `SLPS_258.19_report_provenance`（证明量了什么的记录）。带 PR 号的手动运行会先核对 PR 来自本仓库**再**做任何 checkout，因此 fork 的脚本永远不会与私有材料同处一个 job。需要构建的 fork PR 会让这项 required check **故意失败**；纯文档的 fork PR 不构建、可以正常通过 |
 
 `matching-gate` 有三种模式，由 [tools/ci/classify_change.py](../tools/ci/classify_change.py)
 按改动集合判定，且**默认拒绝**：出错、任何 push、任何手动运行都落到 `full`。
@@ -82,7 +82,10 @@ make check                       # 仓库自检；不需要原版可执行文件
   决定门禁**怎么跑**，所以走完整流水线；只有 `make check` 会跑的纯测试才是 `skip`。
 
 `matching-gate` 需要 secret `ORIG_DEPLOY_KEY` 与变量 `PRIVATE_ORIG_REPO`。
-**fork 的 PR 拿不到**，此时该 job 只跑 notice 步骤，不算失败；之后由维护者复验该 commit。
+**fork 的 PR 拿不到它们。** 该 workflow 仍会 checkout 并分类：需要构建（`fast` / `full`）的改动
+**故意失败**——绿色的 `matching` 必须等于「已验证」；纯文档或纯测试（`skip`）不构建、可以正常通过。
+无 secret 的 PR 用 **base commit 的分类器**判定，不用 PR 自己的副本。维护者只把贡献路径复制到
+本仓库的分支（不带 fork 的 workflow 与 tools）上验证。
 
 维护者若已用 [tools/ci/splat_snapshot.py](../tools/ci/splat_snapshot.py) 把 `splat split`
 的输出打包，门禁会直接还原归档而不再跑 splat。归档放在私有伴生仓库；本仓库只带
