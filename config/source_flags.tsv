@@ -3099,3 +3099,7 @@ func_002223b8	-O1
 func_002cb700	-O1
 func_0021f6a4	-O1
 func_001f33e0	-O1
+func_00333598	-O2 -G0
+func_003335d0	-O2 -G0
+func_00333608	-O2 -G0
+func_00333640	-O2 -G0
