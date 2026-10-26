@@ -1,2 +1,0 @@
-extern void LibcString_8(void *, int, int);
-void func_00334a68(void *p){ LibcString_8(p, 0, 0x48); }
