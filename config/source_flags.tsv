@@ -3013,3 +3013,17 @@ func_002ffbd0	-G0
 func_002e8e98	-G0
 func_002e8ef0	-G0
 func_00339ad0	-G0
+func_00301b80	-fno-optimize-sibling-calls
+func_00301bd0	-fno-optimize-sibling-calls
+func_00301c20	-fno-optimize-sibling-calls
+func_00301c70	-fno-optimize-sibling-calls
+func_00301cc0	-fno-optimize-sibling-calls
+func_00301d50	-fno-optimize-sibling-calls
+func_00301da0	-fno-optimize-sibling-calls
+func_00301df0	-fno-optimize-sibling-calls
+func_00301e40	-fno-optimize-sibling-calls
+func_00301e90	-fno-optimize-sibling-calls
+func_00301ee0	-fno-optimize-sibling-calls
+func_00301f30	-fno-optimize-sibling-calls
+func_00301f80	-fno-optimize-sibling-calls
+func_00301fd0	-fno-optimize-sibling-calls
