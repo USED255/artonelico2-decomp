@@ -28,6 +28,9 @@ make delta BASE=origin/main      # src/matched/ 里本次改动的文件必须 1
 make check                       # 仓库自检
 ```
 
+新增 `src/matched/*.c` 文件时，还要在 `config/matched_symbols.txt` 里加一行。**先加行，再构建**。
+不加这一行，构建会忽略该文件，`make delta` 会报错。见第 7 节。
+
 ## 3. 如何匹配一个函数
 
 匹配是一个循环，不是一步到位。循环是这样：
@@ -36,6 +39,7 @@ make check                       # 仓库自检
 2. **写出应该能生成它的 C**：复现编译器看到的源码形状——类型、语句顺序、值的复用方式。
    指令选择会跟着来。
 3. **编译并比对**：跑 `make delta BASE=<基点>`，改动文件必须报 100%；不到就去看 `objdiff` 的差异。
+   新文件要先登记台账，否则 `make delta` 会点名该文件并停止。
 4. **先诊断，再猜**：先找出两条指令流第一次分叉的位置，再查它背后的编译器规则。
    [DIAGNOSTICS](docs/knowledge-base/compiler/DIAGNOSTICS.zh-CN.md) 把残差路由到负责它的 pass，
    [FIELD-GUIDE](docs/knowledge-base/compiler/FIELD-GUIDE.zh-CN.md) 列出能移动读数的源写法；
@@ -61,7 +65,11 @@ make check                       # 仓库自检
 | workflow | 你的 PR |
 | --- | --- |
 | `validate` | 跑**贡献模式**：允许白名单路径内的新增与修改；拒绝白名单外的改动、非文本文件、超过 1 MiB 的文件。本仓库自己的分支还可以重命名或删除文件；外部 fork 的 PR 仍只能新增或修改。 |
-| `matching-gate` | 需要原版可执行文件与 Sony 工具链。**fork 的 PR 拿不到**，该 job 只跑 notice 步骤；之后由维护者复验你的 commit，或者用你的 PR 编号手动触发该 workflow。同仓库 PR 会按改动集合选模式：纯文档与纯测试完全不构建；只改 `src/matched/**`、`config/**`（不含 `splat split` 读的那两个文件）与进度报告时，装配基线并跑混合构建、逐函数检查与报告，但跳过单独的基线链接；任何触碰构建输入、或改动「决定门禁怎么跑」的工具/工作流的提交，都跑完整流水线。见 [docs/BUILD.zh-CN.md](docs/BUILD.zh-CN.md) 第 4 节。 |
+| `matching-gate` | 需要原版可执行文件与 Sony 工具链。**fork 的 PR 拿不到**：需要构建的改动会让这项检查**故意失败**；纯文档或纯测试的改动不构建、可以正常通过。手动运行会拒绝 fork PR，因为门禁会让 fork 的脚本与私有材料同处一个 job。维护者会把贡献文件复制到本仓库的一个分支上验证，再合并该分支。同仓库 PR 会按改动集合选模式：纯文档与纯测试完全不构建；只改 `src/matched/**`、`config/**`（不含 `splat split` 读的那两个文件）与进度报告时，装配基线并跑混合构建、逐函数检查与报告，但跳过单独的基线链接；任何触碰构建输入、或改动「决定门禁怎么跑」的工具/工作流的提交，都跑完整流水线。见 [docs/BUILD.zh-CN.md](docs/BUILD.zh-CN.md) 第 4 节。 |
+
+**如果你用的是 fork：** 需要构建的改动会让 `matching` 检查失败。这是故意的：fork 的运行拿不到
+私有材料，而绿色的检查必须等于「已验证」。我们只把贡献文件复制到本仓库的一个分支上，在该分支验证
+并合并；原 PR 会在合并后关闭，作者信息保留在历史里。
 
 ## 6. CI 之后
 
@@ -88,9 +96,17 @@ make check                       # 仓库自检
 它指名的文件一致、`payload_verified` 必须为真、基线必须带「与所发布报告绑定且通过」的 provenance、
 且数字不得回退。把发布文件与其它改动混在一个 PR 里会被拒绝。
 
-其它路径都可以改。`config/`、`splat.yaml` 与三个构建脚本，**建议先开 issue 说明**再动手 —— 它们会影响整个构建。
+其它路径都可以改。`config/`（除新函数的那一行台账外）、`splat.yaml` 与三个构建脚本，**建议先开 issue 说明**再动手 —— 它们会影响整个构建。
 
-**新增函数注意**：你**不需要**改 `config/matched_symbols.txt`；维护者会替你补条目。`config/matched_symbols.txt` 与 `config/symbol_addrs.txt` 是**只读配置**，由维护者代填。详见 [config/README.zh-CN.md](config/README.zh-CN.md)。
+**新增函数注意**：在 `config/matched_symbols.txt` 末尾为你的新文件加一行，格式是符号名：
+
+```
+<symbol> [<source-basename>]        # <tag>
+```
+
+第二列可选，只在源文件基名与符号名不同时使用。行尾注释是报告用的 tag；不确定就留空，维护者复核时会补。
+**不要**改 `config/symbol_addrs.txt`，它由维护者填。若函数需要 CRI 编译器或额外编译参数，在
+`config/compiler_map.tsv` 与 `config/source_flags.tsv` 里加对应行。详见 [config/README.zh-CN.md](config/README.zh-CN.md)。
 
 ## 8. 写作风格
 

@@ -34,7 +34,7 @@ help:
 	@echo "  make build-fast              assemble the baseline but skip its link, then run the mixed build (the mixed payload is still asserted)"
 	@echo "  make report                  write the objdiff progress report to build/ (progress/ is written only by publish_report.py)"
 	@echo "  make progress                print the static progress upper bound (no toolchain needed)"
-	@echo "  make delta BASE=<git-ref>    check that each changed src/matched/*.c file matches 100 percent"
+	@echo "  make delta BASE=<git-ref>    check that each changed src/matched/*.c file matches 100 percent (a new file needs a ledger line)"
 	@echo "  make check                   run the repository checks (paths, publication record, denied classes, report rules)"
 	@echo "  make check-pr BASE=<ref>     contribution mode: allow added or changed files only (for pull requests)"
 	@echo "  make clean                   remove the build output"
@@ -97,18 +97,22 @@ check-tools:
 # Unit tests of the pure logic the workflows depend on. They are fast and need no toolchain.
 # The workflows rely on tools/ci/classify_change.py: a regression there would silently change
 # what CI verifies, so its test runs inside `make check`. The other tests guard the same class of
-# silent failure: the ledger parser (a delta run that skips entries but still says 100 percent),
-# the public-repository checks (the denied-material list and the git -z path handling) and the
-# shared path/atomic-write helpers.
+# silent failure: the ledger parser and the delta check (a delta run that skips entries but still
+# says 100 percent; it now fails on an unregistered source), the public-repository checks, the
+# shared path/atomic-write helpers, and the matching-gate contract (a required check that is green
+# without the private material).
 # 工作流依赖的纯逻辑单测（快、不需要工具链）。classify_change.py 一旦回归会静默改变 CI 的验证
-# 范围，所以它的测试放进 `make check`。其余测试守同一类静默失败：台账解析（跳过条目却报 100%）、
-# 公开仓库检查（禁材列表与 git -z 路径处理）、共用路径/原子写助手。
+# 范围，所以它的测试放进 `make check`。其余测试守同一类静默失败：台账解析与增量检查（跳过条目却报
+# 100%，现在对未登记源直接失败）、公开仓库检查、共用路径/原子写助手，以及 matching-gate 契约
+# （没有私有材料时 required check 不能变绿）。
 check-tests:
 	@$(PY) tools/check/test_obj_gate.py
 	@$(PY) tools/check/test_data_patch.py
 	@$(PY) tools/check/test_classify_change.py
 	@$(PY) tools/check/test_splat_snapshot.py
 	@$(PY) tools/check/test_matched_ledger.py
+	@$(PY) tools/check/test_delta_unregistered.py
+	@$(PY) tools/check/test_workflow_contract.py
 	@$(PY) tools/check/test_public_repo.py
 	@$(PY) tools/check/test_at2_io.py
 

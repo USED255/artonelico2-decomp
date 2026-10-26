@@ -12,7 +12,7 @@
 | 文件 | 写入方 | 读取方 | 能否手改 |
 | --- | --- | --- | --- |
 | `symbol_addrs.txt` | `tools/maintainer/project/gen_symbol_addrs_jp.py` | splat 与若干工具 | 不能。请重新生成。 |
-| `matched_symbols.txt` | 维护者与匹配工具 | 混合构建与报告 | 不能。维护者替你补条目。 |
+| `matched_symbols.txt` | 维护者、匹配工具与贡献者（每个新函数一行） | 混合构建与报告 | 可以：自己的新函数加一行；维护者复核 tag 与源映射。 |
 | `compiler_map.tsv` | 维护者 | 混合构建与报告工具 | 可以，但很少需要。 |
 | `source_flags.tsv` | 维护者与匹配工具 | 混合构建与报告工具 | 可以。 |
 | `jtbl_tables.tsv` | 维护者 | 混合构建 | 可以，但很少需要。 |
@@ -74,8 +74,12 @@
   `src/matched/<source-basename>.c`。
 - 第二列可以与符号名不同。一个源文件可以提供多个符号。
 
-**外部贡献者不要手改本文件。** 匹配验证通过后由维护者补条目。
-见 [CONTRIBUTING.zh-CN.md](../CONTRIBUTING.zh-CN.md)。
+**新函数需要在本文件加一行。** 先写 `src/matched/<symbol>.c`，再在文件末尾加这一行。第二列可选。
+行尾注释是报告用的 tag；不确定就留空，维护者复核时会补。**不要**改 `config/symbol_addrs.txt`，它由维护者填。
+详见 [CONTRIBUTING.zh-CN.md](../CONTRIBUTING.zh-CN.md) 第 7 节。
+
+不加这一行，混合构建会忽略该文件，`make delta` 会报错。这条规则的目的，是避免一个从未被编译的新源
+看起来「已验证」。
 
 台账分四段。每个段标记行都是精确锚点。匹配工具在标记之间插入内容。
 
@@ -158,6 +162,8 @@ sha1 变红。项目已实测该负面对照。
 
 - 构建把额外参数追加在默认参数之后。
 - CRI 源需要 `-G0`。见 [docs/BUILD.zh-CN.md](../docs/BUILD.zh-CN.md)。
+- 外部贡献者可以为自己函数需要不同优化档或 `-G0` 时加一行。见
+  [CONTRIBUTING.zh-CN.md](../CONTRIBUTING.zh-CN.md) 第 7 节。
 
 读取方：`tools/project/compile_sources.py`（`--flags-file`）与
 `tools/report/gen_function_report.py`。写入方：维护者匹配工具

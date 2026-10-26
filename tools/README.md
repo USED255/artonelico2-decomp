@@ -32,6 +32,10 @@ make check
 `make` calls `tools/build/decomp_build.py` and the report tool. The chain needs
 your own game disc and the original toolchain.
 
+Each new `src/matched/*.c` file needs one line in `config/matched_symbols.txt`
+before `make build` and `make delta` can see it. Read
+[config/README.md](../config/README.md) section 3.
+
 ## 2. Tool list
 
 An external clone can run a Contributor tool. A Maintainer tool needs the

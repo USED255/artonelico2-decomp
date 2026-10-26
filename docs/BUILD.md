@@ -59,7 +59,7 @@ value after each stage. The expected value is
 
 ```bash
 make progress                    # the static upper bound. No toolchain is necessary.
-make delta BASE=origin/main      # each changed file in src/matched/ must match 100%
+make delta BASE=origin/main      # each changed file in src/matched/ must match 100% (a new file needs a ledger line)
 make check                       # repository checks. The retail executable is not necessary.
 ```
 
@@ -79,7 +79,7 @@ that tool verified the provenance. The target also fails when any C unit is belo
 | Workflow | When it runs | What it does |
 | --- | --- | --- |
 | `validate` | Each push to `main`, each pull request, and a manual start | On a push it checks the publication record (`PUBLISHED.json`), the forbidden material (including a size backstop for a restricted file whose name carries no telling extension), the report schema, and the baseline. On a pull request it allows any change **except** the publication content (`progress/**` and `PUBLISHED.json`); an added or changed path must be a regular UTF-8 text file below 1 MiB, so a symbolic link or a path that the working tree does not hold is refused. A branch of this repository may also rename or delete a file. A pull request from an external fork must still only add or change files. Read [CONTRIBUTING.md](../CONTRIBUTING.md). |
-| `matching-gate` | A push to the default branch, an internal pull request, or a manual start | Gets the retail executable and the toolchain from a private companion repository. Then it runs `make build`, `make delta`, and `make report`. It publishes two artifacts **only** when all checks pass: `SLPS_258.19_report` (the report) and `SLPS_258.19_report_provenance` (the record that proves what was measured). A manual run with a pull request number verifies that the pull request comes from this repository before any checkout, so a fork's scripts never run next to the private material. |
+| `matching-gate` | A push to the default branch, an internal pull request, or a manual start | Gets the retail executable and the toolchain from a private companion repository. Then it runs `make build`, `make delta`, and `make report`. It publishes two artifacts **only** when all checks pass: `SLPS_258.19_report` (the report) and `SLPS_258.19_report_provenance` (the record that proves what was measured). A manual run with a pull request number verifies that the pull request comes from this repository before any checkout, so a fork's scripts never run next to the private material. A fork pull request that needs a build fails this required check on purpose; a documentation-only fork pull request passes without a build. |
 
 `matching-gate` runs in one of three modes. [tools/ci/classify_change.py](../tools/ci/classify_change.py)
 picks the mode from the change set, and it denies by default: an error, a push, and a manual
@@ -104,8 +104,14 @@ Two rules explain the boundaries:
   the whole pipeline. Only the pure tests, which `make check` runs, are `skip`.
 
 The `matching-gate` workflow needs the secret `ORIG_DEPLOY_KEY` and the variable
-`PRIVATE_ORIG_REPO`. A pull request from a fork cannot get them. In that case the
-workflow runs its notice step only and does not fail. A maintainer then verifies the commit.
+`PRIVATE_ORIG_REPO`. A pull request from a fork cannot get them. The workflow still
+checks out the code and classifies the change. A change that needs a build (`fast` or
+`full`) then **fails**: a green `matching` check must mean "verified". A change that is
+documentation or a pure test (`skip`) passes without a build. For a no-secret pull
+request, the mode comes from the classifier at the base commit, not from the pull
+request's own copy. A maintainer reproduces the contribution on a branch of this
+repository (only the contribution paths, never the fork's workflows or tools) and
+verifies it there.
 
 The gate also restores the packaged `splat split` output when the maintainer has packed it
 with [tools/ci/splat_snapshot.py](../tools/ci/splat_snapshot.py). The archive lives in the

@@ -6,8 +6,13 @@
 #                             (the retail executable and the Sony toolchain)
 #   vars.PRIVATE_ORIG_REPO    the private companion repository, for example owner/at2-orig
 #
-# A pull request from a fork cannot get the secret or the variable. Then this job
-# runs its notice step only. It does not fail.
+# A pull request from a fork cannot get the secret or the variable. A change that needs a
+# build (`fast` or `full`) fails on purpose: a green `matching` check must mean "verified".
+# A documentation-only change (`skip`) still passes. A maintainer reproduces the
+# contribution on a branch of this repository and verifies it there.
+#
+# 没有 secret（fork PR，或未配置的副本）时：纯文档/纯测试仍 `skip` 通过；需要构建的改动**故意失败**，
+# 因为 `matching` 变绿必须等于「已验证」。维护者只把贡献路径移植到本仓库分支后复验。
 #
 # Three modes. The job itself always runs, so a mode never leaves a required check pending.
 # tools/ci/classify_change.py decides the mode from the change set (default deny: any error,
@@ -44,13 +49,15 @@
 # pull request from THIS repository: the guard step below checks `head.repo.full_name` before any
 # checkout. A fork pull request cannot be verified by a manual run, because the private companion
 # repository (retail executable and Sony toolchain) would sit on the same runner as the fork's
-# own scripts (R30 finding A4). Review a fork contribution by merging it into a branch of this
-# repository first; the regular `pull_request` run of a fork cannot get the secret at all.
+# own scripts (R30 finding A4). Review a fork contribution by reproducing it on a branch of
+# this repository first (only the contribution paths; never the fork's workflows or tools);
+# the regular `pull_request` run of a fork cannot get the secret at all.
 #
 # 手动运行会用私钥，并会执行那个提交里的脚本，因此只允许指向**本仓库**的 PR（下面的守卫步骤在
 # 任何 checkout 之前核对 `head.repo.full_name`）。fork PR 不能靠手动运行验证：门禁需要的私有
 # 伴生仓库（原版可执行文件与 Sony 工具链）会和 fork 自己的脚本同处一个 runner（R30 A4）。
-# 要审 fork 贡献，先把它合并进本仓库的分支；fork 的普通 `pull_request` 运行本来就拿不到 secret。
+# 要审 fork 贡献，先把它**按路径过滤**复制到本仓库的分支（不要带 fork 的 workflow 与 tools）；fork 的普通
+# `pull_request` 运行本来就拿不到 secret。
 name: matching-gate
 
 on:
@@ -87,11 +94,6 @@ jobs:
       HAS_ORIG: ${{ secrets.ORIG_DEPLOY_KEY != '' && vars.PRIVATE_ORIG_REPO != '' }}
       PRIVATE_ORIG_REPO: ${{ vars.PRIVATE_ORIG_REPO }}
     steps:
-      - name: Notice (no secret, for example a pull request from a fork)
-        if: env.HAS_ORIG != 'true'
-        run: |
-          echo "::notice::The secret ORIG_DEPLOY_KEY or the variable PRIVATE_ORIG_REPO is absent. Skip the build gate."
-
       # The manual run must not execute a fork's scripts. This guard runs BEFORE every checkout,
       # so a rejected fork PR never reaches the private companion download or its scripts.
       # 手动运行不得执行 fork 的脚本。守卫排在**所有 checkout 之前**：被拒的 fork PR 不会走到
@@ -104,13 +106,18 @@ jobs:
           set -euo pipefail
           head="$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.inputs.pr }}" --jq .head.repo.full_name)"
           if [ "$head" != "${{ github.repository }}" ]; then
-            echo "::error::a manual run may verify only a pull request from ${{ github.repository }} (got: $head). Merge the contribution into a branch of this repository first."
+            echo "::error::a manual run may verify only a pull request from ${{ github.repository }} (got: $head). Reproduce the contribution on a branch of this repository (a path-filtered transplant) first."
             exit 1
           fi
           echo "::notice::manual-run guard passed: PR #${{ github.event.inputs.pr }} comes from $head"
 
+      # A run without the private material (a fork pull request, or a copy of the repository
+      # without the secret) still checks out the code and classifies the change. A
+      # documentation-only fork pull request then passes, and a code change fails on purpose
+      # instead of showing a green required check that verified nothing.
+      # 没有私有材料的运行（fork PR，或未配置 secret 的副本）仍会 checkout 并分类：纯文档 fork PR
+      # 可以照常通过；代码改动则**故意失败**，不再出现「绿但零验证」。
       - name: Checkout this repository
-        if: env.HAS_ORIG == 'true'
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.pr && format('refs/pull/{0}/head', github.event.inputs.pr) || github.sha }}
@@ -120,9 +127,15 @@ jobs:
       # The mode decides which of the steps below run. It runs before the private checkout so
       # that a documentation or pure-test pull request never downloads the retail material.
       # 模式决定下面哪些步骤运行；它排在私有取件之前，让纯文档 / 纯测试 PR 完全不下载受限材料。
+      #
+      # A run without the secret must not pick its own rules: a fork could change this
+      # classifier and return `skip` for a code change. On that path the classifier of the
+      # base commit is used. If the base commit has no such file, the step warns and falls
+      # back to the checkout.
+      # 没有 secret 的运行不得自评：fork 可以改这个分类器，把代码改动画成 `skip`。这条路径改用
+      # base commit 里的分类器；base 里没有该文件时告警并回落到当前检出。
       - name: Classify the change (skip / fast / full)
         id: mode
-        if: env.HAS_ORIG == 'true'
         env:
           EVENT: ${{ github.event_name }}
           PR_BASE: ${{ github.event.pull_request.base.sha }}
@@ -134,15 +147,37 @@ jobs:
           if [ -n "$base" ] && [ "$base" != "0000000000000000000000000000000000000000" ]; then
             git fetch --quiet --no-tags origin "$base" 2>/dev/null || true
           fi
-          mode="$(python3 tools/ci/classify_change.py --root . --event "$EVENT" --base "$base" --head HEAD --verbose)" || mode=full
+          classifier="tools/ci/classify_change.py"
+          if [ "${HAS_ORIG:-}" != "true" ] && [ "$EVENT" = "pull_request" ] \
+             && [ -n "$base" ] && [ "$base" != "0000000000000000000000000000000000000000" ]; then
+            if git show "$base:tools/ci/classify_change.py" > "$RUNNER_TEMP/classify_base.py" 2>/dev/null \
+               && [ -s "$RUNNER_TEMP/classify_base.py" ]; then
+              classifier="$RUNNER_TEMP/classify_base.py"
+            else
+              echo "::warning::the base commit has no tools/ci/classify_change.py; use the checkout's classifier"
+            fi
+          fi
+          mode="$(python3 "$classifier" --root . --event "$EVENT" --base "$base" --head HEAD --verbose)" || mode=full
           case "$mode" in skip|fast|full) ;; *) mode=full ;; esac
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
           echo "::notice::build mode = $mode"
 
       - name: Notice (documentation or pure tests only, the build gate is skipped)
-        if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode == 'skip'
+        if: steps.mode.outputs.mode == 'skip'
         run: |
           echo "::notice::Every changed file is documentation or a pure test. No build runs. The validate workflow still checks the repository and runs the tests."
+
+      # A required check must not be green when the gate verified nothing. A fork pull request
+      # (or a copy without the secret) that needs a build fails here, before the private
+      # material is fetched. Documentation-only changes still pass in the step above.
+      # required check `matching` 不能在门禁什么都没验证时变绿：fork PR（或没有 secret 的副本）
+      # 只要改动需要构建，就在这里失败——排在取私有材料之前。纯文档/纯测试仍走上面的 skip。
+      - name: Fail when the gate is necessary but the private material is absent
+        if: steps.mode.outputs.mode != 'skip' && env.HAS_ORIG != 'true'
+        run: |
+          echo "::error::This change needs the matching gate (mode: ${{ steps.mode.outputs.mode }}), but this run has no private material (ORIG_DEPLOY_KEY / PRIVATE_ORIG_REPO)."
+          echo "::error::A fork pull request cannot verify a code change. A maintainer reproduces the contribution on a branch of this repository (only the contribution paths; never the fork's workflows or tools) and verifies it there. See CONTRIBUTING.md section 5 and docs/BUILD.md section 4."
+          exit 1
 
       - name: Checkout the private companion (retail executable and Sony toolchain)
         if: env.HAS_ORIG == 'true' && steps.mode.outputs.mode != 'skip'
