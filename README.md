@@ -15,11 +15,11 @@ The build compares the result with the retail binary byte by byte. A function is
 
 ## Status
 
-As of 2026-10-26 ([progress/baseline.json](progress/baseline.json), build `cfc3720`,
-report `sha256:222773cfe6c3…`, payload `sha1:7cc42d275750600d…`):
+As of 2026-10-26 ([progress/baseline.json](progress/baseline.json), build `f494e4a`,
+report `sha256:e45e7b7f8a4d…`, payload `sha1:7cc42d275750600d…`):
 
-- Matched functions: **4,580 / 10,923 (41.93%)**
-- Matched code: **253,528 / 2,276,780 bytes (11.14%)**
+- Matched functions: **4,627 / 10,923 (42.36%)**
+- Matched code: **256,892 / 2,276,780 bytes (11.28%)**
 
 The main metric counts reconstructed C only — see [docs/TRANSCRIPTION.md](docs/TRANSCRIPTION.md).
 
