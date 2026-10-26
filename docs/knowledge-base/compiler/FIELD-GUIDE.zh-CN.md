@@ -1,0 +1,209 @@
+# 杠杆表 —— 能移动读数的源写法
+
+[English](FIELD-GUIDE.md) · [手册索引](README.md) · [laws](LAWS.md) · [诊断流程](DIAGNOSTICS.md)
+
+每条是一个**杠杆**：一处源级改动、它预期移动的读数、以及实测效果。先读 [DIAGNOSTICS.md](DIAGNOSTICS.zh-CN.md)：
+把杠杆用在结构不同的函数上，测不出任何东西。
+
+本表提到的读数：
+
+* **objdiff** —— 单函数字节匹配率，只有 100.0 才算匹配；
+* **帧大小**与**溢出数** —— 来自 `24.postreload` dump 或帧图；
+* **分配顺序** —— `23.greg` 里的 `;; N regs to allocate:`。
+
+---
+
+## 杠杆 1 —— 缩短跨调用的活跃期
+
+**何时用**：指令流接近、帧比目标大、溢出数高。
+
+**为什么**：`live_length` 在分配优先级的分母上（[L-EE-001](LAWS.md#l-ee-001--global-allocation-order-is-allocno_compare)），而跨调用的值要去抢被调用者保存寄存器。
+本目标的被调用者保存通用寄存器是 `$s0–$s8`，其中 `$s0` 已被常量占用，所以最多 8 个值能扛过调用留在寄存器里。
+
+**实测**（单函数，零售帧 144 B）：
+
+| 读数 | 候选 | 零售 |
+| --- | ---: | ---: |
+| 帧 | 176 B | 144 B |
+| 全局 allocno | 64 | — |
+| 溢出点 | 280 | — |
+| 拿不到寄存器的 allocno | 3 | — |
+| 保存寄存器 | 10（`s0`–`s8`、`ra`）= 80 B | **同样 10 个** = 80 B |
+| 传出参数 | 48 B | 48 B |
+| **变量区（溢出块）** | **48 B** | **16 B** |
+
+两个 prologue 保存的寄存器**完全相同**，所以 **+32 B 全在变量区**
+（[L-EE-012](LAWS.md#l-ee-012--frame-composition-outgoing-argsvars8-b-per-saved-register-saturating-at-10-saved-registers)）：
+变量块里是「没拿到 9 个 `$s` 之一」的值。
+
+**先找靶点**：`tools/compiler/ee-gcc-spill-map.py` 用 `-gdwarf-2 -fverbose-asm` 编译，把每一处栈访问
+映射回源码行，并按区块（vars / args / 保存寄存器）分类：
+
+```sh
+python3 tools/compiler/ee-gcc-spill-map.py --cc "$EE_GCC" --src candidate.c \
+    --include include --flags=-Os
+```
+
+在 `func_001d4b88` 上，候选在 **12 个递归调用点各写 5–6 个传出实参槽**——那是 `args` 区（只写）。
+**真正的溢出局部**在 `vars` 区：候选取值落在偏移 48/52（同一槽）、64、80，共 48 B；零售目标的 `vars`
+只有 16 B，且只放**一个**局部 `a1`（`param_2`，在 vars+48，1 次写、15 次读）。
+所以靶点清单是 `vars` 区，不是调用点：多出来的是我们这几个局部。
+
+`-fverbose-asm` 还会把**变量名**写在访问指令后面，`--trace-values` 则把某次 store 归因到「最后定义该寄存器的那一行」：
+
+```
+    line  store  load  offsets / variable names
+     520      1     0  [48]        new_var4
+     533      0     2  [48, 84]   new_var6, new_var8, new_var4
+      65      0     1  [80]        param_2
+```
+
+⇒ 工具回答「保活的是什么、它在哪里算出来的」——这正是「把计算挪到调用之后」所需的信息。
+
+**这些值为什么丢寄存器——偏好层。** 观测器能看到 dump 看不到的东西：本函数 6 个没拿到寄存器的 allocno 里，
+4 个只带着调用者保存偏好（`{$a1}`、`{$t5,$t6}`、`{$t7}`），跨 2–30 次调用后被 `prune_preferences` 清空
+（跨调用的 allocno 会去掉 `call_used_reg_set`，
+[L-EE-054](LAWS.md#l-ee-054--preferences-are-pruned-before-ordering-conflicts-fixed-caller-saved-for-call-crossing-values-and-out-of-class-registers-are-removed)）；
+另外 2 个压根没有偏好（纯压力）。偏好本身来自复制
+（[L-EE-053](LAWS.md#l-ee-053--a-copy-records-a-hard-register-preference-on-whichever-side-is-a-global-pseudo)），
+所以它指向的寄存器在源码里根本没出现过。⇒ 靶点清单不是「看起来不对的寄存器」，而是「整套偏好都是调用者保存、
+且跨调用」的那些值。
+
+**剂量-响应**（合成，k 个跨调用活跃值）：k = 2/4/6/8/10 对应帧 32/48/64/80/96，`regs=` 4/6/8/10/10 —— **每保存一个寄存器 8 B，在 10 处饱和**。
+
+**实测：机制成立、路线被否证。** 去掉一个跨调用携带的值（一个只为了后面递归调用而留着的 `struct` 拷贝，改成直接传形参）：
+
+| 读数 | 改动前 | 改动后 | 移动 |
+| --- | ---: | ---: | --- |
+| 帧 | 176 B | **160 B** | **−16 B = 两个 8 B 槽** |
+| 指令 | 1,486 | 1,483 | −3 |
+| objdiff | 80.1847 | **78.95184** | **−1.23** |
+
+⇒ 帧定律被定量证实（按 8 B 槽整格移动），但**匹配目标变差**：零售代码确实把这个值跨调用留着。
+这是杠杆最有用的形态——**证明机制、否证路线**，所以下一次该换**别的值**，而不是换机制。
+
+**负面先验**：把某个局部「改成留在寄存器里」花了 1.33 分（79.01 vs 基线 80.34）。杠杆是**缩短活跃期**，不是把值挪进寄存器。
+
+## 杠杆 2 —— 用 `floor_log2` 的台阶，别加一次引用
+
+**何时用**：分配顺序不对、各值优先级接近。
+
+**为什么**：`n_refs` 通过 `floor_log2` 进入，1、2–3、4–7、8–15… 是同一档。加一次引用通常什么都不变；**跨过 2 的幂**才变档。
+
+**预期移动**：引用数跨 4 或 8 的值上一档；同档的值不动。
+
+## 杠杆 3 —— 把使用挪进更热的块
+
+**何时用**：某个值分配得太晚但引用数不多。
+
+**为什么**：`freq` 是引用所在块的频率和，在优先级公式里是线性因子。本构建里热块频率接近 10,000，冷块接近 1,600。
+
+**预期移动**：把使用挪进热块线性抬升优先级；移动的读数是分配顺序，不是指令条数。
+
+## 杠杆 4 —— `size` 只在变化时可见
+
+**何时用**：混合模式（32 位与 64 位值同场竞争）的函数分配顺序异常。
+
+**为什么**：`size` 以**字**计，且只在 ≠ 1 时打印（[L-EE-002](LAWS.md#l-ee-002--allocnosize-is-in-words-and-prints-only-when-it-is-not-1)）。`long long`/`double` 是 2，`int` 是 1。
+
+**预期移动**：双字值在同场竞争中相对单字值被抬升。是否可观测取决于该值是否真的进入全局分配——本语料里多数 64 位值由局部分配处理，根本不进列表。列为未解决项。
+
+## 杠杆 5 —— 核对你引用的行号
+
+**何时用**：从 mainline 读到的规则复现不出来。
+
+**为什么**：出厂编译器不是原版 gcc-3.2.3，位移是逐文件、逐函数的（`global.c` +341 行、`local-alloc.c` −4、`regmove.c` +1920；
+[L-EE-006](LAWS.md#l-ee-006--line-numbers-are-not-portable-between-trees)）。
+
+**预期移动**：对二进制没有任何移动。这条杠杆是为了不浪费一天去追不存在的代码。
+
+## 杠杆 6 —— 先查常量形态，再围着它改写
+
+**何时用**：与常量有关的差异在改遍写法后仍然存在。
+
+**为什么**：浮点常量走常量池；低位 32 位为零的 double 用 `dli`+`dsll` 内联构造
+（[L-EE-011](LAWS.md#l-ee-011--float-constants-come-from-the-pool-a-double-is-inline-when-its-low-32-bits-are-zero)）。
+
+**预期移动**：对 `float`，形态不随源码变——去函数别处找。对 `double`，改值的低位 32 位会改变形态，那是真杠杆；改 `float` 的写法不是。
+
+## 杠杆 8 —— 复用传出参数区，别多开一份副本
+
+**何时用**：某个值既传给调用、调用后又要用，而帧偏大。
+
+**为什么**：写进传出参数区的**聚合体**会在调用后**从该槽重读**，不额外花帧；而**标量**会占一个 callee-saved 寄存器（8 B）
+（[L-EE-015](LAWS.md#l-ee-015--the-outgoing-argument-area-doubles-as-storage-for-a-value-used-after-the-call)）。
+因此「为传给调用的聚合体再建一个局部副本」等于**多一个活跃对象**，要多花一个槽。
+
+**预期移动**：去掉这种副本会让 `vars` 以 8 B 为步长缩小（实测：去掉一个 → 帧 176 B → 160 B，正好两个 8 B 槽）。
+改前改后都用 `ee-gcc-spill-map.py` 对一下比例。
+
+**注意**：在本机实测的那个函数上，这个改动**缩小了帧但降低了 objdiff**（80.1846 → 78.95184），说明目标其实保留着那份副本。
+动手改写前先看目标的反汇编（会显示那次重读）确认。
+
+## 杠杆 9 —— 预测编译器会选哪个寄存器
+
+**何时用**：指令流对上了但寄存器不同，或你想知道换个写法能不能挪动分配。
+
+**为什么**：分配规则是实测出来的（[L-EE-018](LAWS.md#l-ee-018--global-allocation-preference-first-then-the-lowest-register-left-after-two-passes-that-first-avoid-registers-other-allocnos-prefer)）：
+池 = 类表 − 固定寄存器（跨调用的 allocno 再去掉调用者保存集）；禁止集 = 该 allocno 的硬冲突 ∪ **已放置且冲突**的 allocno 的寄存器；
+选择 = 首个可用的首选，否则取编号最小的候选；第一趟还会避开**别人**首选的寄存器。
+
+**预期移动**：实测规则复现留出集 **46.5%**（首选优先启发式 34.3%；占用集完全已知时 82.7%）。
+已试并否证两条杠杆（旋转起点、活跃区间占用集）——别再花时间。
+
+**注意**：早期一次选错会**级联**。预测与目标不一致时，先检查是不是**更早**的 allocno 预测错了，再怀疑规则。
+
+**关于微改动的实测警告**：同一函数上，删掉一处冗余装载（看起来语义安全的 CSE）让 objdiff 从 83.338394
+掉到 79.79552——分配器把整函数的 home 全部重排了。保留这类改动前先跑一遍 `ee-gcc-observe-alloc.py`；
+一个「显然」的局部改进可能是全局回退。
+
+## 杠杆 10 —— 在 `-G0` 的编译单元里拿到 `gp_rel`
+
+**何时用**：目标用**裸符号**（gp_rel）读全局，而候选发出 `lui %hi`/`%lo`。
+
+**为什么**：要让对象进小数据区，必须在**本编译单元内有定义**并放进 `.sdata`/`.sbss`
+（[L-EE-021](LAWS.md#l-ee-021--gp_rel-needs-a-definition-in-this-unit-placed-in-sdatasbss)）。默认 `-G8` 下小对象自动合格，`-G0` 下不会，而且 **`weak` 不改变这一点**；
+`extern` 声明（本单元无定义）**永远**是绝对寻址，写 section 属性也没用。
+
+**预期移动**：访问形式从 `lui`+`%lo` 变成裸符号；`objdump -t` 应显示该对象在 `.sbss`/`.sdata`。
+
+**注意**：这是**寻址**变化、不是存储变化——项目的 gp_rel 类候选依赖该小数据段被链接脚本丢弃。若对象必须保留真实存储，需要另做定义。
+
+## 杠杆 11 —— 目标把助手内联了，候选却发 `jal`
+
+**何时用**：目标把一个小助手展开进了调用者，或反过来（你的构建保留了调用）。
+
+**为什么**：在项目旗标（`-O2`，不带 `-finline-functions`）下，只有带 `inline`/`__inline__` 的声明会被内联；
+普通 `static` 助手**永远保留调用**，即使只被调用一次
+（[L-EE-023](LAWS.md#l-ee-023--at-these-flags-only-an-inline-declaration-is-inlined)）。
+`always_inline` 单独无效。
+
+**预期移动**：给助手加 `inline` 后 `jal` 与 `helper:` 符号消失、函数体出现在调用者里。若这样仍不还原目标，再确认目标单元是否用了 `-O3`/`-finline-functions`。
+
+**注意**：这是对指令流影响很大的**源码**差异——先确认目标里助手**确实**被展开，因为多一个 `inline` 也会改变调用者的帧。
+
+## 杠杆 12 —— 目标循环被展开，或不是倒计数形态
+
+**何时用**：目标重复了循环体；或保留了你的构建没有的递增比较。
+
+**为什么**：本编译器把循环变成**倒计数**——定次是 `li $r,N-1` … `addu $r,$r,-1` … `bgez`，变次是 `blez` 守卫 … `bne $r,$0`——
+而且 **`-O2` 与 `-O3` 都不展开**；要展开需 `-funroll-loops` 或源码手工展开
+（[L-EE-025](LAWS.md#l-ee-025--loops-count-down-at--o2-os-at--o1-they-keep-slt-and-are-not-unrolled)）。
+
+**预期移动**：`-O2 -funroll-loops` 把 8 次循环夹具从 8 条指令变成 12 条；手工展开会看到循环体明显重复。
+
+**注意**：先查旗标，别急着手工展开去模仿重复体；若目标**不是**倒计数形态，差异在**源码循环形状**，不在旗标。
+
+---
+
+## 已记录但尚未在本机实测
+
+这些来自其它项目或无许可证的文章，是**线索不是规则**：用之前先在本机测。
+
+| 线索 | 来源 | 状态 |
+| --- | --- | --- |
+| ~~`switch` 至少 5 个不同 case 才生成跳转表~~ | dds-decomp（ee-gcc 2.96，无许可证） | **已在 3.2 上核验并修正**：5 是必要不充分，还要满足 `range <= 10 × count`（[L-EE-010](LAWS.md#l-ee-010--a-switch-becomes-a-jump-table-only-when-count--5-and-range--10--count)） |
+| ~~浮点常量的低位半字决定内联还是常量池~~ | n64-decomp-workbench（IDO 5.3，CC0） | **已在 3.2 上修正**：该分裂只对 double 成立，float 恒走池（[L-EE-011](LAWS.md#l-ee-011--float-constants-come-from-the-pool-a-double-is-inline-when-its-low-32-bits-are-zero)） |
+| `slt`/`sltiu` 与 `xori` 可区分窄无符号类型 | dds-decomp | 未在 3.2 核验 |
+| 调度器的 tie-break 读物理源码行号，把语句折叠到同一行是一个杠杆 | n64-decomp-workbench（IDO 5.3，CC0） | 机制未在 ee-gcc 3.2 确认；本机调度位移很大（`haifa-sched.c` +263），需要用对锚方法 |
+| 被丢弃值的语句可以零指令但承载语义 | n64-decomp-workbench（IDO 5.3） | 未在 ee-gcc 3.2 核验 |

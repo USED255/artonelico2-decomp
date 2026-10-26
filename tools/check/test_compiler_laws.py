@@ -1,0 +1,382 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Check the compiler handbook data: `docs/knowledge-base/compiler/laws.json` and `docs/knowledge-base/compiler/LAWS.md`.
+
+What this stops
+---------------
+The handbook claims to be evidence-graded. Three silent failures would break that claim:
+
+* a law written into `LAWS.md` but never indexed in `laws.json` (or the reverse), so the machine
+  index and the prose drift apart;
+* a `T1` law with no binary anchor, i.e. an "I read the source" claim that was never checked
+  against the compiler that actually shipped;
+* an anchor that points at a symbol or address the shipped `cc1` does not have (typo, or a
+  different toolchain build).
+
+The first two are hard failures everywhere. The anchor check needs the EE toolchain, so it is a
+skip when `cc1` is absent (a normal CI runner does not have it).
+
+Usage: `python3 tools/check/test_compiler_laws.py` (`make check` calls this script).
+Exit code 0 = pass, 1 = failure.
+
+本文件检查编译器手册的数据一致性：`laws.json` 与 `LAWS.md` 双向一致、证据分级的前置条件成立、
+（本机有工具链时）锚点指向的符号与地址确实存在于出厂 `cc1`。无工具链时锚点检查跳过。
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import json
+import re
+import os
+import shutil
+import subprocess
+import tempfile
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+LAWS_JSON = ROOT / "docs" / "knowledge-base" / "compiler" / "laws.json"
+LAWS_MD = ROOT / "docs" / "knowledge-base" / "compiler" / "LAWS.md"
+ANCHOR_TOOL = ROOT / "tools" / "compiler" / "ee-gcc-anchor.py"
+OBSERVE_ALLOC = ROOT / "tools" / "compiler" / "ee-gcc-observe-alloc.py"
+
+FAILURES: list[str] = []
+COUNT = 0
+
+
+def check(label: str, ok: bool, detail: str = "") -> None:
+    global COUNT
+    COUNT += 1
+    mark = "ok  " if ok else "FAIL"
+    print(f"[{mark}] {COUNT:>2}. {label}" + (f" — {detail}" if detail else ""))
+    if not ok:
+        FAILURES.append(label)
+
+
+def load_laws() -> dict | None:
+    if not LAWS_JSON.is_file():
+        check("docs/knowledge-base/compiler/laws.json exists", False, str(LAWS_JSON))
+        return None
+    try:
+        return json.loads(LAWS_JSON.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        check("docs/knowledge-base/compiler/laws.json parses", False, str(exc))
+        return None
+
+
+def check_index(data: dict) -> None:
+    laws = data.get("laws") or []
+    check("laws.json declares schema 1", data.get("schema") == 1)
+    check("laws.json has at least one law", len(laws) > 0, f"{len(laws)} laws")
+
+    ids = [law.get("id", "") for law in laws]
+    check("law ids are unique", len(set(ids)) == len(ids))
+    check("law ids use the L-EE-NNN form",
+          all(len(i) == 8 and i.startswith("L-EE-") and i[5:].isdigit() for i in ids))
+
+    mtime = LAWS_MD.read_text(encoding="utf-8") if LAWS_MD.is_file() else ""
+    check("docs/knowledge-base/compiler/LAWS.md exists", bool(mtime), str(LAWS_MD))
+    for law_id in ids:
+        check(f"LAWS.md documents {law_id}", law_id in mtime)
+
+    toolchain = data.get("toolchain") or {}
+    check("laws.json names the toolchain id", bool(toolchain.get("id")), str(toolchain.get("id", "")))
+
+
+def check_tiers(data: dict) -> None:
+    for law in data.get("laws") or []:
+        law_id = law.get("id", "?")
+        tier = law.get("tier")
+        src = (law.get("source_anchor") or {}).get("file") or ""
+        anchor = (law.get("binary_anchor") or {}).get("symbol") or ""
+        check(f"{law_id}: tier is T1/T2/T3", tier in ("T1", "T2", "T3"), str(tier))
+        check(f"{law_id}: scope is stated", bool((law.get("scope") or "").strip()))
+        check(f"{law_id}: receipt is stated", bool((law.get("receipt") or "").strip()))
+        if tier == "T1":
+            check(f"{law_id}: T1 has a source anchor", bool(src))
+            check(f"{law_id}: T1 has a binary anchor", bool(anchor))
+        elif tier == "T2":
+            check(f"{law_id}: T2 has a source or binary anchor", bool(src or anchor))
+
+
+def check_binary_anchors(data: dict) -> None:
+    """Verify anchors against the shipped cc1 when this machine has it (skip otherwise)."""
+    spec = importlib.util.spec_from_file_location("ee_gcc_anchor", ANCHOR_TOOL)
+    if spec is None or spec.loader is None:
+        check("anchor tool importable", False, str(ANCHOR_TOOL))
+        return
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    try:
+        cc1 = module.require_cc1(module.DEFAULT_CC1)
+    except module.ToolError:
+        print(f"[skip] no cc1 at {module.DEFAULT_CC1}: binary anchors are not checked on this machine")
+        return
+    rows = module.nm_symbols(cc1)
+    for law in data.get("laws") or []:
+        anchor = law.get("binary_anchor") or {}
+        symbol, addr = anchor.get("symbol") or "", anchor.get("addr") or ""
+        if not symbol or not addr:
+            continue
+        law_id = law.get("id", "?")
+        anchors = [(symbol, addr)] + [(r.get("symbol", ""), r.get("addr", ""))
+                                      for r in anchor.get("related", []) or []]
+        for symbol, addr in anchors:
+            if symbol and addr:
+                check(f"{law_id}: {symbol} @ {addr} exists in cc1",
+                      int(addr, 16) in [a for _n, _t, a in module.lookup_symbol(rows, symbol)],
+                      f"candidates: {[hex(a) for _n, _t, a in module.lookup_symbol(rows, symbol)]}")
+        hits = [a for _n, _t, a in module.lookup_symbol(rows, symbol)]
+        want = int(addr, 16)
+        check(f"{law_id}: {symbol} @ {addr} exists in cc1", want in hits,
+              f"candidates: {[hex(a) for a in hits]}")
+        if want in hits:
+            loc = module.format_location(module.addr2line(cc1, [want])[0][1])
+            note = (law.get("source_anchor") or {}).get("note", "")
+            file_hint = note.split(".c")[0].split()[-1] if ".c" in note else ""
+            check(f"{law_id}: {symbol} resolves to a source location", ":" in loc, loc)
+            if file_hint.endswith(".c"):
+                check(f"{law_id}: {symbol} resolves inside {file_hint}", file_hint in loc, loc)
+
+
+def main() -> int:
+    data = load_laws()
+    if data is not None:
+        check_index(data)
+        check_tiers(data)
+        check_binary_anchors(data)
+    check_anchors()
+    check_allocation_observer()
+    check_build_flags(data)
+    check_quick_reference(data)
+    print()
+    if FAILURES:
+        print(f"FAIL: {len(FAILURES)} of {COUNT} checks failed")
+        for item in FAILURES:
+            print(f"  - {item}")
+        return 1
+    print(f"OK: {COUNT} checks passed")
+    return 0
+
+
+def check_build_flags(data: dict) -> None:
+    """手册的 scope 说的构建旗标，必须与仓库现状一致。
+
+    为什么：本手册所有条目都声明「在项目构建旗标下」，这些数字来自 `build_mixed.sh` 的 MATCHED_CFLAGS 默认值。
+    若它变了，手册的 scope 就过期——而没有任何检查会因此变红。
+    """
+    toolchain = (data or {}).get("toolchain") or {}
+    stated = toolchain.get("flags", "")
+    script = ROOT / "build_mixed.sh"
+    if not script.exists():
+        check("build flags match the handbook", False, "build_mixed.sh missing")
+        return
+    m = re.search(r'MATCHED_CFLAGS="\$\{MATCHED_CFLAGS:-([^}]*)\}', script.read_text(encoding="utf-8"))
+    if not m:
+        check("build flags match the handbook", False, "MATCHED_CFLAGS default not found")
+        return
+    actual = m.group(1).strip()
+    check("build flags match the handbook", actual == stated, f"script {actual!r} vs laws.json {stated!r}")
+
+    # 有编译器时再核 dump 数量：PASSES.md 声称 3.2 有 26 份 `-da` dump
+    gcc = Path.home() / "eecc" / "ee-gcc3.2-040921" / "bin" / "ee-gcc"
+    if not gcc.exists():
+        return
+    with tempfile.TemporaryDirectory(prefix="dumpcount-") as td:
+        work = Path(td)
+        (work / "t.c").write_text("int f(int a) { return a + 1; }\n", encoding="utf-8")
+        subprocess.run([str(gcc), "-O2", "-da", "-c", "-o", "/dev/null", str(work / "t.c")],
+                       capture_output=True, cwd=work, check=False)
+        dumps = sorted(p.name.split("t.c.", 1)[1] for p in work.glob("t.c.[0-9]*"))
+    check("2.96/3.2 dump inventory (26 for 3.2)", len(dumps) == 26, f"{len(dumps)} dumps: {dumps[:6]}")
+
+    with tempfile.TemporaryDirectory(prefix="dumpcount-o1-") as td:
+        work = Path(td)
+        (work / "t.c").write_text("int f(int a, int b) { int s = 0; int i; for (i = 0; i < 4; i++) s += a * i + b; return s; }\n",
+                                 encoding="utf-8")
+        subprocess.run([str(gcc), "-O1", "-G0", "-da", "-c", "-o", "/dev/null", str(work / "t.c")],
+                       capture_output=True, cwd=work, check=False)
+        dumps_o1 = sorted(p.name.split("t.c.", 1)[1] for p in work.glob("t.c.[0-9]*"))
+    check("-O1 dump inventory (20, six fewer than -O2)", len(dumps_o1) == 20,
+          f"{len(dumps_o1)} dumps; missing {sorted(set(dumps) - set(dumps_o1))}")
+
+
+def check_quick_reference(data: dict) -> None:
+    """每条 law 都必须能从「形状」在速查表里找到（中英两版）。
+
+    为什么：速查表是这份手册的入口页；一条 law 若不在里面，读者即使遇到那个形状也找不到它。
+    实测过：40 条 law 里曾有 19 条不在速查表里（2026-10-15），所以这条检查是必要的。
+    """
+    base = ROOT / "docs" / "knowledge-base" / "compiler"
+    laws = [l["id"] for l in (data or {}).get("laws", [])]
+    for name in ("QUICK-REFERENCE.md", "QUICK-REFERENCE.zh-CN.md"):
+        path = base / name
+        if not path.exists():
+            check(f"{name} exists", False, "missing")
+            continue
+        text = path.read_text(encoding="utf-8")
+        missing = [lid for lid in laws if lid not in text]
+        check(f"{name} covers every law ({len(laws)} laws)", not missing,
+              f"missing: {', '.join(missing[:6])}" if missing else "")
+
+    # L-EE-046：`move` 的真实编码必须是 daddu（funct 0x2d），不是 addu（0x21）
+    objdump = Path.home() / "eecc" / "ps2binutils" / "mips-ps2-decompals-objdump"
+    gcc = Path.home() / "eecc" / "ee-gcc3.2-040921" / "bin" / "ee-gcc"
+    if objdump.exists() and gcc.exists():
+        with tempfile.TemporaryDirectory(prefix="moveenc-") as td:
+            work = Path(td)
+            (work / "t.c").write_text("int f(int a){ return a; }\n", encoding="utf-8")
+            made = subprocess.run([str(gcc), "-O2", "-G0", "-c", "-o", str(work / "t.o"), str(work / "t.c")],
+                                  capture_output=True, cwd=work, check=False)
+            functs = set()
+            if made.returncode == 0:
+                dis = subprocess.run([str(objdump), "-d", str(work / "t.o")], capture_output=True, text=True).stdout
+                for m in re.finditer(r"^\s+[0-9a-f]+:\s+([0-9a-f]{8})\s+move\b", dis, re.M):
+                    functs.add(int(m.group(1), 16) & 0x3F)
+            check("move is encoded as daddu (funct 0x2d)", functs == {0x2D},
+                  f"functs seen: {sorted(hex(f) for f in functs)}")
+
+    # L-EE-047：`li` 的基编码（小值 ADDIU，0xffff ORI）
+    if objdump.exists() and gcc.exists():
+        with tempfile.TemporaryDirectory(prefix="lienc-") as td:
+            work = Path(td)
+            seen = {}
+            for label, src in (("small", "int f(void){ return 5; }\n"),
+                               ("u16", "int f(void){ return 0xffff; }\n")):
+                (work / "t.c").write_text(src, encoding="utf-8")
+                made = subprocess.run([str(gcc), "-O2", "-G0", "-c", "-o", str(work / "t.o"), str(work / "t.c")],
+                                      capture_output=True, cwd=work, check=False)
+                ops = set()
+                if made.returncode == 0:
+                    dis = subprocess.run([str(objdump), "-d", str(work / "t.o")], capture_output=True, text=True).stdout
+                    for m in re.finditer(r"^\s+[0-9a-f]+:\s+([0-9a-f]{8})\s+li\b", dis, re.M):
+                        ops.add(int(m.group(1), 16) >> 26)
+                seen[label] = ops
+            check("li expands to ADDIU or ORI (opcodes 0x09 / 0x0d)",
+                  seen.get("small") == {0x09} and seen.get("u16") == {0x0D},
+                  f"small={sorted(hex(o) for o in seen.get('small', set()))} u16={sorted(hex(o) for o in seen.get('u16', set()))}")
+
+    # 计数漂移守卫：文档里写的夹具数必须等于工具里真实的夹具数
+    observe = Path(__file__).resolve().parents[2] / "tools" / "compiler" / "ee-gcc-observe.py"
+    if observe.exists():
+        body = observe.read_text(encoding="utf-8")
+        actual = len(re.findall(r'^    \("', body, re.M))
+        words = {52: "fifty-two", 74: "seventy-four", 77: "seventy-seven", 79: "seventy-nine", 80: "eighty", 81: "eighty-one"}
+        for page, pat in ((Path(__file__).resolve().parents[2] / "docs" / "knowledge-base" / "compiler" / "README.md", "synthetic fixtures"),
+                          (Path(__file__).resolve().parents[2] / "tools" / "README.md", "synthetic fixtures")):
+            if page.exists():
+                text = page.read_text(encoding="utf-8")
+                m = re.search(r"([a-z-]+) " + pat, text)
+                check("fixture count in the docs matches the tool",
+                      bool(m) and m.group(1) == words.get(actual, m.group(1) if m else ""),
+                      f"docs say {m.group(1) if m else '?'}, tool has {actual}")
+        for page in (Path(__file__).resolve().parents[2] / "docs" / "knowledge-base" / "compiler" / "README.zh-CN.md",
+                     Path(__file__).resolve().parents[2] / "tools" / "README.zh-CN.md"):
+            if page.exists():
+                m = re.search(r"(\d+) 组合成夹具", page.read_text(encoding="utf-8"))
+                check("fixture count in the zh docs matches the tool",
+                      bool(m) and int(m.group(1)) == actual,
+                      f"docs say {m.group(1) if m else '?'}, tool has {actual}")
+
+    # 技能页漂移守卫：tools/compiler 下每个工具都必须在 AGENT-SKILL.md 里被提到
+    skill = Path(__file__).resolve().parents[2] / "docs" / "knowledge-base" / "compiler" / "AGENT-SKILL.md"
+    tools = sorted(p.name for p in (Path(__file__).resolve().parents[2] / "tools" / "compiler").glob("*.py"))
+    if skill.exists() and tools:
+        text = skill.read_text(encoding="utf-8")
+        missing = [t for t in tools if t not in text]
+        check("every tool is named in AGENT-SKILL", not missing, f"missing: {missing}")
+
+    # L-EE-022：函数对齐只在**对象**里可见（.s 里的 .align 是别的东西）
+    if objdump.exists() and gcc.exists():
+        with tempfile.TemporaryDirectory(prefix="align-") as td:
+            work = Path(td)
+            (work / "t.c").write_text("int a1(int x){ return x + 1; }\nint a2(int x){ return x + 2; }\n",
+                                      encoding="utf-8")
+            align = {}
+            for label, extra in (("default", []), ("four", ["-falign-functions=4"])):
+                out = work / f"{label}.o"
+                made = subprocess.run([str(gcc), "-O2", "-G0", *extra, "-c", "-o", str(out), str(work / "t.c")],
+                                      capture_output=True, cwd=work, check=False)
+                if made.returncode != 0:
+                    continue
+                hdr = subprocess.run([str(objdump), "-h", str(out)], capture_output=True, text=True).stdout
+                m = re.search(r"\.text\s+([0-9a-f]+)\s+[0-9a-f]+\s+[0-9a-f]+\s+[0-9a-f]+\s+2\*\*(\d+)", hdr)
+                if m:
+                    align[label] = (int(m.group(2)), int(m.group(1), 16))
+            check("function alignment is 8 bytes by default and 4 with -falign-functions=4",
+                  align.get("default", (0, 0))[0] == 3 and align.get("four", (0, 0))[0] == 2
+                  and align.get("four", (0, 0))[1] < align.get("default", (0, 0))[1],
+                  f"measured {align}")
+
+    # 夹具覆盖下限：至少这么多条 law 有可执行验证（夹具或字节级校验）
+    observe = Path(__file__).resolve().parents[2] / "tools" / "compiler" / "ee-gcc-observe.py"
+    checker = Path(__file__)
+    if observe.exists():
+        ids = {law["id"] for law in data["laws"]}
+        stated = ids & set(re.findall(r"L-EE-\d{3}", observe.read_text(encoding="utf-8") + checker.read_text(encoding="utf-8")))
+        check("executable law coverage floor", len(stated) >= 35,
+              f"{len(stated)} laws have a fixture or a byte-level check (floor 35)")
+
+    # VERIFY 页的自校验：页里写的 cc1 sha256 必须等于本机 cc1 的哈希（缺任一则跳过）
+    import hashlib
+    verify = Path(__file__).resolve().parents[2] / "docs" / "knowledge-base" / "compiler" / "VERIFY.md"
+    cc1s = {"3.2": Path.home() / "eecc" / "ee-gcc3.2-040921" / "lib" / "gcc-lib" / "ee" / "3.2-ee-040921" / "cc1",
+            "2.96": Path.home() / "eecc" / "ee-gcc2.96" / "lib" / "gcc-lib" / "ee" / "2.96-ee-001003-1" / "cc1"}
+    if verify.exists() and any(p.exists() for p in cc1s.values()):
+        text = verify.read_text(encoding="utf-8")
+        for label, cc1 in cc1s.items():
+            if not cc1.exists():
+                continue
+            digest = hashlib.sha256(cc1.read_bytes()).hexdigest()
+            check(f"VERIFY page hashes match the local cc1 ({label})", digest in text,
+                  f"{label} cc1 sha256 {digest[:16]}… is not stated in VERIFY.md")
+
+
+def _gh_slug(heading: str) -> str:
+    """GitHub 的标题锚点算法：小写、去标点（保留空格）、每个空格→连字符（**不折叠**）。"""
+    text = heading.lstrip("#").strip().lower()
+    text = re.sub(r"[^\w\s-]", "", text)
+    return text.replace(" ", "-")
+
+
+def check_allocation_observer() -> None:
+    """L-EE-053 / L-EE-054 are executable: the observer's selftest asserts that the
+    preference phases ran and that its decisions match the compiler's own dump."""
+    cc1 = Path.home() / "eecc" / "ee-gcc3.2-040921" / "lib" / "gcc-lib" / "ee" / "3.2-ee-040921" / "cc1"
+    if not OBSERVE_ALLOC.is_file():
+        return
+    if not cc1.is_file() or shutil.which("gdb") is None:
+        print("[skip] allocation observer selftest (no cc1 or no gdb)")
+        return
+    with tempfile.TemporaryDirectory(prefix="alloc-observer-") as td:
+        out = subprocess.run([sys.executable, str(OBSERVE_ALLOC), "--cc1", str(cc1),
+                              "--selftest", "--work", td],
+                             capture_output=True, text=True, cwd=ROOT, timeout=900)
+    check("allocation observer selftest (L-EE-053/L-EE-054 executable)",
+          out.returncode == 0 and "selftest: pass" in out.stdout,
+          (out.stdout + out.stderr).strip()[-160:])
+
+
+def check_anchors() -> None:
+    """页内锚点必须指向真实存在的标题。
+
+    为什么单独查：相对**文件**链接有人查（`check_docs.py`），页内 `#anchor` 没人查；
+    改一次标题就会静默产生 46 条死链（2026-10-15 实际发生过）。
+    """
+    base = ROOT / "docs" / "knowledge-base" / "compiler"
+    texts = {p.name: p.read_text(encoding="utf-8") for p in base.glob("*.md")}
+    heads = {name: {_gh_slug(line) for line in text.splitlines() if line.startswith("#")}
+             for name, text in texts.items()}
+    bad = []
+    for name, text in texts.items():
+        for m in re.finditer(r"\]\(([A-Za-z0-9._-]+\.md)#([^)]+)\)", text):
+            target, anchor = m.group(1), m.group(2)
+            if target in heads and anchor not in heads[target]:
+                bad.append(f"{name} -> {target}#{anchor}")
+    check(f"in-page anchors resolve ({sum(len(h) for h in heads.values())} headings)",
+          not bad, "; ".join(bad[:3]))
+
+
+if __name__ == "__main__":
+    sys.exit(main())

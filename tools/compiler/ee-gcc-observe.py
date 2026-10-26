@@ -1,0 +1,413 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""ee-gcc-observe —— observe the shipped compiler's output on small fixtures, and check the handbook's claims.
+
+Why: the handbook states rules ("0.0f becomes `mtc1 $0`", "a switch becomes a jump table only when
+count >= 5 and range <= 10 * count", "each saved register costs 8 bytes"). This tool turns each of those
+into an executable observation: it compiles a synthetic fixture with the real compiler and asserts what
+the handbook says must appear. `--selftest` runs all fixtures; `--src` prints the observations for your
+own file.
+
+Usage
+-----
+```sh
+python3 tools/compiler/ee-gcc-observe.py --selftest                     # all synthetic fixtures
+python3 tools/compiler/ee-gcc-observe.py --src func.c --flags="-O2 -G0" # observe your own file
+```
+
+No game content is needed or produced: every fixture is generated here.
+Fixture note: keep negative assertions narrow (`!jal\s+memcpy`, not `!memcpy`) - the source file name
+appears in the assembly's .file directive, so a bare name can match its own fixture.
+
+Level note: the fixtures assert the `-O2` rules. `--flags="-Os -G0"` passes all of them (that level is the
+most common in this project). `-O1` and `-O3` each fail one fixture, and both failures are documented
+behaviour: at `-O1` a constant-trip loop keeps an upward `slt` comparison instead of counting down, and at
+`-O3` a plain `static` helper is inlined.
+
+用法：把手册里的规则变成**可执行的观测**——用真编译器编译合成夹具，断言手册说必须出现的东西；
+`--selftest` 跑全部夹具，`--src` 观测你自己的文件。
+"""
+from __future__ import annotations
+
+import argparse
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+DEFAULT_CC = str(Path.home() / "eecc" / "ee-gcc3.2-040921" / "bin" / "ee-gcc")
+
+# (名字, 源码, 必须出现的正则, 说明) —— 每条都对应手册里的一条 law/事实
+FIXTURES: list[tuple[str, str, str, str]] = [
+    ("add", "int add(int a, int b) { return a + b; }\n", r"addu", "L-EE-000: a plain add is `addu`"),
+    ("save-slots",
+     "extern int sink(int);\n"
+     + "int many(int a,int b,int c,int d,int e,int f,int g,int h){\n"
+     + "  int v0=a+b,v1=c+d,v2=e+f,v3=g+h;int s=0;\n"
+     + "  s+=sink(v0);s+=sink(v1);s+=sink(v2);s+=sink(v3);\n"
+     + "  return s+v0+v1+v2+v3;}\n",
+     r"\.frame\s+\$sp", "L-EE-012: the frame is reported in a .frame comment"),
+    ("switch-dense",
+     "int f(int x){switch(x){case 0:return 1;case 1:return 2;case 2:return 3;"
+     "case 3:return 4;case 4:return 5;case 5:return 6;}return 0;}\n",
+     r"\.rdata|jr\s+\$", "L-EE-010: a dense switch of >=5 cases becomes a table jump (.rdata + jr $reg)"),
+    ("switch-sparse",
+     "int f(int x){switch(x){case 0:return 1;case 1000:return 2;case 2000:return 3;}return 0;}\n",
+     r"\bbeq\b|\bbne\b|\bslt|\bxori", "L-EE-010: a sparse switch stays a branch chain"),
+    ("float-pool",
+     "float f(void){return 0.5f;}\n", r"\bl\.s\b|%hi\(\$LC", "L-EE-011: a non-zero float comes from the pool"),
+    ("float-zero",
+     "float f(void){return 0.0f;}\n", r"mtc1\s+\$0", "L-EE-011: 0.0f is materialised inline"),
+    ("double-inline",
+     "double f(void){return 0.5;}\n", r"\bdli\b.*\n.*\bdsll\b", "L-EE-011: a double whose low word is zero is built inline"),
+    ("compare-unsigned-narrow",
+     "int f(unsigned char x){return x < 100;}\n", r"\bandi\b", "L-EE-013: a narrow unsigned compare masks first"),
+    ("compare-signed-narrow",
+     "int f(signed char x){return x < 100;}\n", r"\bsll\b.*\n.*\bsra\b|\bsll\b", "L-EE-013: a narrow signed compare shifts first"),
+    ("small-data-off",
+     "int g_int;\nint f(void){return g_int;}\n", r"%hi\(g_int\)", "L-EE-014: at -G0 a global is addressed absolutely"),
+    ("frame-cap-10",
+     "extern int sink(int);\n"
+     "int f(int *p){int v0=p[0],v1=p[1],v2=p[2],v3=p[3],v4=p[4],v5=p[5],v6=p[6],v7=p[7];int s=0;\n"
+     "s+=sink(v0);s+=sink(v1);s+=sink(v2);s+=sink(v3);s+=sink(v4);s+=sink(v5);s+=sink(v6);s+=sink(v7);\n"
+     "return s+v0+v1+v2+v3+v4+v5+v6+v7;}\n",
+     r"#\s*vars=\s*0,\s*regs=\s*10/0",
+     "L-EE-012: eight call-crossing values fill the save area to its cap of 10 registers"),
+    ("cop1-load-needs-no-padding",
+     "float f(float *p, float *q){ return *p + *q; }\n",
+     r"!\bnop\b", "L-EE-052: no latency nop appears around a COP1 load"),
+    ("delay-slot-is-filled",
+     "int leaf(int a){ return a + 1; }\n",
+     r"j\s+\$31\n\t(?!nop)\S", "L-EE-009: the delay slot after j $31 carries a real instruction"),
+    ("large-function-batched-keeps-values-live",
+     "extern int sink(int);\nint f(int *p){\n  int s=0;\n  int v0=p[0]+0;\n  int v1=p[1]+1;\n  int v2=p[2]+2;\n  int v3=p[3]+3;\n  int v4=p[4]+4;\n  int v5=p[5]+5;\n  int v6=p[6]+6;\n  int v7=p[7]+7;\n  int v8=p[8]+8;\n  int v9=p[9]+9;\n  int v10=p[10]+10;\n  int v11=p[11]+11;\n  int v12=p[12]+12;\n  int v13=p[13]+13;\n  int v14=p[14]+14;\n  int v15=p[15]+15;\n  int v16=p[16]+16;\n  int v17=p[17]+17;\n  int v18=p[18]+18;\n  int v19=p[19]+19;\n  int v20=p[20]+20;\n  int v21=p[21]+21;\n  int v22=p[22]+22;\n  int v23=p[23]+23;\n  int v24=p[24]+24;\n  int v25=p[25]+25;\n  int v26=p[26]+26;\n  int v27=p[27]+27;\n  int v28=p[28]+28;\n  int v29=p[29]+29;\n  int v30=p[30]+30;\n  int v31=p[31]+31;\n  int v32=p[32]+32;\n  int v33=p[33]+33;\n  int v34=p[34]+34;\n  int v35=p[35]+35;\n  int v36=p[36]+36;\n  int v37=p[37]+37;\n  int v38=p[38]+38;\n  int v39=p[39]+39;\n  sink(v0);\n  sink(v1);\n  sink(v2);\n  sink(v3);\n  sink(v4);\n  sink(v5);\n  sink(v6);\n  sink(v7);\n  sink(v8);\n  sink(v9);\n  sink(v10);\n  sink(v11);\n  sink(v12);\n  sink(v13);\n  sink(v14);\n  sink(v15);\n  sink(v16);\n  sink(v17);\n  sink(v18);\n  sink(v19);\n  sink(v20);\n  sink(v21);\n  sink(v22);\n  sink(v23);\n  sink(v24);\n  sink(v25);\n  sink(v26);\n  sink(v27);\n  sink(v28);\n  sink(v29);\n  sink(v30);\n  sink(v31);\n  sink(v32);\n  sink(v33);\n  sink(v34);\n  sink(v35);\n  sink(v36);\n  sink(v37);\n  sink(v38);\n  sink(v39);\n  s+=v0;\n  s+=v1;\n  s+=v2;\n  s+=v3;\n  s+=v4;\n  s+=v5;\n  s+=v6;\n  s+=v7;\n  s+=v8;\n  s+=v9;\n  s+=v10;\n  s+=v11;\n  s+=v12;\n  s+=v13;\n  s+=v14;\n  s+=v15;\n  s+=v16;\n  s+=v17;\n  s+=v18;\n  s+=v19;\n  s+=v20;\n  s+=v21;\n  s+=v22;\n  s+=v23;\n  s+=v24;\n  s+=v25;\n  s+=v26;\n  s+=v27;\n  s+=v28;\n  s+=v29;\n  s+=v30;\n  s+=v31;\n  s+=v32;\n  s+=v33;\n  s+=v34;\n  s+=v35;\n  s+=v36;\n  s+=v37;\n  s+=v38;\n  s+=v39;\n  return s;\n}\n",
+     r"\.frame\s+\$sp,208.*?vars=\s*128", "L-EE-012: 40 batched locals spill 16 values, frame 208"),
+    ("large-function-folded-has-no-vars",
+     "extern int sink(int);\nint f(int *p){\n  int s=0;\n  { int v0=p[0]+0; sink(v0); s+=v0; }\n  { int v1=p[1]+1; sink(v1); s+=v1; }\n  { int v2=p[2]+2; sink(v2); s+=v2; }\n  { int v3=p[3]+3; sink(v3); s+=v3; }\n  { int v4=p[4]+4; sink(v4); s+=v4; }\n  { int v5=p[5]+5; sink(v5); s+=v5; }\n  { int v6=p[6]+6; sink(v6); s+=v6; }\n  { int v7=p[7]+7; sink(v7); s+=v7; }\n  { int v8=p[8]+8; sink(v8); s+=v8; }\n  { int v9=p[9]+9; sink(v9); s+=v9; }\n  { int v10=p[10]+10; sink(v10); s+=v10; }\n  { int v11=p[11]+11; sink(v11); s+=v11; }\n  { int v12=p[12]+12; sink(v12); s+=v12; }\n  { int v13=p[13]+13; sink(v13); s+=v13; }\n  { int v14=p[14]+14; sink(v14); s+=v14; }\n  { int v15=p[15]+15; sink(v15); s+=v15; }\n  { int v16=p[16]+16; sink(v16); s+=v16; }\n  { int v17=p[17]+17; sink(v17); s+=v17; }\n  { int v18=p[18]+18; sink(v18); s+=v18; }\n  { int v19=p[19]+19; sink(v19); s+=v19; }\n  { int v20=p[20]+20; sink(v20); s+=v20; }\n  { int v21=p[21]+21; sink(v21); s+=v21; }\n  { int v22=p[22]+22; sink(v22); s+=v22; }\n  { int v23=p[23]+23; sink(v23); s+=v23; }\n  { int v24=p[24]+24; sink(v24); s+=v24; }\n  { int v25=p[25]+25; sink(v25); s+=v25; }\n  { int v26=p[26]+26; sink(v26); s+=v26; }\n  { int v27=p[27]+27; sink(v27); s+=v27; }\n  { int v28=p[28]+28; sink(v28); s+=v28; }\n  { int v29=p[29]+29; sink(v29); s+=v29; }\n  { int v30=p[30]+30; sink(v30); s+=v30; }\n  { int v31=p[31]+31; sink(v31); s+=v31; }\n  { int v32=p[32]+32; sink(v32); s+=v32; }\n  { int v33=p[33]+33; sink(v33); s+=v33; }\n  { int v34=p[34]+34; sink(v34); s+=v34; }\n  { int v35=p[35]+35; sink(v35); s+=v35; }\n  { int v36=p[36]+36; sink(v36); s+=v36; }\n  { int v37=p[37]+37; sink(v37); s+=v37; }\n  { int v38=p[38]+38; sink(v38); s+=v38; }\n  { int v39=p[39]+39; sink(v39); s+=v39; }\n  return s;\n}\n",
+     r"\.frame\s+\$sp,32.*?vars=\s*0", "L-EE-012: folding each value gives frame 32 and no vars"),
+    ("loop-guard-is-an-inverted-zero-test",
+     "int f(int n){ int s = 0; while (n > 0) { s += n; n--; } return s; }\n",
+     r"\bblez\b", "L-EE-051: the loop guard is an inverted zero test (blez exits when n <= 0)"),
+    ("negated-float-condition-is-bc1f",
+     "float f(float a, float b){ if (!(a < b)) return 1.0f; return 0.0f; }\n",
+     r"\bbc1f\b", "L-EE-051: bc1f means the source negated the float condition"),
+    ("sqrtf-is-inlined",
+     "extern float sqrtf(float);\nfloat f(float a){ return sqrtf(a); }\n",
+     r"\bsqrt\.s\b", "L-EE-051: sqrtf becomes sqrt.s with no call"),
+    ("float-accumulator-for-sums-of-products",
+     "float f(float a, float b, float c, float d){ return a*b + c*d; }\n",
+     r"\bmula\.s\b[\s\S]*\bmadd\.s\b", "L-EE-050: two products in one expression use the COP1 accumulator"),
+    ("single-product-does-not-accumulate",
+     "float f(float a, float b, float c){ return a*b + c; }\n",
+     r"!\bmula\.s\b", "L-EE-050: one product stays mul.s plus add.s"),
+    ("float-store-is-swc1",
+     "float g;\nvoid f(float v){ g = v; }\n",
+     r"s\.s\s|swc1", "L-EE-050: a float store is swc1 (assembly s.s)"),
+    ("variable-shift-is-a-register-shift",
+     "int f(int a, int n){ return a << n; }\n",
+     r"sll\s+\$\d+,\$\d+,\$\d+", "L-EE-049: a variable shift is sll by register (sllv in the object)"),
+    ("float-negate-is-neg-s",
+     "float f(float a){ return -a; }\n",
+     r"\bneg\.s\b", "L-EE-049: float negation is neg.s"),
+    ("float-le-is-c-le-s",
+     "int f(float a, float b){ return a <= b; }\n",
+     r"\bc\.le\.s\b", "L-EE-049: a<=b on floats is c.le.s plus bc1t"),
+    ("second-multiplier-in-use",
+     "int f(int a, int b, int c){ int x=a*b, y=b*c, z=c*a; return x+y+z; }\n",
+     r"\bmult1\b", "L-EE-049: overlapping multiplies use the EE's second multiplier"),
+    ("loop-back-edge-is-likely",
+     "int f(int n){ int s = 0, i; for (i = 0; i < n; i++) s += i; return s; }\n",
+     r"\bbnel\b", "L-EE-045: the loop back edge uses the branch-likely form"),
+    ("forward-branch-is-plain",
+     "int f(int *p){ if (p == 0) return -1; return *p; }\n",
+     r"!beql", "L-EE-045: a forward branch stays plain (beq, not beql)"),
+    ("packed-member-uses-unaligned-op",
+     "struct P { char a; int b; } __attribute__((packed));\nint f(struct P *p){ return p->b; }\n",
+     r"\bulw\b", "L-EE-044: a packed member is written with the ulw pseudo-instruction"),
+    ("const-memcpy-uses-unaligned-pair",
+     "extern void *memcpy(void *, const void *, unsigned);\n"
+     "int f(char *d, char *s){ memcpy(d, s, 4); return 0; }\n",
+     r"\blwl\b[\s\S]*\blwr\b", "L-EE-044: a constant 4-byte memcpy is an lwl/lwr pair"),
+    ("pointer-cast-is-a-plain-load",
+     "int f(char *p){ return *(int *)(p + 1); }\n",
+     r"lw\s+\$\d+,\s*1\(\$4\)", "L-EE-044: a pointer cast emits a plain lw at the unaligned offset"),
+    ("int64-add-is-inline",
+     "long long f(long long a, long long b){ return a + b; }\n",
+     r"\bdaddu\b", "L-EE-043: 64-bit addition is the native daddu, not a call"),
+    ("int64-compare-is-inline",
+     "int f(long long a, long long b){ return a < b; }\n",
+     r"\bslt\b", "L-EE-043: a 64-bit compare is a single slt"),
+    ("int64-narrow-sign-extends",
+     "int f(long long a){ return (int)a; }\n",
+     r"dsll\s+\$\d+,\$\d+,\s*32[\s\S]*dsra", "L-EE-043: narrowing a 64-bit value is dsll 32 then dsra"),
+    ("float-uses-cop1",
+     "float gf;\nfloat f(void){ return gf; }\n",
+     r"l\.s\s", "L-EE-042: a float global is loaded into COP1 with l.s"),
+    ("double-uses-a-gpr",
+     "double gd;\ndouble f(void){ return gd; }\n",
+     r"\bld\s+\$\d+", "L-EE-042: a double global is loaded into a general register with ld"),
+    ("float-compare-in-cop1",
+     "int f(float a, float b){ return a < b; }\n",
+     r"c\.lt\.s[\s\S]*bc1", "L-EE-042: a float comparison is c.lt.s plus an FP branch"),
+    ("double-compare-is-a-call",
+     "int f(double a, double b){ return a < b; }\n",
+     r"dpcmp", "L-EE-042: a double comparison is a dpcmp call"),
+    ("vector-128-move",
+     "typedef int v4si __attribute__((mode(V4SI)));\nvoid f(v4si *d, v4si *s){ *d = *s; }\n",
+     r"\blq\b[\s\S]*\bsq\b", "L-EE-041: a 128-bit container copy is one lq plus one sq"),
+    ("same-16-bytes-as-struct-uses-words",
+     "struct S16 { int a,b,c,d; };\nvoid f(struct S16 *d, struct S16 *s){ *d = *s; }\n",
+     r"!\blq\b", "L-EE-041: the same 16 bytes as a struct use lw/sw, not lq/sq"),
+    ("equality-materialised",
+     "int f(int a, int b){ return a == b; }\n",
+     r"xor[\s\S]*sltu\s+\$\d+,\$\d+,\s*1",
+     "L-EE-040: == as a value is xor plus sltu ...,1"),
+    ("less-equal-is-inverted",
+     "int f(int a, int b){ return a <= b; }\n",
+     r"xori\s+\$\d+,\$\d+,\s*0x1", "L-EE-040: <= is a swapped < plus xori 1"),
+    ("min-uses-movz",
+     "int f(int a, int b){ return a < b ? a : b; }\n",
+     r"\bmovz\b", "L-EE-040: min/max use movz, not a branch"),
+    ("logical-and-is-branchless",
+     "int f(int a, int b){ return a && b; }\n",
+     r"sltu[\s\S]*movz", "L-EE-040: && is branchless"),
+    ("condition-branches",
+     "extern int g(void);\nint f(int a, int b){ if (a == b) return g(); return 2; }\n",
+     r"\bbne\b", "L-EE-040: a condition with a call in one arm branches"),
+    ("if-conversion-select",
+     "int f(int a, int b){ if (a == b) return 1; return 2; }\n",
+     r"\bmov[nz]\b", "L-EE-040: but an if whose arms are simple values becomes a branchless select (movn or movz)"),
+    ("indirect-call-jalr",
+     "int (*gp)(int);\nint f(int a){ return gp(a); }\n",
+     r"jal\s+\$31,\s*\$\d+", "L-EE-039: an indirect call is jalr (written jal $31,$reg)"),
+    ("indirect-call-is-not-a-tail-jump",
+     "int (*gp)(int);\nint f(int a){ return gp(a); }\n",
+     r"jal\s+\$31,[\s\S]*j\s+\$31",
+     "L-EE-039: even in tail position the indirect call keeps its return"),
+    ("struct-copy-inline-small",
+     "struct S16 { int a0,a1,a2,a3; };\nvoid f(struct S16 *d, struct S16 *s){ *d = *s; }\n",
+     r"!ldl", "L-EE-038: a 16-byte copy is unrolled lw/sw, with no ldl loop"),
+    ("struct-copy-loop-large",
+     "struct S64 { int a0,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15; };\nvoid f(struct S64 *d, struct S64 *s){ *d = *s; }\n",
+     r"ldl[\s\S]*sdl[\s\S]*bne", "L-EE-038: a 64-byte copy is an inline ldl/ldr-sdl/sdr loop"),
+    ("struct-copy-no-libc-call",
+     "struct S64 { int a0,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15; };\nvoid f(struct S64 *d, struct S64 *s){ *d = *s; }\n",
+     r"!jal\s+memcpy", "L-EE-038: and it does not call memcpy"),
+    ("volatile-not-merged",
+     "void f(volatile int *p){ *p = *p + 1; *p = *p + 1; }\n",
+     r"lw\s+\$\d+,\s*0\(\$4\)[\s\S]*lw\s+\$\d+,\s*0\(\$4\)",
+     "L-EE-037: a volatile pointer is loaded once per mention"),
+    ("nonvolatile-is-merged",
+     "void f(int *p){ *p = *p + 1; *p = *p + 1; }\n",
+     r"addu\s+\$\d+,\$\d+,\s*2\b", "L-EE-037: without volatile the two increments merge into one addu ...,2"),
+    ("volatile-no-cse",
+     "int f(volatile int *p){ int a = *p; int b = *p; return a + b; }\n",
+     r"lw\s+\$\d+,\s*0\(\$4\)[\s\S]*lw\s+\$\d+,\s*0\(\$4\)",
+     "L-EE-037: repeated volatile reads are not common-subexpression eliminated"),
+    ("tail-call-is-a-jump",
+     "extern int g(int);\nint f(int a){ return g(a); }\n",
+     r"^\s*j\s+g\b", "L-EE-036: at -O2 a tail call is a bare jump"),
+    ("tail-call-has-no-jal",
+     "extern int g(int);\nint f(int a){ return g(a); }\n",
+     r"!jal\s+g\b", "L-EE-036: and there is no jal for it"),
+    ("bitfield-narrow-read",
+     "struct U { unsigned a:1; unsigned b:3; unsigned c:12; unsigned d:16; };\nunsigned f(struct U *p){ return p->d; }\n",
+     r"lhu\s+\$\d+,\s*2\(\$4\)", "L-EE-035: an aligned 16-bit field is a bare lhu"),
+    ("bitfield-signed-sign-extend",
+     "struct S { int a:1; int b:3; int c:12; int d:16; };\nint f(struct S *p){ return p->c; }\n",
+     r"lh\s+\$\d+,\s*0\(\$4\)[\s\S]*sra", "L-EE-035: a signed bitfield uses a sign-extending load and sra"),
+    ("bitfield-write-masked",
+     "struct U { unsigned a:1; unsigned b:3; unsigned c:12; unsigned d:16; };\nvoid f(struct U *p, unsigned v){ p->c = v; }\n",
+     r"li\s+\$\d+,\s*-65536[\s\S]*\band\b[\s\S]*\bor\b[\s\S]*sw",
+     "L-EE-035: a write is a masked read-modify-write with a 64-bit mask"),
+    ("long-is-8-bytes",
+     "int f(void){ return sizeof(long); }\n",
+     r"li\s+\$\d+,\s*8\b", "L-EE-033: sizeof(long) is 8 (the default is -mlong64)"),
+    ("pointer-is-4-bytes",
+     "int f(void){ return sizeof(void *); }\n",
+     r"li\s+\$\d+,\s*4\b", "L-EE-033: pointers stay 32-bit"),
+    ("division-zero-check",
+     "int f(int a, int b){ return a / b; }\n",
+     r"\bdiv\b[\s\S]*\bbeq?z?l\b[\s\S]*\bbreak\b",
+     "L-EE-032: a runtime division is div + beql/beqzl + break"),
+    ("constant-div-no-magic-number",
+     "int f(int a){ return a / 3; }\n",
+     r"li\s+\$\d+,\s*3[\s\S]*\bdiv\b",
+     "L-EE-032: a non-power-of-two constant divisor stays li + div"),
+    ("division-64-bit-libgcc",
+     "long long f(long long a, long long b){ return a / b; }\n",
+     r"__divdi3", "L-EE-032: 64-bit division is a libgcc call"),
+    ("variadic-prologue",
+     "int f(const char *a, ...){\n  __builtin_va_list ap; __builtin_va_start(ap, a);\n"
+     "  return (int)(long)ap;\n}\n",
+     r"__builtin_va_start", "L-EE-031: a variadic function calls __builtin_va_start"),
+    ("struct-8-bytes-by-value",
+     "typedef struct { int a, b; } S8;\nint read8(S8 s){ return s.a + s.b; }\n",
+     r"sd\s+\$4,0\(\$sp\)", "L-EE-030: an 8-byte aggregate arrives by value in $4"),
+    ("struct-12-bytes-by-reference",
+     "typedef struct { int a, b, c; } S12;\nint read12(S12 s){ return s.a + s.c; }\n",
+     r"lw\s+\$\d+,\s*0\(\$4\)", "L-EE-030: a 12-byte aggregate arrives as a pointer in $4"),
+    ("double-is-soft-float",
+     "double f(double a, double b){return a+b;}\n",
+     r"jal\s+dpadd", "L-EE-029: double addition is a libgcc call, not add.d"),
+    ("float-is-hardware",
+     "float f(float a, float b){return a+b;}\n",
+     r"add\.s", "L-EE-029: single precision uses COP1"),
+    ("stack-arg-8-byte-slot",
+     "extern int callee(int,int,int,int,int,int,int,int,int,int);\nint f(void){return callee(0,1,2,3,4,5,6,7,8,9);}\n",
+     r"sw\s+\$\d+,\s*8\(\$sp\)", "L-EE-028: the second stack argument sits at 8($sp) - 8-byte slots"),
+    ("args-field-rounded",
+     "extern int callee(int,int,int,int,int,int,int,int,int,int);\nint f(void){return callee(0,1,2,3,4,5,6,7,8,9);}\n",
+     r"args=\s*16", "L-EE-028: ten arguments give args= 16 (the area rounded up to 16)"),
+    ("strings-are-shared",
+     "char *a1(void){return \"hello\";}\nchar *a2(void){return \"hello\";}\n",
+     r"!hello[\s\S]*hello", "L-EE-027: one string, two functions, a single pooled entry"),
+    ("pool-not-shared-across-functions",
+     "float f1(void){return 0.5f;}\nfloat f2(void){return 0.5f;}\n",
+     r"1056964608[\s\S]*1056964608", "L-EE-026: two functions each get their own pool entry"),
+    ("pool-dedup-inside-one-function",
+     "float g(float x){if(x>0.5f)return 0.5f;return x*0.5f;}\n",
+     r"!1056964608[\s\S]*1056964608", "L-EE-026: within one function the constant is one entry"),
+    ("loop-countdown",
+     "int f(int a){int s=0;int i;for(i=0;i<8;i++)s+=a*i;return s;}\n",
+     r"li\s+\$\d+,\s*7\b[\s\S]*addu\s+\$\d+,\$\d+,-1[\s\S]*bgez",
+     "L-EE-025: a constant-trip loop counts down from N-1 with bgez"),
+    ("loop-variable-countdown",
+     "int f(int a,int n){int s=0;int i;for(i=0;i<n;i++)s+=a*i;return s;}\n",
+     r"blez\s+\$\d+[\s\S]*bne\s+\$\d+,\$0",
+     "L-EE-025: a variable-trip loop uses a blez guard and bne"),
+    ("frame-pointer-alloca",
+     "extern void use(void *);\nint f(int n){char *p=__builtin_alloca(n);use(p);return n;}\n",
+     r"\.frame\s+\$fp,", "L-EE-024: alloca forces a real frame pointer (.frame $fp,...)"),
+    ("no-frame-pointer",
+     "extern int sink(int);\nint f(int *p){int v0=p[0],v1=p[1],v2=p[2],v3=p[3];int s=0;\n"
+     "s+=sink(v0);s+=sink(v1);s+=sink(v2);s+=sink(v3);return s+v0+v1+v2+v3;}\n",
+     r"!\.frame\s+\$fp,", "L-EE-024: an ordinary frame stays $sp-based even though $fp is saved"),
+    ("static-not-inlined",
+     "static int helper(int a){return a*3+1;}\nint f(int a){int s=0;s+=helper(a);return s;}\n",
+     r"jal\s+helper", "L-EE-023: a plain static helper keeps its call at -O2"),
+    ("inline-expanded",
+     "static inline int helper(int a){return a*3+1;}\nint f(int a){int s=0;s+=helper(a);return s;}\n",
+     r"!jal\s+helper", "L-EE-023: an inline helper is expanded at -O2"),
+    ("gprel-sbss",
+     "int g_sbss __attribute__((section(\".sbss\")));\nint f(void){return g_sbss;}\n",
+     r"\blw\s+\$\d+,\s*g_sbss", "L-EE-021: a .sbss definition is a bare symbol even at -G0"),
+    ("extern-absolute",
+     "extern int g_ext;\nint f(void){return g_ext;}\n", r"%hi\(g_ext\)",
+     "L-EE-021: an extern reference stays absolute"),
+]
+
+
+def compile_asm(cc: str, src_text: str, flags: list[str], work: Path, name: str) -> str:
+    work.mkdir(parents=True, exist_ok=True)
+    src = work / f"{name}.c"
+    src.write_text(src_text, encoding="utf-8")
+    out = work / f"{name}.s"
+    done = subprocess.run([cc, *flags, "-S", "-o", str(out), str(src)],
+                          capture_output=True, text=True, check=False)
+    if done.returncode != 0:
+        raise RuntimeError(f"{name}: compile failed: {done.stderr.strip()[:200]}")
+    return out.read_text(encoding="utf-8", errors="replace")
+
+
+def selftest(cc: str, flags: list[str], work: Path, verbose: bool) -> int:
+    passed = failed = 0
+    for name, src_text, pattern, why in FIXTURES:
+        try:
+            asm = compile_asm(cc, src_text, flags, work, name)
+        except RuntimeError as exc:
+            print(f"[FAIL] {name:<26} {exc}", file=sys.stderr)
+            failed += 1
+            continue
+        # `!` 前缀 = 该模式必须**不**出现（例如「这里不该还有 jal」）
+        if pattern.startswith("!"):
+            ok = re.search(pattern[1:], asm, re.M | re.S) is None
+        else:
+            ok = re.search(pattern, asm, re.M | re.S) is not None
+        if ok:
+            passed += 1
+            print(f"[ok  ] {name:<26} {why}")
+        else:
+            failed += 1
+            print(f"[FAIL] {name:<26} {why}  (pattern {pattern!r} absent)")
+        if verbose and not ok:
+            print(asm[:800])
+    print(f"\nee-gcc-observe selftest: {passed} passed / {failed} failed / {len(FIXTURES)} fixtures")
+    return 1 if failed else 0
+
+
+def matrix(cc: str, work: Path, verbose: bool = False) -> int:
+    """每个夹具在每个 `-O` 档跑一遍，回答「这条 law 在我这个档成立吗」。
+
+    这是 `-O` 相关规则的唯一可靠来源：手册的推论默认在 `-O2` 上做出，而本项目里 `-Os` 文件最多。
+    """
+    levels = ["-O0", "-O1", "-O2", "-Os", "-O3"]
+    results: dict[str, dict[str, bool]] = {level: {} for level in levels}
+    for name, src_text, pattern, _why in FIXTURES:
+        for level in levels:
+            try:
+                asm = compile_asm(cc, src_text, [level, "-G0"], work / level.strip("-"), f"{name}{level}")
+            except RuntimeError:
+                results[level][name] = False
+                continue
+            if pattern.startswith("!"):
+                ok = re.search(pattern[1:], asm, re.M | re.S) is None
+            else:
+                ok = re.search(pattern, asm, re.M | re.S) is not None
+            results[level][name] = ok
+    width = max(len(n) for n, *_ in FIXTURES) + 2
+    print(f"{'fixture':<{width}}" + "".join(f"{lv:>6}" for lv in levels))
+    for name, _src, _pat, _why in FIXTURES:
+        cells = "".join(f"{('ok' if results[lv][name] else 'FAIL'):>6}" for lv in levels)
+        print(f"{name:<{width}}{cells}")
+    print()
+    for level in levels:
+        bad = [n for n, _s, _p, _w in FIXTURES if not results[level][n]]
+        print(f"{level:<4} {len(FIXTURES) - len(bad)}/{len(FIXTURES)} pass" + (f"  fails: {', '.join(bad)}" if bad else ""))
+    return 0
+
+
+def observe(cc: str, src: Path, flags: list[str], work: Path) -> int:
+    asm = compile_asm(cc, src.read_text(encoding="utf-8", errors="replace"), flags, work, src.stem + "_observed")
+    frame = re.search(r"\.frame\s+\$sp,(\d+),\$31\s*#\s*vars=\s*(\d+),\s*regs=\s*(\d+)/\d+,\s*args=\s*(\d+)", asm)
+    hist: dict[str, int] = {}
+    for m in re.finditer(r"^\s+([a-z][a-z0-9.]*)\s", asm, re.M):
+        hist[m.group(1)] = hist.get(m.group(1), 0) + 1
+    version = subprocess.run([cc, "--version"], capture_output=True, text=True, check=False).stdout.splitlines()
+    print(f"# {src}  flags: {' '.join(flags)}")
+    if version:
+        print(f"# {version[0]}")
+    if frame:
+        print(f"frame={frame.group(1)} B  vars={frame.group(2)}  regs={frame.group(3)}  args={frame.group(4)}")
+    else:
+        print("frame: (no .frame comment — leaf function?)")
+    pools = len(set(re.findall(r"\$LC\d+", asm)))
+    print(f"constant-pool entries: {pools}")
+    print("mnemonic histogram: " + " ".join(f"{k}={v}" for k, v in sorted(hist.items(), key=lambda kv: -kv[1])[:18]))
+    return 0
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="Observe the ee-gcc 3.2 behaviour on fixtures, or check the handbook's claims")
+    ap.add_argument("--cc", default=DEFAULT_CC)
+    ap.add_argument("--flags", default="-O2 -G0")
+    ap.add_argument("--src", type=Path, default=None, help="observe this file instead of running the selftest")
+    ap.add_argument("--selftest", action="store_true", help="compile the built-in fixtures and assert the handbook's claims")
+    ap.add_argument("--matrix", action="store_true",
+                    help="run every fixture at -O0/-O1/-O2/-Os/-O3 and print which law fails at which level")
+    ap.add_argument("--work", type=Path, default=Path(".tmp/observe"))
+    ap.add_argument("--verbose", action="store_true")
+    args = ap.parse_args()
+    flags = args.flags.split()
+    if not Path(args.cc).exists():
+        print(f"cc not found: {args.cc} (set --cc)", file=sys.stderr)
+        return 2
+    if args.src is not None:
+        return observe(args.cc, args.src, flags, args.work)
+    if args.matrix:
+        return matrix(args.cc, args.work, verbose=args.verbose)
+    return selftest(args.cc, flags, args.work, args.verbose)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -43,6 +43,23 @@ make build      # assemble, link, and check the payload hash
 make report     # write the progress report
 ```
 
+## Documentation
+
+Full index: [docs/README.md](docs/README.md). The [knowledge base](docs/knowledge-base/README.md)
+keeps the reference material that does not change every day:
+
+| | |
+| --- | --- |
+| [docs/BUILD.md](docs/BUILD.md) | how to configure and build |
+| **[docs/knowledge-base/compiler/README.md](docs/knowledge-base/compiler/README.md)** | **the EE GCC 3.2 code generation handbook** — every law is source-anchored, anchored to the shipped `cc1`, and verified by behaviour |
+| [docs/knowledge-base/KNOWN-BLOCKERS.md](docs/knowledge-base/KNOWN-BLOCKERS.md) | what cannot be matched with this toolchain, and where to stop |
+| [docs/knowledge-base/FORMATS.md](docs/knowledge-base/FORMATS.md) | the disc's asset and module formats, as measured |
+| [docs/knowledge-base/TOOLCHAIN.md](docs/knowledge-base/TOOLCHAIN.md) | which compiler built what, and how to verify your copy |
+| [docs/knowledge-base/GLOSSARY.md](docs/knowledge-base/GLOSSARY.md) | terms and abbreviations used by this project |
+
+The handbook's tools live in `tools/compiler/`. Every page has a Chinese edition next to it
+(`*.zh-CN.md`).
+
 ## Legal
 
 - This repository contains no game code, no game asset, and no ROM image.

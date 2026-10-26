@@ -39,6 +39,22 @@ make build      # 汇编、链接、校验载荷哈希
 make report     # 生成进度报告
 ```
 
+## 文档
+
+全部文档索引见 [docs/README.zh-CN.md](docs/README.zh-CN.md)。[知识库](docs/knowledge-base/README.zh-CN.md)
+收录不随进度变化的参考资料：
+
+| | |
+| --- | --- |
+| [docs/BUILD.zh-CN.md](docs/BUILD.zh-CN.md) | 如何配置与构建 |
+| **[docs/knowledge-base/compiler/README.zh-CN.md](docs/knowledge-base/compiler/README.zh-CN.md)** | **EE GCC 3.2 代码生成手册**——每条 law 都以源码为骨、对锚出厂 `cc1`、并用行为复核 |
+| [docs/knowledge-base/KNOWN-BLOCKERS.zh-CN.md](docs/knowledge-base/KNOWN-BLOCKERS.zh-CN.md) | 本工具链收不了的东西，以及停止条件 |
+| [docs/knowledge-base/FORMATS.zh-CN.md](docs/knowledge-base/FORMATS.zh-CN.md) | 光盘上的资产与模块格式（实测） |
+| [docs/knowledge-base/TOOLCHAIN.zh-CN.md](docs/knowledge-base/TOOLCHAIN.zh-CN.md) | 哪个编译器编了什么、如何核验你手上的副本 |
+| [docs/knowledge-base/GLOSSARY.zh-CN.md](docs/knowledge-base/GLOSSARY.zh-CN.md) | 本项目使用的术语与缩写 |
+
+手册的工具在 `tools/compiler/`。每页都有英文版（同名 `.md`）。
+
 ## 法律
 
 - 本仓库不含游戏代码、不含游戏资产、不含 ROM 镜像。**你必须自备正版游戏**。

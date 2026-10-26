@@ -7,7 +7,7 @@ spend hours re-discovering it. Everything below was measured on the Japanese bui
 (`SLPS_258.19`, payload `sha1:7cc42d275750600d…`) with `ee-gcc 3.2-ee-040921`.
 
 > Scope: the *main* metric counts **reconstructed C only**. Byte-identical assembly transcriptions are
-> a separate metric — see [TRANSCRIPTION.md](TRANSCRIPTION.md).
+> a separate metric — see [TRANSCRIPTION.md](../TRANSCRIPTION.md).
 
 ## 1. Tooling traps (these produce false results)
 

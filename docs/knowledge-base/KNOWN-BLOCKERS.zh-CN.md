@@ -6,7 +6,7 @@
 （`SLPS_258.19`，载荷 `sha1:7cc42d275750600d…`）上用 `ee-gcc 3.2-ee-040921` 实测。
 
 > 范围：**主**口径只统计**重建的 C**。字节一致的汇编转录是另一个口径 —— 见
-> [TRANSCRIPTION.zh-CN.md](TRANSCRIPTION.zh-CN.md)。
+> [TRANSCRIPTION.zh-CN.md](../TRANSCRIPTION.zh-CN.md)。
 
 ## 1. 工具陷阱（会产生错误结果）
 

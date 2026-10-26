@@ -1,0 +1,2650 @@
+{
+  "schema": 1,
+  "updated": "2026-10-18",
+  "note": "EE GCC 3.2 codegen handbook, machine-readable index. Every law carries source_anchor (mainline file:line) and/or binary_anchor (shipped cc1 symbol/address). tier T1 = source rule + factory-binary anchor + matching behaviour; T2 = source rule OR binary anchor, plus behaviour; T3 = behaviour evidence only. No game content: anchors are compiler-internal symbols, addresses, line numbers and constants.",
+  "toolchain": {
+    "id": "ee-gcc-3.2-ee-040921",
+    "cc1": "lib/gcc-lib/ee/3.2-ee-040921/cc1",
+    "flags": "-O2 -falign-functions=4 -ffunction-sections",
+    "cc1_not_stripped": true,
+    "dwarf": true,
+    "sources_embedded": 135,
+    "mainline_reference": "gcc-3.2.3 (sha256 9229434cfdfb79d3183149ac09e1093be642d4be377cc491e75c23b856243fda)",
+    "build_flags": "-O2 -falign-functions=4 -ffunction-sections (no -G; the MIPS default 8 applies)",
+    "probe_flags": "-O2 -G0 (the conditions most measurements in this handbook were taken under)"
+  },
+  "laws": [
+    {
+      "id": "L-EE-001",
+      "title": "Global allocation order is allocno_compare: (floor_log2(n_refs) * freq) / live_length * (10000 / REG_FREQ_MAX) * size",
+      "tier": "T1",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "global.c",
+        "line": 614,
+        "note": "mainline gcc-3.2.3 definition line; EE binary resolves the same function to global.c:789 (delta +175). Cite the EE line, use mainline for semantics."
+      },
+      "binary_anchor": {
+        "symbol": "allocno_compare",
+        "addr": "0x081ab288",
+        "constants": [
+          {
+            "kind": "double",
+            "value": 10.0,
+            "at": "0x0821e360",
+            "means": "10000 / REG_FREQ_MAX with REG_FREQ_MAX == 1000 (regs.h:79)"
+          }
+        ],
+        "struct": {
+          "name": "allocno",
+          "byte_size": 144,
+          "fields": {
+            "size": 4,
+            "n_refs": 12,
+            "freq": 16,
+            "live_length": 20
+          }
+        }
+      },
+      "pass": [
+        "16.life",
+        "23.greg"
+      ],
+      "symptom": [
+        "allocation order differs from expectation",
+        "two values with the same reference count allocate in an unexpected order"
+      ],
+      "lever": [
+        "cross a power of two in n_refs (floor_log2 step)",
+        "move a use into a hotter block (freq is linear)",
+        "shorten the live range (live_length divides)"
+      ],
+      "receipt": "75 functions / 1,079 allocnos / 1,004 adjacent pairs: exact order 33/75, mean Kendall tau 0.873, 26 inversions (2.6%) [R28 §3]; formula constants corrected in R33 §4.3",
+      "falsifies": "dds-decomp's floor_log2(refs) * refs * hard_reg_width shape (all four local controls failed)",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0; not tested on 2.96",
+      "evidence": [
+        "party:R28-ee-gcc-3.2决策模型.md",
+        "private:out/evidence/ee_gcc_allocno_calibration.txt"
+      ]
+    },
+    {
+      "id": "L-EE-002",
+      "title": "allocno.size is measured in WORDS, and the dump prints it only when size != 1",
+      "tier": "T1",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "regs.h",
+        "line": 116,
+        "note": "PSEUDO_REGNO_SIZE(N) = (GET_MODE_SIZE + UNITS_PER_WORD - 1) / UNITS_PER_WORD; global.c:1937 is the print condition `size != 1` (EE binary: global.c:2265)"
+      },
+      "binary_anchor": {
+        "symbol": "allocno_compare",
+        "addr": "0x081ab288",
+        "constants": [],
+        "struct": {
+          "name": "allocno",
+          "byte_size": 144,
+          "fields": {
+            "size": 4
+          }
+        }
+      },
+      "pass": [
+        "23.greg"
+      ],
+      "symptom": [
+        "no (N) size suffix appears in the `;; N regs to allocate:` line",
+        "a model that feeds bytes into the formula mis-ranks mixed-mode functions"
+      ],
+      "lever": [
+        "read the suffix as words: absent == 1 word (SImode), 2 words for DImode / DFmode"
+      ],
+      "receipt": "zero `(N)` occurrences across the whole local corpus, including DFmode allocnos that do reach global allocation; SImode -> 1 word, DImode/DFmode -> 2 words",
+      "falsifies": "the reading that allocno.size is a byte count (the R28 tool substituted the lreg `N bytes` field)",
+      "scope": "ee-gcc 3.2-ee-040921; mainline semantics verified in regs.h",
+      "evidence": [
+        "party:R33-EE-GCC-3.2编译器行为手册与社区先例调研.md"
+      ]
+    },
+    {
+      "id": "L-EE-003",
+      "title": "The EE register-pressure model is wider: struct allocno is 144 B and HARD_REG_SET is 192 bits",
+      "tier": "T1",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "global.c",
+        "line": 96,
+        "note": "EE declaration line from DWARF; the mainline copy declares struct allocno at line 87. Field names and order match mainline."
+      },
+      "binary_anchor": {
+        "symbol": "allocno_compare",
+        "addr": "0x081ab288",
+        "constants": [],
+        "struct": {
+          "name": "allocno",
+          "byte_size": 144,
+          "members": [
+            {
+              "name": "reg",
+              "offset": 0,
+              "decl_line": 97
+            },
+            {
+              "name": "size",
+              "offset": 4,
+              "decl_line": 100
+            },
+            {
+              "name": "calls_crossed",
+              "offset": 8,
+              "decl_line": 103
+            },
+            {
+              "name": "n_refs",
+              "offset": 12,
+              "decl_line": 106
+            },
+            {
+              "name": "freq",
+              "offset": 16,
+              "decl_line": 109
+            },
+            {
+              "name": "live_length",
+              "offset": 20,
+              "decl_line": 113
+            },
+            {
+              "name": "hard_reg_conflicts",
+              "offset": 24,
+              "decl_line": 117
+            },
+            {
+              "name": "hard_reg_preferences",
+              "offset": 48,
+              "decl_line": 123
+            },
+            {
+              "name": "hard_reg_copy_preferences",
+              "offset": 72,
+              "decl_line": 130
+            }
+          ]
+        }
+      },
+      "pass": [
+        "23.greg",
+        "24.postreload"
+      ],
+      "symptom": [
+        "a mainline-calibrated register-pressure model predicts the wrong spill count"
+      ],
+      "lever": [
+        "size the pressure model against 192 hard registers, not the mainline MIPS count"
+      ],
+      "receipt": "DWARF byte_size 144; member step 24 B = 192 bits; disassembly stride 144 B (lea (%edi,%edi,8) then shl $0x4)",
+      "falsifies": "the assumption that mainline's HARD_REG_SET width applies to EE",
+      "scope": "ee-gcc 3.2-ee-040921",
+      "evidence": [
+        "private:out/evidence/ee_gcc_anchor_db.txt"
+      ]
+    },
+    {
+      "id": "L-EE-004",
+      "title": "EE ships its own backend file config/mips/mips5900.c, which mainline 3.2.3 does not have",
+      "tier": "T1",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips5900.c",
+        "line": 0,
+        "note": "absent from mainline gcc-3.2.3 (config/mips/ checked); EE DWARF carries it as a compilation unit"
+      },
+      "binary_anchor": {
+        "symbol": "uns_arith_operand",
+        "addr": "0x0817178c",
+        "constants": [],
+        "struct": {}
+      },
+      "pass": [
+        "backend"
+      ],
+      "symptom": [
+        "a rule taken from mainline config/mips/mips.c does not reproduce EE code selection"
+      ],
+      "lever": [
+        "treat the EE backend as a separate source of rules; anchor it per symbol in mips5900.c"
+      ],
+      "receipt": "cc1 embeds 135 source paths, including config/mips/mips5900.c; 152 functions resolve to that file; mainline 3.2.3 config/mips/ has no mips5900.c",
+      "falsifies": "",
+      "scope": "ee-gcc 3.2-ee-040921",
+      "evidence": [
+        "private:out/evidence/ee_gcc_anchor_db.txt"
+      ]
+    },
+    {
+      "id": "L-EE-005",
+      "title": "REG_FREQ is accumulated per register note, one block frequency per occurrence, and REG_FREQ_MAX is 1000",
+      "tier": "T1",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "flow.c",
+        "line": 2733,
+        "note": "propagate_one_insn: REG_N_REFS += 1 and REG_FREQ += REG_FREQ_FROM_BB(bb) per register; also flow.c:3578 and flow.c:3413. regs.h:79 defines REG_FREQ_MAX 1000."
+      },
+      "binary_anchor": {
+        "symbol": "life_analysis",
+        "addr": "0x080ce2d8",
+        "constants": [
+          {
+            "kind": "double",
+            "value": 10.0,
+            "at": "0x0821e360",
+            "means": "the factor 10000 / REG_FREQ_MAX = 10, consumed by allocno_compare"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "16.life",
+        "23.greg"
+      ],
+      "symptom": [
+        "a frequency proxy built from de-duplicated instructions lands adjacent pairs in the wrong order",
+        "a model built on de-duplicated instruction counts under-predicts the allocation order"
+      ],
+      "lever": [
+        "count every register occurrence, including a read-modify-write in one insn"
+      ],
+      "receipt": "75 functions / 1,004 adjacent pairs: counting every register occurrence reproduces the exact allocation order in 44/75 (mean Kendall tau 0.877) against 33/75 (0.873) for a de-duplicated instruction proxy — the source reading wins by 11 functions. The binary's 10.0 constant confirms the REG_FREQ_MAX = 1000 factor.",
+      "falsifies": "the reading that the factor is 1 (a misread of the global.c comment)",
+      "scope": "ee-gcc 3.2-ee-040921",
+      "evidence": [
+        "party:R33-EE-GCC-3.2编译器行为手册与社区先例调研.md",
+        "party:R28-ee-gcc-3.2决策模型.md"
+      ]
+    },
+    {
+      "id": "L-EE-006",
+      "title": "Line numbers are not portable between trees: the EE snapshot drifts from mainline per function",
+      "tier": "T1",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "global.c",
+        "line": 614,
+        "note": "measured against the EE binary: the same function is at global.c:789"
+      },
+      "binary_anchor": {
+        "symbol": "find_reg",
+        "addr": "0x081acd64",
+        "constants": [],
+        "struct": {},
+        "note": "`find_reg` occurs twice in the shipped cc1: 0x08134570 (reload1.c:1685) and 0x081acd64 (global.c:1329). This law means the global.c one; always disambiguate by address, not by name."
+      },
+      "pass": [
+        "all"
+      ],
+      "symptom": [
+        "a mainline line number is cited for an EE behaviour and the quoted lines do not contain that code"
+      ],
+      "lever": [
+        "cite the line number that addr2line reports for the shipped cc1, and keep the mainline line only as a cross-reference with its measured offset"
+      ],
+      "receipt": "per-file median drift (EE line minus mainline line, gcc-3.2.3): global.c +341, gcse.c +137, haifa-sched.c +263, regmove.c +1920, reload1.c 0, local-alloc.c -4, cse.c -22, jump.c -47, loop.c -68, function.c -55, ifcvt.c -6; the same comparison against gcc-3.2.2 differs by at most 1 line, so the drift is EE's, not a point-release artefact",
+      "falsifies": "transplanting mainline line numbers into EE citations (the original R28 write-up quoted mainline line numbers only)",
+      "scope": "ee-gcc 3.2-ee-040921 vs gcc-3.2.2 / 3.2.3",
+      "evidence": [
+        "private:out/evidence/ee_gcc_anchor_db.txt"
+      ]
+    },
+    {
+      "id": "L-EE-007",
+      "title": "There is no translation-unit level codegen state except the $L label counter",
+      "tier": "T3",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "",
+        "line": 0,
+        "note": "no source anchor yet; the rule comes from a controlled experiment"
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [],
+        "struct": {}
+      },
+      "pass": [
+        "all"
+      ],
+      "symptom": [
+        "a one-TU-many-functions build is suspected of changing codegen"
+      ],
+      "lever": [
+        "merge or split translation units freely; only local label names shift, and they do not change the emitted bytes"
+      ],
+      "receipt": "six TU configurations compared with normalised absolute addresses and jump-table deltas: instruction stream, .sdata and jump tables identical; only $L numbering shifts by one per preceding labelled function [R28 §4]",
+      "falsifies": "the fear that adding unrelated functions to a translation unit perturbs the target function",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2; the exact formula for the $L counter is still open",
+      "evidence": [
+        "party:R28-ee-gcc-3.2决策模型.md",
+        "private:out/evidence/ee_gcc_tu_state.txt"
+      ]
+    },
+    {
+      "id": "L-EE-008",
+      "title": "In 23.greg, `regs to allocate` is the residue after local allocation, while `conflicts` lists every allocno",
+      "tier": "T1",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "global.c",
+        "line": 1926,
+        "note": "dump_conflicts: the count loop skips `reg_renumber >= 0` at line 1922 and prints at 1926; the conflicts loop at 1945 has no such test. The shipped binary resolves dump_conflicts to global.c:2265."
+      },
+      "binary_anchor": {
+        "symbol": "dump_conflicts",
+        "addr": "0x081af134",
+        "constants": [],
+        "struct": {}
+      },
+      "pass": [
+        "22.lreg",
+        "23.greg"
+      ],
+      "symptom": [
+        "a value the dump reports was placed is treated as a hard register",
+        "a replay built from the conflict lines scores far below a simple heuristic"
+      ],
+      "lever": [
+        "take the still-unplaced allocnos from `regs to allocate` and the interference graph from `conflicts`",
+        "classify a conflict number as a hard register only when it is not an allocno (the allocno reg numbers are the `;; N conflicts:` keys and the `[N]` brackets in the RTL)"
+      ],
+      "receipt": "166 functions: the conflicts lines list 10,450 allocnos while `regs to allocate` lists 1,079 locally placed residue; the two differ in 166/166 functions (fx_arith: 8 vs 0). Misclassifying the extra numbers as hard registers was a measured failure mode in the colouring replay.",
+      "falsifies": "the reading that `conflicts` lists only the allocnos still waiting for a register",
+      "scope": "ee-gcc 3.2-ee-040921 dumps; mainline semantics verified in global.c",
+      "evidence": [
+        "party:R33-EE-GCC-3.2编译器行为手册与社区先例调研.md",
+        "private:out/evidence/ee_gcc_anchor_db.txt"
+      ]
+    },
+    {
+      "id": "L-EE-009",
+      "title": "Delay slots are almost always filled with a real instruction; the leftover `nop` is the function-ending `jr ra`",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "reorg.c",
+        "line": 3582,
+        "note": "dbr_schedule (mainline definition line; the shipped binary resolves it to reorg.c:3571, delta -11). The fillers are fill_simple_delay_slots and fill_slots_from_thread."
+      },
+      "binary_anchor": {
+        "symbol": "dbr_schedule",
+        "addr": "0x081cd510",
+        "constants": [],
+        "struct": {}
+      },
+      "pass": [
+        "20.sched",
+        "29.sched2",
+        "33.dbr"
+      ],
+      "symptom": [
+        "the target has a nop in a delay slot where the candidate has a real instruction",
+        "a basic block diffs by exactly one instruction"
+      ],
+      "lever": [
+        "treat a delay-slot difference as a scheduling decision, not an expression difference: regroup statements and check what the branch successors provide before editing the C"
+      ],
+      "receipt": "10 synthetic functions / 29 branches at -O2 -G0: 24 filled (82.8%), 0 nops emitted by the compiler, 5 branches followed by a label or the function end. Object-level check on f_dowhile: the `bgtz` slot holds `addiu`, the function-ending `jr ra` slot holds `nop`. Observed slot contents: addu 9, li 6, move 5, lw / sll / lui / ld 1 each.",
+      "falsifies": "the assumption that a nop delay slot means the scheduler found nothing to move; at this level the compiler emits none — the leftovers are filled by the assembler",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0; 10 synthetic functions, no game code",
+      "evidence": [
+        "private:out/evidence/ee_gcc_delay_slots.txt"
+      ]
+    },
+    {
+      "id": "L-EE-010",
+      "title": "A switch becomes a jump table only when count >= 5 AND range <= 10 * count",
+      "tier": "T1",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "stmt.c",
+        "line": 5401,
+        "note": "expand_end_case_type branches to conditional branches when `count < case_values_threshold () || range > 10 * count || ...`; otherwise it calls try_tablejump (stmt.c:5509). expr.c:10486 defines CASE_VALUES_THRESHOLD as (HAVE_casesi ? 4 : 5). EE lines: expand_end_case_type stmt.c:5238, case_values_threshold expr.c:10431, try_tablejump expr.c:10595."
+      },
+      "binary_anchor": {
+        "symbol": "expand_end_case_type",
+        "addr": "0x08154e0c",
+        "related": [
+          {
+            "symbol": "case_values_threshold",
+            "addr": "0x080cad50"
+          },
+          {
+            "symbol": "try_tablejump",
+            "addr": "0x080cae48"
+          }
+        ],
+        "constants": [],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl",
+        "03.jump"
+      ],
+      "symptom": [
+        "the target uses a jump table where the candidate uses a compare chain",
+        "a switch compiles to a table the candidate does not produce, or the reverse"
+      ],
+      "lever": [
+        "count the distinct cases and the (max - min) span before choosing a spelling: a table needs at least 5 cases and a span of at most 10 per case",
+        "moving case values closer together (or adding a range check before the switch) changes the decision"
+      ],
+      "receipt": "11 synthetic switches at -O2 -G0: dense 3 and 4 cases -> compare chain; dense 5, 6, 7, 8, 10, 16 -> table, table size exactly equal to the case count; cases {0,1,2,100,1000} (count 5, range 1000) -> chain; {0,10,20,30,40} (count 5, range 40 <= 50) -> table with 41 entries; {0,1,2,3,4,100,200,300} (count 8, range 300 > 80) -> chain. All 11 rows match the source rule. The table is emitted in section .rdata and referenced through a local label ($L9 in the synthetic fixture), jumped to with `jr $reg`; tools/compiler/ee-gcc-observe.py --selftest asserts this.",
+      "falsifies": "the external claim that five distinct cases are enough for a jump table (dds-decomp, ee-gcc 2.96, no licence): five cases are necessary but not sufficient, the span must also satisfy range <= 10 * count",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0; 11 synthetic switches, no game code",
+      "evidence": [
+        "private:out/evidence/ee_gcc_jumptable.txt"
+      ]
+    },
+    {
+      "id": "L-EE-011",
+      "title": "Float constants always come from the constant pool except 0.0f; a double is built inline when its low 32 bits are zero",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips5900.c",
+        "line": 1638,
+        "note": "The EE backend carries mips_move_1word, which mainline gcc-3.2.3 does not have; the exact constant-materialisation case lives in that file, which is not on this machine. The rule below is therefore measured, not read."
+      },
+      "binary_anchor": {
+        "symbol": "mips_move_1word",
+        "addr": "0x0817298c",
+        "constants": [],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl",
+        "17.combine"
+      ],
+      "symptom": [
+        "the target loads a constant from `.rodata` (l.s / l.d) where the candidate materialises it inline, or the reverse",
+        "a float constant diff that survives every source-level respelling"
+      ],
+      "lever": [
+        "a nonzero float constant always comes from the pool, so the residual is not the constant but the code around it",
+        "for a double, check the low 32 bits: zero means the value is built with dli + dsll inline, nonzero means the pool"
+      ],
+      "receipt": "14 float and 9 double constants at -O2 -G0. Floats: 0.0f -> `mtc1 $0`; 0.5f, 1.0f, 2.5f, 1.5f, -1.0f, 0.01f, 3.14f, 100.0f, -0.25f, 0.1f, 123.456f, 1e30f, 1e-30f, -0.0f -> all from the pool via %hi/%lo($LCn) + l.s, regardless of the low halfword. Doubles: 0.0 -> `move $2,$0`; 0.5, 1.0, 1.5, 2.5, 2^52 (low 32 bits zero) -> inline `dli`+`dsll`; 0.01, pi, 1.0000000001 (low 32 bits nonzero) -> pool via l.d.",
+      "falsifies": "the IDO 5.3 rule that the constant's low halfword decides inline versus pool for floats (n64-decomp-workbench L62, CC0): on ee-gcc 3.2 that split exists for doubles only",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0; 23 synthetic constants, no game code. The binary anchor is a pointer into the EE backend, not a verification of the rule",
+      "evidence": [
+        "private:out/evidence/ee_gcc_float_constants.txt"
+      ]
+    },
+    {
+      "id": "L-EE-012",
+      "title": "The frame is [outgoing args][vars][8 B per saved register]; the save area caps at 10 registers",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "global.c",
+        "line": 991,
+        "note": "find_reg decides which callee-saved register each allocno takes (EE binary: global.c:1329); the 8-byte slot and the 9-register $s budget come from the ABI, which mainline mips.h states and this backend inherits."
+      },
+      "binary_anchor": {
+        "symbol": "find_reg",
+        "addr": "0x081acd64",
+        "constants": [],
+        "struct": {},
+        "note": "`find_reg` occurs twice in the shipped cc1: 0x08134570 (reload1.c:1685) and 0x081acd64 (global.c:1329). This law means the global.c one; always disambiguate by address, not by name."
+      },
+      "pass": [
+        "22.lreg",
+        "23.greg",
+        "24.postreload"
+      ],
+      "symptom": [
+        "the candidate frame is larger than the target by a multiple of 8",
+        "you are about to reduce saved registers when the save area is already identical"
+      ],
+      "lever": [
+        "decompose the frame before editing: vars / outgoing args / 8 B per saved register",
+        "each saved register costs 8 B; beyond 10 saved registers more values can only spill into vars"
+      ],
+      "receipt": "Synthetic dose-response (-O2 -G0, k values live across calls): k=2/4/6/8/10/12/14/18/24 -> frame 32/48/64/80/96/96/112/128/144 with regs= 4/6/8/10/10/10/10/10/10. The frame grows 8 B per saved register and the save area caps at 10 registers (80 B); beyond that only vars grows. The saved registers observed are $s0-$s7 (16-23), $fp (30) and $ra (31). Naming trap: the objdump in this toolchain prints register 30 as `s8` while the compiler's own assembly prints `$fp`, so counting names in a disassembly can mislead. Real function: func_001d4b88 retail frame 144 = vars 16 + args 48 + 10 saves (80); candidate frame 176 = vars 48 + args 48 + the same 10 saves, so the whole +32 B is the vars block. The cap is explained by the runtime register file read from a live cc1: the allocatable callee-saved GPRs are exactly {16..23, 30} (eight $s0-$s7 plus $fp), so with $ra the save area holds nine allocatable registers plus one return address = 10 slots. The dose-response was re-run on the other configuration this project uses - 3.2 at -O1 and 2.96 at -O2 - and the frame, regs and vars progression is identical row for row (k=2/4/6/8/10/12/16/20 -> frame 32/48/64/80/96/96/112/128, regs 4/6/8/10/10/10/10/10, vars 0/0/0/0/16/16/32/48). The whole sum is rounded up to a 16-byte boundary: a caller with 9 or 10 arguments has args=16 and frame 32 for a sum of 24, and rows for 11/12, 13/14 and 15/16 arguments give sums 40/56/72 with frames 48/64/80. The real function used in this project happened to land on an aligned sum, which is why the rounding was not visible before. Layout order measured 2026-10-18: the blocks sit at [outgoing args][vars][saves]; a synthetic probe with four stack arguments puts args at 0..31, vars at 32..63 and the saves at 64..143, while the no-stack-argument probe puts vars at 0..15.",
+      "falsifies": "the reading that a larger candidate frame means more saved registers, and the reading that the save area grows without bound with the number of live values",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 and -O1, and ee-gcc 2.96-ee-001003-1 at -O2; six to eight synthetic functions plus one real function. In the synthetic corpus a value that cannot take a register is sometimes rematerialised instead of spilled, so vars does not grow one slot per extra value.",
+      "evidence": [
+        "private:out/evidence/ee_gcc_frame_composition.txt"
+      ]
+    },
+    {
+      "id": "L-EE-013",
+      "title": "Signedness picks slt vs sltu; a type narrower than the register adds andi (unsigned) or sll+sra (signed); xori marks equality",
+      "tier": "T3",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "",
+        "line": 0,
+        "note": "No source anchor yet. The width/signedness extension is generic (mode versus word size) and the compare patterns live in the EE backend, which is not on this machine. Behaviour evidence only."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl",
+        "17.combine"
+      ],
+      "symptom": [
+        "the candidate and the target differ by one instruction (`andi`, `sll` or `xori`) in front of the compare",
+        "a comparison against a constant produces a different instruction sequence after a type change"
+      ],
+      "lever": [
+        "read the extension instruction as the type's shape: `andi 0xff`/`0xffff` means an unsigned type narrower than the register; `sll`+`sra` means a signed narrow type; `slt`/`sltu` is the signedness",
+        "`xori $r,$r,C` followed by `sltu $r,$r,1` is an equality test, not a narrow-type marker"
+      ],
+      "receipt": "48 synthetic functions (8 types x 5 patterns x 2 contexts) at -O2 -G0. x < 100: int/ll -> slt; uint/ull -> sltu; signed char/short -> sll+sra, slt; unsigned char/short -> andi, sltu. x == 5: xori + sltu ...,1 for every type, with the same width prologue. x != 0: sltu (plus the width prologue). (x & 0x10) != 0: sra+andi for 32-bit types, andi+srl+andi for narrow types, dsrl+andi for 64-bit types.",
+      "falsifies": "the external claim that slt/sltiu versus xori distinguishes narrow unsigned types (dds-decomp, ee-gcc 2.96, no licence): xori marks equality, while narrowness shows up as an andi mask (unsigned) or an sll+sra extension (signed)",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0; 48 synthetic functions, no game code",
+      "evidence": [
+        "private:out/evidence/ee_gcc_int_idioms.txt"
+      ]
+    },
+    {
+      "id": "L-EE-014",
+      "title": "Small-data addressing follows -G: objects up to the -G size go to .sdata/.sbss and are read as a bare symbol (gp_rel)",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "config/mips/mips.h",
+        "line": 4579,
+        "note": "MIPS_DEFAULT_GVALUE is 8, so a build that passes no -G uses 8. The backend keeps mips_section_threshold (EE line config/mips/mips5900.c:226) and treats -1 as 'unset'; the shipped binary stores -1 there in the file and resolves it at startup."
+      },
+      "binary_anchor": {
+        "symbol": "mips_section_threshold",
+        "addr": "0x0823ed20",
+        "related": [
+          {
+            "symbol": "g_switch_value",
+            "addr": "0x0830d0c0"
+          }
+        ],
+        "constants": [
+          {
+            "kind": "int32",
+            "value": -1,
+            "at": "0x0823ed20",
+            "means": "the 'unset' sentinel; the effective value comes from -G or MIPS_DEFAULT_GVALUE"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "the target reads a global as a bare symbol (`lw $2,g_int`) while the candidate emits lui %hi/%lo, or the reverse",
+        "an object lands in .sdata/.sbss in one build and .bss/.data in the other"
+      ],
+      "lever": [
+        "match the -G value to the target build before comparing globals: the project passes no -G, so the default 8 applies",
+        "objects up to 8 bytes (and not constants) become gp_rel; larger objects and every constant stay absolute"
+      ],
+      "receipt": "One fixture with 4 B globals, an 8 B double, a 32 B array, a static const and a float constant, built at -G0/-G4/-G8/no flag: 4 B objects are absolute at -G0 and small-data at -G4/-G8/default; the 8 B double is absolute up to -G4 and small-data at -G8/default; the 32 B array is absolute everywhere; a static const read folds to an immediate; the float constant is absolute (%hi/%lo($LCn)) in every setting. The boundary is inclusive and the default was measured rather than assumed: objects of size 4, 8, 9, 12 and 16 bytes at -G0/-G4/-G8/-G9/-G16 show that an object qualifies when its size is <= G (4-byte objects qualify at -G4, 9-byte objects only from -G9), and that the default (no -G flag) behaves exactly like -G8. Uninitialised small objects land in .scommon (merged into .sbss at link time) and initialised ones in .sdata.",
+      "falsifies": "the implicit assumption that measurements taken at -G0 describe the project build: the project passes no -G, so its default is 8 and its small-data behaviour differs",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2; the boundary was measured with 4/8/9/12/16-byte objects and the default against -G8. See L-EE-021 for which declarations qualify at -G0.",
+      "evidence": [
+        "private:out/evidence/ee_gcc_small_data.txt"
+      ]
+    },
+    {
+      "id": "L-EE-015",
+      "title": "A value passed in the outgoing argument area is re-read from that slot after the call when it is an aggregate; a scalar gets a callee-saved register instead",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "calls.c",
+        "line": 4284,
+        "note": "store_one_arg (the shipped binary resolves it to calls.c:4284) writes the outgoing argument area; reusing that slot afterwards is the generic argument-store behaviour, not an EE addition. Promoting this to T1 needs the reuse logic read out of the shipped cc1's store_one_arg."
+      },
+      "binary_anchor": {
+        "symbol": "store_one_arg",
+        "addr": "0x08087038",
+        "related": [
+          {
+            "symbol": "load_register_parameters",
+            "addr": "0x08083d64"
+          },
+          {
+            "symbol": "emit_push_insn",
+            "addr": "0x080bf178"
+          }
+        ],
+        "constants": [],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "the frame grows by one 8 B slot for a value that is also passed to a call",
+        "the candidate spills an aggregate into the vars block while the target re-reads it from the outgoing argument area"
+      ],
+      "lever": [
+        "read the post-call use of an aggregate as a re-read of the outgoing slot: pass the same expression to the call and use it again afterwards",
+        "do not introduce a local copy of an aggregate that is passed to a call and used afterwards — the copy is a separate live object and costs a slot"
+      ],
+      "receipt": "Two fixtures at -Os -G0 with more than eight parameters, so the ninth lands in the outgoing argument area. (A) a 4-byte struct is written to the outgoing slot, the call runs, and the post-call use re-reads the struct from that same slot (`lh $15,48($sp)`) with vars=0 and no extra frame. (B) a scalar is kept in a callee-saved register across the call (`addu $16,...` + `sd $16,64($sp)`), costing one 8 B save slot. A real function shows the same shape as (A): the retail target re-reads a 4-byte aggregate from its own outgoing slot after a recursive call.",
+      "falsifies": "the assumption that any value used after a call it was passed to must be spilled into the vars block or pinned in a callee-saved register",
+      "scope": "ee-gcc 3.2-ee-040921 at -Os -G0; two synthetic fixtures plus one observation in a real function. Verified for a 4-byte aggregate and a scalar; other aggregate sizes are not measured.",
+      "evidence": [
+        "private:out/evidence/ee_gcc_outgoing_reuse.txt"
+      ]
+    },
+    {
+      "id": "L-EE-016",
+      "title": "The EE register file is 140 hard registers in 29 classes: GPR 0-31, FP 32-63, HI/LO/HI1/LO1 64-67, FP_ACC 71, VU0 76-79 and 112-143, COP0 80-111",
+      "tier": "T1",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips5900.c",
+        "line": 0,
+        "note": "The class contents live in the EE backend's mips.h (REG_CLASS_CONTENTS), which is not on this machine; the line cited is the file that owns the EE register file. The values below are read from a live cc1, not from source."
+      },
+      "binary_anchor": {
+        "symbol": "reg_class_contents",
+        "addr": "0x08309140",
+        "related": [
+          {
+            "symbol": "reg_class_size",
+            "addr": "0x083094c0"
+          },
+          {
+            "symbol": "fixed_reg_set",
+            "addr": "0x0830a310"
+          },
+          {
+            "symbol": "call_used_reg_set",
+            "addr": "0x083093f8"
+          },
+          {
+            "symbol": "call_fixed_reg_set",
+            "addr": "0x0830a328"
+          }
+        ],
+        "constants": [
+          {
+            "kind": "int",
+            "value": 140,
+            "at": "ALL_REGS",
+            "means": "FIRST_PSEUDO_REGISTER (ALL_REGS bit width)"
+          },
+          {
+            "kind": "int",
+            "value": 29,
+            "at": "reg_class_contents",
+            "means": "N_REG_CLASSES"
+          },
+          {
+            "kind": "int",
+            "value": 192,
+            "at": "fixed_reg_set",
+            "means": "HARD_REG_SET bits = 3 x 64"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "23.greg"
+      ],
+      "symptom": [
+        "you need to know whether a register is allocatable, caller-saved or reserved for this compiler",
+        "a replay or a diff assumes the mainline MIPS register file"
+      ],
+      "lever": [
+        "allocate only inside reg_class_contents[class] minus fixed_reg_set; for a call-crossing allocno also remove call_used_reg_set",
+        "the allocatable callee-saved GPRs are exactly {16..23, 30}: eight $s0-$s7 plus $fp, so with $ra the save area is 10 slots"
+      ],
+      "receipt": "Read from a live cc1 (gdb, breakpoint at local_alloc, where init_reg_sets_1 has already filled the tables): 29 classes, ALL_REGS = 140 registers, HARD_REG_SET = 3 x 64 = 192 bits. GR_REGS = 0-31 (32), FP_REGS = 32-63 (32), HI/LO/HI1/LO1 = 64-67, ST = 68, ELIM = 69-70, FP_ACC = 71, 72-75 reserved, VU0_ACC = 76, VU0_Q/I/R = 77/78/79, COP0 = 80-111 (32), VU0 = 112-143 (32). fixed_reg_set leaves 0,1,26,27,28,29,31 fixed among the GPRs; call_used_reg_set leaves 2-15, 24, 25 caller-saved, so the allocatable callee-saved GPRs are {16..23, 30}. The 140 is the number of registers in ALL_REGS; the numbering itself runs to 143 (72-75 are reserved and carry no class), so the first pseudo register is 144 - which is why HARD_REG_SET rounds to 3 x 64 = 192 bits. Read live: the register-name table `debug_reg_names` (0x0821f280) has entries 0..143 and the next slot is not a name.",
+      "falsifies": "the assumption that the shipped EE register file can be approximated by the mainline MIPS one, and the earlier guess that the runtime tables were unreadable (they are readable from a live process; only the static read returns zeros)",
+      "scope": "ee-gcc 3.2-ee-040921; read from a live cc1 on this machine. The class contents are compiler constants, not per-function decisions.",
+      "evidence": [
+        "private:out/evidence/ee_gcc_regclasses_runtime.txt"
+      ]
+    },
+    {
+      "id": "L-EE-017",
+      "title": "The shipped global.c find_reg is not mainline's: a two-step alt_regs ladder whose decision is a side effect, not a return value",
+      "tier": "T1",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "global.c",
+        "line": 1336,
+        "note": "The shipped binary's DWARF puts find_reg's body at global.c:1336. The two-step ladder appears twice: global_alloc calls find_reg at global.c:400 (alt=0) and global.c:407 (alt=1), and global_init calls it at global.c:772 (alt=0) and global.c:777 (alt=1); find_reg also calls itself recursively at global.c:1540. Mainline gcc-3.2.3 declares the same name as find_reg (struct allocno *, HARD_REG_SET *), so this file's allocation core was reworked despite the shared name."
+      },
+      "binary_anchor": {
+        "symbol": "find_reg",
+        "addr": "0x081acd64",
+        "related": [
+          {
+            "symbol": "find_reg",
+            "addr": "0x08134570"
+          }
+        ],
+        "constants": [
+          {
+            "kind": "addr",
+            "value": "0x81aa4ba",
+            "at": "global.c:400",
+            "means": "ladder step 1 (alt=0) in global_alloc"
+          },
+          {
+            "kind": "addr",
+            "value": "0x81aa520",
+            "at": "global.c:407",
+            "means": "ladder step 2 (alt=1) in global_alloc"
+          },
+          {
+            "kind": "addr",
+            "value": "0x81aad68",
+            "at": "global.c:772",
+            "means": "ladder step 1 (alt=0) in global_init"
+          },
+          {
+            "kind": "addr",
+            "value": "0x81aadbe",
+            "at": "global.c:777",
+            "means": "ladder step 2 (alt=1) in global_init"
+          },
+          {
+            "kind": "addr",
+            "value": "0x81adbc0",
+            "at": "global.c:1540",
+            "means": "recursive call inside find_reg"
+          },
+          {
+            "kind": "addr",
+            "value": "0x82ea1ec",
+            "at": "reg_renumber",
+            "means": "the decision table the caller tests with cmpw/js"
+          }
+        ],
+        "struct": {
+          "struct allocno": 144
+        }
+      },
+      "pass": [
+        "23.greg"
+      ],
+      "symptom": [
+        "a port of mainline's allocation loop does not reproduce the recorded dispositions",
+        "an allocno is queried repeatedly with the same conflicts"
+      ],
+      "lever": [
+        "model the decision as a two-step ladder that writes the result as a side effect; alt_regs_p 0 is the first try and 1 the retry",
+        "do not read find_reg's return value: at the call sites it is discarded immediately",
+        "an allocno with no register is detected by the caller as a negative signed 16-bit entry, not by a return code"
+      ],
+      "receipt": "gdb on the shipped cc1: `info args` at global.c:1336 prints find_reg (num=0, losers=0x0, alt_regs_p=0, accept_call_clobbered=0, retrying=0), where mainline declares find_reg (struct allocno *, HARD_REG_SET *). The function is called as a two-step ladder from two independent sites - 0x81aad68/0x81aadbe (global_init) and 0x81aa4ba/0x81aa520 (global_alloc) - with alt_regs_p 0 then 1 (losers NULL, the other flags zero in every observed call). At both external sites the return value is discarded: the instruction after the call immediately overwrites %eax (0x81aad6d, 0x81aa4bf), and the caller then reads a signed 16-bit per-register array (cmpw + js) to decide that an allocno has no register; one path also consults reg_alternate_class. So the choice is a side effect, not a return value, and the earlier reading of -1 in %eax was leftover. The same listing confirms sizeof(struct allocno) = 144 from the scaling (x9 then <<4) that indexes the allocno array. The call sites resolve to global.c:400/407 (global_alloc) and global.c:772/777 (global_init), and find_reg recurses at global.c:1540. The result lands in reg_renumber (a short array at 0x82ea1ec): the caller tests reg_renumber[pseudo] with cmpw + js.",
+      "falsifies": "the assumption that a replay built on mainline's find_reg can reproduce the shipped decisions (the structural reason a faithful replay scores 9.1%, and 9.9% with the real runtime class tables, against a 34.3% preference-first heuristic), and the reading that find_reg returns the chosen register",
+      "scope": "ee-gcc 3.2-ee-040921, observed on this machine with gdb; the retry ladder is shown for one fixture, other flag combinations (retrying, accept_call_clobbered) were zero in that sample",
+      "evidence": [
+        "private:out/evidence/ee_gcc_find_reg_trace.txt"
+      ]
+    },
+    {
+      "id": "L-EE-018",
+      "title": "Global allocation: preference first, then the lowest register left, after two passes that first avoid registers other allocnos prefer",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "global.c",
+        "line": 400,
+        "note": "The rule is the behaviour of the ladder at global.c:400/407 (see L-EE-017); it was fitted by measurement, not read from the shipped source."
+      },
+      "binary_anchor": {
+        "symbol": "reg_renumber",
+        "addr": "0x082ea1ec",
+        "related": [
+          {
+            "symbol": "allocno",
+            "addr": "0x082e8a54"
+          },
+          {
+            "symbol": "allocno_order",
+            "addr": "0x082e8a58"
+          },
+          {
+            "symbol": "max_allocno",
+            "addr": "0x082e8a4c"
+          }
+        ],
+        "constants": [],
+        "struct": {}
+      },
+      "pass": [
+        "23.greg"
+      ],
+      "symptom": [
+        "you want to predict which hard register the compiler gives an allocno",
+        "a replay that bans every already-assigned register scores far below the naive heuristic"
+      ],
+      "lever": [
+        "pool = reg_class_contents[class] - fixed_reg_set, and for a call-crossing allocno also minus call_used_reg_set",
+        "ban only the allocno's hard_reg_conflicts plus the registers of the conflicting allocnos that are already placed",
+        "do NOT ban every already-assigned register: that double-counts what the conflict table already expresses",
+        "choose the first entry of the allocno's preference list that is still available, otherwise the lowest numbered candidate",
+        "the printed order is already the allocation order; do not re-sort it, and treat proxy sorts as noise",
+        "run two passes: the first also avoids the registers other allocnos prefer (regs_someone_prefers), the second drops that exclusion - this is what alt_regs_p toggles in the observed ladder"
+      ],
+      "receipt": "On a 60/40 split of 75 functions (527 held-out allocnos with a recorded disposition): this rule reproduces 41.0% of the decisions, against 34.3% for the earlier preference-first heuristic and 9.1% for a replay modelled on mainline's find_reg two passes. Holding the dynamic conflict set at ground truth raises the same rule to 82.7%, so the residual is dominated by cascade from earlier wrong picks, not by the per-decision rule. Rule sweep over 888 allocnos: banning hard conflicts + dynamic conflicts 36.6%, adding the caller-saved exclusion for call-crossing allocnos 38.9%, banning all assigned registers 30.9%, and the two-pass 'someone prefers' variant 12.8%. Mismatch split: 160 the true register was banned, 368 the true register was a candidate but another was chosen, 15 the true register was outside the pool. Addressing detail verified live: allocno_order[i] holds an allocno index and allocno[index].reg holds the pseudo register number, so the dump's ';; N regs to allocate:' list prints the pseudos in allocation order; for the branchy fixture the live order [3,1,2,0,...] maps to the printed 152 150 151 149 ..., confirming that the printed list is the priority order. An attempt to substitute an external proxy order (n_refs descending 41.8%, live_length ascending 42.0%, against 38.9% for the printed order) is therefore a change of error pattern, not a better rule: the order is not the lever. Preference semantics measured exactly: of the 427 allocnos that carry a preference list, 323 pick the first entry that is still available and none picks a later entry, so 'first available preference' is the whole rule. A rotation start (scan from pseudo mod 32) lifts the corpus score to 49.1%, but it is a compensation artifact, not the scan order: with the dynamic conflict set held at ground truth the rotation scores 60.5% against 63.5% without it. Of the 334 no-preference mismatches, the true register was inside the computed candidate set in every case (none was banned), so the residual is the occupancy set, not the ban set or the scan order. A second pass structure was tested: adding 'avoid the registers that other allocnos prefer' (the EE-only regs_someone_prefers field) to the first pass raises the held-out score from 41.0% to 46.5% (corpus 38.9% -> 42.1%) while leaving the oracle-context score unchanged at 82.7%, i.e. it is a genuine rule rather than a compensation for the replay's own errors. (Contrast the rejected 'rotating start', which scores 60.5% against 63.5% under the oracle.) This matches both the EE-only struct field and the observed two-step ladder: alt_regs_p = 0 then 1. A final negative result closes the occupancy question: rebuilding the conflict set from the block-level live sets in the 16.life dump scores 30.6% against 42.1% for the dumped conflicts list, because block granularity merges allocnos that are live at different points, so the dumped list stays the better source. Two levers have therefore been tried and rejected (the rotating start, and live-range-derived occupancy); the remaining gap to the oracle ceiling is cascade, which needs instruction-level live ranges or the shipped source. Preferences are inputs to this rule and are edited before it runs: `expand_preferences` unions copy-related allocnos, then `prune_preferences` clears conflicts, fixed, caller-saved (for a call-crossing allocno) and out-of-class registers, and fills `regs_someone_prefers` (L-EE-053 records preferences, L-EE-054 prunes them). On the reconstruction used there, 4 of the 6 allocnos that got no register had lost their caller-saved preferences at prune.",
+      "falsifies": "the two assumptions behind the earlier replays: that banning every already-assigned register is safe (it costs ~6 points), and that mainline's two-pass scan with a 'someone prefers' first pass is the shipped algorithm (12.8%); and the 'rotating start' reading (scan from pseudo mod 32) - it improves the end-to-end score by compensating for the replay's own errors, but it is worse than no rotation once the dynamic set is correct",
+      "scope": "ee-gcc 3.2-ee-040921, -O2/-Os corpus on this machine; the rule is measured for GPR allocnos and the readings come from a served-out split",
+      "evidence": [
+        "private:out/evidence/ee_gcc_coloring_v5.txt"
+      ]
+    },
+    {
+      "id": "L-EE-019",
+      "title": "The float-constant rule is version-specific: 2.96 always materialises a float inline, 3.2 always loads non-zero floats from the pool",
+      "tier": "T3",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "",
+        "line": 0,
+        "note": "No source anchor: this is a measured difference between two shipped compilers. Full source for neither backend is available."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "2.96-ee-001003-1",
+            "at": "ee-gcc 2.96 --version",
+            "means": "the compiler this half of the law is measured on"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "a float constant loads from the pool in a 3.2 object but is materialised with lui/mtc1 in the same source compiled with 2.96",
+        "you applied L-EE-011 to CRI middleware code"
+      ],
+      "lever": [
+        "for 2.96 do not expect a constant pool for floats: expect lui (plus ori when the low 16 bits of the bit pattern are non-zero) followed by mtc1",
+        "for 3.2 expect lui/addiu/lwc1 from the pool for every non-zero float (L-EE-011)"
+      ],
+      "receipt": "Same fixtures, both compilers, flags -O2 -G0, reading the OBJECT code (2.96 writes li.s in the assembly, which is misleading). 3.2: every non-zero float is lui + addiu + lwc1 from the pool; 0.0f is mtc1 from the zero register. 2.96: every float is materialised inline - lui + mtc1 when the low 16 bits of the pattern are zero (0.5f, 1.0f, 2.5f, -1.0f, 100.0f), lui + ori + mtc1 when they are not (0.01f, 3.14f, 123.456f, 1e30f), and plain mtc1 for 0.0f. Doubles agree between the two compilers: move for 0.0, li + dsll32 when the low 32 bits are zero, pool (lui + ld) otherwise. The narrow-compare idioms (L-EE-013), the switch threshold (L-EE-010) and -G0 absolute addressing (L-EE-014) were also re-run on 2.96 and agree.",
+      "falsifies": "the assumption that the float rule of L-EE-011 transfers to the other compiler this project uses (2.96 builds the CRI middleware)",
+      "scope": "ee-gcc 3.2-ee-040921 and ee-gcc 2.96-ee-001003-1 at -O2 -G0, synthetic fixtures only; the object code was read with the MIPS objdump",
+      "evidence": [
+        "private:out/evidence/ee_gcc_cross_296.txt"
+      ]
+    },
+    {
+      "id": "L-EE-020",
+      "title": "The pass pipeline is -O sensitive: -O1 runs 20 of the 26 dumps and skips sibling-call, gcse, regmove, both schedulers and range; -O0 runs 9",
+      "tier": "T1",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "toplev.c",
+        "line": 3316,
+        "note": "The pipeline is driven from toplev.c (the same file that calls global_alloc at line 3316). The pass set per level is measured with -da rather than read from the shipped source."
+      },
+      "binary_anchor": {
+        "symbol": "global_alloc",
+        "addr": "0x081aa2c4",
+        "related": [
+          {
+            "symbol": "rest_of_compilation",
+            "addr": "0x0815a854"
+          }
+        ],
+        "constants": [
+          {
+            "kind": "int",
+            "value": 26,
+            "at": "-O2 dumps",
+            "means": "passes run at -O2"
+          },
+          {
+            "kind": "int",
+            "value": 20,
+            "at": "-O1 dumps",
+            "means": "passes run at -O1, six fewer"
+          },
+          {
+            "kind": "int",
+            "value": 9,
+            "at": "-O0 dumps",
+            "means": "passes run without optimisation"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "a function only matches at -O1 and you are looking for a source-level difference",
+        "a pass dump you expected is missing"
+      ],
+      "lever": [
+        "check the -O level before comparing code shape: at -O1 there is no 19.regmove, 20.sched, 21.range, 29.sched2, 11.gcse or 01.sibling, so expect scheduling and instruction-order differences",
+        "count the -da dumps only for a compile that succeeded: a rejected source leaves a partial set"
+      ],
+      "receipt": "`ee-gcc -<level> -G0 -da -c` on one loop fixture yields 9 dumps at -O0, 20 at -O1, 26 at -O2 and 26 at -Os. The six missing at -O1 are 01.sibling, 11.gcse, 19.regmove, 20.sched, 21.range and 29.sched2. The decision rules themselves do not change: at -O1 a 0.5f constant still loads from the pool, a low-word-zero double is still built with li + dsll32, and a dense six-case switch still becomes a table - only the instruction order and the register moves differ. A source that fails to compile (for example a C99 for-loop declaration under C89) leaves just two dumps, so a dump count is only meaningful for a successful compile.",
+      "falsifies": "the assumption that one pass inventory describes the compiler: at -O1 six passes do not run, which is why some project functions match only at that level",
+      "scope": "ee-gcc 3.2-ee-040921 at -O0/-O1/-O2/-Os on this machine; the inventory was counted on one loop fixture and the rule checks on four synthetic fixtures",
+      "evidence": [
+        "private:out/evidence/ee_gcc_o1_pipeline.txt"
+      ]
+    },
+    {
+      "id": "L-EE-021",
+      "title": "gp_rel needs a definition in this translation unit placed in .sdata/.sbss; 'weak' does not help, and an extern reference stays absolute at every -G",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "varasm.c",
+        "line": 0,
+        "note": "Which objects count as small data is decided in the backend plus varasm.c; no line could be read from the shipped tree, so the rule is measured. See L-EE-014 for the -G threshold itself."
+      },
+      "binary_anchor": {
+        "symbol": "mips_section_threshold",
+        "addr": "0x0823ed20",
+        "related": [
+          {
+            "symbol": "g_switch_value",
+            "addr": "0x0830d0c0"
+          }
+        ],
+        "constants": [
+          {
+            "kind": "int",
+            "value": -1,
+            "at": "0x0823ed20",
+            "means": "the 'unset' sentinel; -G or the default 8 decides the threshold"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "a global is addressed with lui %hi/%lo where the target uses the bare symbol, or the reverse",
+        "you declared an object with a small-data section attribute but the addressing did not change"
+      ],
+      "lever": [
+        "at -G0 the only way to get gp_rel is to define the object in this translation unit with section(\".sdata\") or section(\".sbss\")",
+        "weak is irrelevant to the choice: a weak object without a section attribute stays absolute",
+        "an extern declaration cannot be made small-data in any -G setting - the definition has to be in the same translation unit"
+      ],
+      "receipt": "Assembly-level test at -O2 with -G0, the default (-G8) and -G8. Definitions in this unit: a plain int and a weak int are addressed with lui %hi at -G0 and as a bare symbol at the default; the same objects with section(\".sbss\") or section(\".sdata\") are addressed as a bare symbol at -G0 as well, with or without weak. Extern-only references (no definition in the unit) are addressed with lui %hi in every setting, even when the declaration carries a section attribute. objdump -t confirms the section attribute wins for placement: section(\".sbss\") lands in .sbss and section(\".sdata\") in .sdata, while a weak object without an attribute lands in .bss.",
+      "falsifies": "the reading that a weak small-data definition is what produces gp_rel: the section attribute is the operative part, and an extern declaration cannot produce it at all",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 with -G0/-G8/default, synthetic declarations; a link is not needed to observe the addressing form",
+      "evidence": [
+        "private:out/evidence/ee_gcc_gprel_trigger.txt"
+      ]
+    },
+    {
+      "id": "L-EE-022",
+      "title": "Functions are 8-byte aligned by default; -falign-functions=4 removes the padding between small functions, and -ffunction-sections alone does not",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "varasm.c",
+        "line": 0,
+        "note": "Function alignment comes from the assembler directives the backend emits (ASM_OUTPUT_ALIGN); no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 8,
+            "at": ".p2align 3,,7",
+            "means": "the default function alignment in bytes"
+          },
+          {
+            "kind": "int",
+            "value": 4,
+            "at": ".align 2",
+            "means": "the alignment with -falign-functions=4"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "objdiff reports a size or offset mismatch while the instructions themselves agree",
+        "function symbols sit 16 bytes apart when the function is 12 bytes long"
+      ],
+      "lever": [
+        "the default function alignment is 8 bytes, so a 12-byte function is padded to 16; -falign-functions=4 aligns to 4 and packs them tightly",
+        "-ffunction-sections puts each function in its own .text.N section but does NOT remove the 8-byte alignment unless -falign-functions=4 is also given",
+        "the project builds with -O2 -falign-functions=4 -ffunction-sections, so expect each function section to be exactly the function size, 4-byte aligned"
+      ],
+      "receipt": "Four 12-byte functions in one unit at -O2 -G0. No alignment flag: the assembly carries .align 2 plus .p2align 3,,7, the symbols sit at 0x0/0x10/0x20/0x30 and .text is 0x40 bytes - 4 bytes of padding per function. With -falign-functions=4 the .p2align disappears, the symbols sit at 0x0/0xc/0x18/0x24 and .text is 0x30 - no padding. -falign-functions=8 reproduces the default. With -ffunction-sections each function lands in .text.N of 0x10 bytes, still carrying .p2align 3 inside; only the combination -falign-functions=4 -ffunction-sections yields 0x0c-byte sections, i.e. sections exactly the size of the function.",
+      "falsifies": "the assumption that -ffunction-sections alone removes inter-function padding, and the assumption that function alignment is 4 bytes by default",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0 on this machine; four synthetic one-instruction functions, so the padding effect is at its most visible",
+      "evidence": [
+        "private:out/evidence/ee_gcc_func_alignment.txt"
+      ]
+    },
+    {
+      "id": "L-EE-023",
+      "title": "At the project's flags only an 'inline' declaration is inlined: a plain static helper always keeps its call, and always_inline needs inline to work",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "cgraphunit.c",
+        "line": 0,
+        "note": "The inlining gate lives in the inliner (cgraphunit.c/integrate.c in this tree); no line was read from the shipped source, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "flag_inline_functions",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 0,
+            "at": "-O2",
+            "means": "-finline-functions is off at -O2, so plain static functions are not inlined"
+          },
+          {
+            "kind": "int",
+            "value": 1,
+            "at": "-O3",
+            "means": "-finline-functions is on at -O3"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "17.combine"
+      ],
+      "symptom": [
+        "the target has a small helper expanded inline but your candidate emits jal to it, or the reverse",
+        "a static function called exactly once is not inlined even though 'called once' inlining is expected"
+      ],
+      "lever": [
+        "at -O2 only a declaration carrying inline or __inline__ is inlined; add inline to the helper if the target has it expanded",
+        "always_inline has no effect unless the function is also declared inline; with inline it inlines even at -O0",
+        "-finline-functions or -O3 inlines plain static functions too, so check the unit's flags before respelling"
+      ],
+      "receipt": "Assembly-level test at -G0, judging by whether jal helper and a helper: label survive. Plain static: a call at -O0, -O1 and -O2, inlined at -O3 and with -O2 -finline-functions. static inline and plain inline: inlined from -O1 up, a call at -O0. static always_inline alone: a call at -O0/-O1/-O2, inlined at -O3 only. static inline always_inline: inlined even at -O0. A sweep of body sizes 1/2/4/6/8/10/12 statements with 1 and 3 call sites found no size at which a plain static function is inlined at -O2, so 'called once' inlining does not happen at the project's flags either.",
+      "falsifies": "the expectation that -O2 inlines a small static function called once, and the expectation that always_inline works on its own",
+      "scope": "ee-gcc 3.2-ee-040921 at -G0 with -O0/-O1/-O2/-O3 and -finline-functions, synthetic single-helper units",
+      "evidence": [
+        "private:out/evidence/ee_gcc_inlining.txt"
+      ]
+    },
+    {
+      "id": "L-EE-024",
+      "title": "A saved $fp is just the tenth callee-saved register; the frame directive's first operand tells you whether a real frame pointer is in use, and -fno-omit-frame-pointer adds 16 bytes",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "function.c",
+        "line": 0,
+        "note": "Frame-pointer choice and the .frame directive come from the backend prologue code; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 80,
+            "at": "fixture frame without a frame pointer",
+            "means": "eight call-crossing values, ten save slots"
+          },
+          {
+            "kind": "int",
+            "value": 96,
+            "at": "same fixture with -fno-omit-frame-pointer",
+            "means": "the same function with a real frame pointer, 16 bytes larger"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "you see sd $fp in the prologue and conclude the target uses a frame pointer",
+        "the target frame is 16 bytes larger than the candidate frame with the same callee saves"
+      ],
+      "lever": [
+        "read the first operand of the .frame directive, not the prologue: .frame $sp means no frame pointer, .frame $fp means there is one",
+        "a real frame pointer comes from alloca/VLA in the source or from -fno-omit-frame-pointer; the latter adds 16 bytes even with no dynamic stack",
+        "the compiler omits the frame pointer by default at -O2 here, so a saved $fp in a normal function is only the tenth callee-saved register (L-EE-016)"
+      ],
+      "receipt": "At -O2 -G0 on this machine. A function whose locals all take registers has no frame at all (.frame $sp,0). A function with eight call-crossing values has .frame $sp,80 and still saves $fp - the save is the tenth callee-saved slot, not a frame pointer. Adding __builtin_alloca switches the directive to .frame $fp,64 with move $fp,$sp, and a VLA does the same (.frame $fp,96). Rebuilding the eight-value function with -fno-omit-frame-pointer switches it to .frame $fp,96, i.e. 16 bytes larger (vars goes from 0 to 16), while -fomit-frame-pointer reproduces the default exactly, so the default is to omit the frame pointer. Level qualifier: at -O0 the frame pointer is used (the prologue does move $fp,$sp), so the omit-by-default statement is an -O2/-Os fact.",
+      "falsifies": "the reading that a saved $fp in the prologue means the function uses a frame pointer",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0 on this machine; synthetic functions, including one with __builtin_alloca and one with a VLA",
+      "evidence": [
+        "private:out/evidence/ee_gcc_frame_pointer.txt"
+      ]
+    },
+    {
+      "id": "L-EE-025",
+      "title": "Loops become countdown loops at -O2/-Os/-O3 (at -O1 they keep an upward slt comparison) and are not unrolled at any of those levels",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "loop.c",
+        "line": 0,
+        "note": "The countdown transformation comes from the loop/strength-reduction passes; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 8,
+            "at": "instructions for a constant-trip loop",
+            "means": "the same count at N=4, 8 and 20 - the loop stays rolled"
+          },
+          {
+            "kind": "int",
+            "value": 12,
+            "at": "instructions with -O2 -funroll-loops",
+            "means": "unrolling is what changes the size"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "12.loop"
+      ],
+      "symptom": [
+        "the target loop body is repeated but yours is rolled, or the reverse",
+        "your loop compares an induction variable upward while the target counts a register down"
+      ],
+      "lever": [
+        "expect a countdown, not an upward compare: a constant-trip for loop becomes li $r,N-1 then addu $r,$r,-1 then bgez, and a variable-trip loop becomes a blez guard then addu $r,$r,-1 then bne $r,$0",
+        "do not unroll by hand to imitate a repeated body before checking for -funroll-loops: -O2 and -O3 here do not unroll, and -O2 -funroll-loops does"
+      ],
+      "receipt": "At -O2 -G0 on this machine. for(i=0;i<N;i++) s += a*i; compiles to move/move/li $15,N-1 then a three-instruction body with addu $15,$15,-1 and bgez $15,$L6, eight instructions in total for N=4, 8 and 20 - only the immediate changes, so the loop stays rolled and counts down. for(i=0;i<n;i++) compiles to a blez guard, addu $5,$5,-1 and bne $5,$0 - also a countdown, with a runtime counter. Instruction counts for the constant-trip case: 9 at -O1, 8 at -O2, 8 at -O3 and 12 with -funroll-loops, so neither -O2 nor -O3 unrolls. The countdown form is the -O2/-Os/-O3 form, not a universal one: at -O1 the same loop keeps an upward induction with slt and a branch (addu $14,$14,1 / slt $15,$14,8 / bnel) and the multiply stays inside the loop, so 'is the loop a countdown?' is also a read on the optimisation level. -Os behaves like -O2 here.",
+      "falsifies": "the expectation that -O3 unrolls loops, and the expectation that a for loop over a constant bound keeps an upward comparison",
+      "scope": "ee-gcc 3.2-ee-040921 at -O1/-O2/-Os/-O3 with -G0 for the loop shapes, and -O2 -G0 for the unrolling comparison; synthetic single-loop functions",
+      "evidence": [
+        "private:out/evidence/ee_gcc_loops.txt"
+      ]
+    },
+    {
+      "id": "L-EE-026",
+      "title": "The constant pool is per function: entries are emitted in first-use order, deduplicated inside a function but never across functions",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "varasm.c",
+        "line": 0,
+        "note": "Constant-pool emission is driven from output_constant_pool in varasm.c; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 1056964608,
+            "at": ".word for 0.5f",
+            "means": "two functions returning 0.5f produce two entries with this value"
+          },
+          {
+            "kind": "int",
+            "value": 1075838976,
+            "at": ".word for 2.5f",
+            "means": "the first-used constant takes $LC0"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "objdiff reports a data offset difference while the code matches",
+        "the target shares one constant between two functions and your candidate has one per function, or the reverse"
+      ],
+      "lever": [
+        "expect one .rdata block per function with its own labels: the same value used in two functions is emitted twice, so a shared entry in the target points at a source-level difference",
+        "within one function a repeated constant is one entry",
+        "entries follow first-use order, and a double inserts .align 3 among 4-byte entries, so any reordering shifts the offsets"
+      ],
+      "receipt": "At -O2 -G0 on this machine. Two functions each returning 0.5f produce two separate .rdata blocks with .align 2 and labels $LC0 and $LC1, both .word 1056964608 - so the same value is not deduplicated across functions. Inside one function the same constant used three times yields a single entry. A function written as if(k) return 2.5f; return 0.5f; numbers its entries $LC0 = 1075838976 (2.5f) and $LC1 = 1056964608 (0.5f), i.e. first-use order rather than sorted by value. A double entry is preceded by .align 3 where float entries use .align 2. Level qualifier: at -O0 the same constant inside one function is emitted twice and can even be materialised inline with li, so deduplication is an -O2/-Os fact.",
+      "falsifies": "the assumption that the compiler shares identical constants across the whole translation unit, and that the pool is sorted by value",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0 and -O1 on this machine; synthetic units mixing floats, a double and string literals",
+      "evidence": [
+        "private:out/evidence/ee_gcc_const_pool.txt"
+      ]
+    },
+    {
+      "id": "L-EE-027",
+      "title": "String literals are merged across the whole translation unit at every optimisation level, and the assembly's .rdata is the object's .rodata",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "varasm.c",
+        "line": 0,
+        "note": "String pooling runs through const_str_htab in varasm.c; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 1,
+            "at": ".ascii \"hello\" occurrences with two callers",
+            "means": "strings are shared, not duplicated"
+          },
+          {
+            "kind": "string",
+            "value": ".rodata",
+            "at": "objdump -h",
+            "means": "the section the assembly calls .rdata"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "you expected the constant-pool behaviour (per function) to apply to strings as well",
+        "you are grepping an object or a dump for a .rdata section and cannot find it"
+      ],
+      "lever": [
+        "strings are pooled per translation unit and merged even at -O0, unlike float constants which are per function (L-EE-026)",
+        "look for the read-only data in .rodata in the object; .rdata is only the assembly directive",
+        "expect no suffix sharing: 'world' and 'hello world' are two separate entries"
+      ],
+      "receipt": "At -G0. Two functions each returning \"hello\" produce exactly one .ascii \"hello\\000\" at -O0, -O1, -O2 and -Os, and the object's relocations show both functions referencing the same place, so strings are merged across the translation unit regardless of optimisation; the float constants in the same situation are NOT merged (L-EE-026). The assembly emits .rdata plus .align 3 with an explicit \\000 terminator, while objdump -h reports the section as .rodata (size 0x28, alignment 2**3) - so .rdata is the assembler's name, not a section you will find in the object. \"world\" and \"hello world\" are emitted as two independent entries, so there is no suffix sharing.",
+      "falsifies": "generalising the per-function constant-pool rule to string literals, and expecting a .rdata section in the object",
+      "scope": "ee-gcc 3.2-ee-040921 at -G0 with -O0/-O1/-O2/-Os, synthetic units with repeated and overlapping strings",
+      "evidence": [
+        "private:out/evidence/ee_gcc_strings.txt"
+      ]
+    },
+    {
+      "id": "L-EE-028",
+      "title": "Eight integer arguments travel in $4-$11 and eight float arguments in $f12-$f19; a long long or double takes one 64-bit GPR; the rest go on the stack in 8-byte slots",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips.c",
+        "line": 0,
+        "note": "The EE EABI argument layout is implemented in the MIPS backend; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 8,
+            "at": "register arguments $4-$11",
+            "means": "the first eight arguments use registers"
+          },
+          {
+            "kind": "int",
+            "value": 8,
+            "at": "stack slot stride",
+            "means": "each argument from the ninth occupies an 8-byte slot"
+          },
+          {
+            "kind": "int",
+            "value": 16,
+            "at": "args= rounding",
+            "means": "the outgoing area is rounded up to 16 bytes"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "22.lreg"
+      ],
+      "symptom": [
+        "the target stores an argument at 8($sp) where your candidate uses 4($sp)",
+        "your candidate passes a ninth argument differently, or the args field does not match"
+      ],
+      "lever": [
+        "eight arguments go in $4-$11; from the ninth they are stored at 0($sp), 8($sp), 16($sp) ... in source order",
+        "read the maximum call shape out of args=: args=16 means nine or ten arguments, args=32 means eleven or twelve",
+        "the stack slots are 8 bytes even for ints, so a 4-byte stride is wrong"
+      ],
+      "receipt": "At -O2 -G0 on this machine, sixteen callers passing one to sixteen int arguments. Arguments 1-8 are set up in $4-$11 (li $5,1 ... li $11,7 in the sixteen-argument case) and none of them touches the stack. From the ninth, each argument is stored at an 8-byte stride: 0($sp), 8($sp), 16($sp) and so on. The frame's args field is that area rounded up to 16 bytes - 9 and 10 arguments give args=16, 11/12 give 32, 13/14 give 48 and 15/16 give 64, i.e. args = round16(8 * max(0, n - 8)). The whole frame is round16(vars + 8*regs + args), which holds for all sixteen rows. The floating-point side was measured too and uses a separate budget: up to eight float arguments travel in $f12-$f19, so a call with eight ints and four floats fills $4-$11 and $f12-$f15 at the same time. A long long or double occupies a single 64-bit GPR from the same $4-$11 sequence rather than a register pair: long long arguments are built with dli into $4 and $5, and a callee taking long long z reads it back with daddiu a0,a0,1.",
+      "falsifies": "the assumption that the outgoing stack arguments are 4-byte slots, and that the args field is an exact multiple of 4 rather than of 16",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0, synthetic callers with one to sixteen integer arguments, up to ten floats, mixed int/float calls and long long/double arguments; varargs and structure arguments were not measured",
+      "evidence": [
+        "private:out/evidence/ee_gcc_args_abi.txt"
+      ]
+    },
+    {
+      "id": "L-EE-029",
+      "title": "Single precision is hardware COP1, but every double-precision operation is a libgcc soft-float call (dpadd, dpmul, dpcmp, ...) and -mhard-float does not change that",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips.h",
+        "line": 0,
+        "note": "Whether a mode is hardware or libgcc is decided by the port's TARGET_ macros and its libgcc; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "dpadd",
+            "at": "R_MIPS_26 relocation",
+            "means": "double addition is an out-of-line call"
+          },
+          {
+            "kind": "string",
+            "value": "add.s",
+            "at": "float addition",
+            "means": "single precision is a COP1 instruction"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "you are looking for add.d/mul.d in a target that does double arithmetic",
+        "your candidate emits jal dpadd where the target uses add.s, or the reverse"
+      ],
+      "lever": [
+        "double arithmetic, comparison and conversion are libgcc calls: dpadd/dpsub/dpmul/dpdiv, dpcmp, dptoli/dptoul, dptofp, litodp, fptodp - so a call site here means the source is using double",
+        "float arithmetic is COP1: add.s/mul.s plus mtc1/cvt.s.w - so add.s in the target means single precision, and a 2.0 literal where the source wanted 2.0f is a common cause of the mismatch"
+      ],
+      "receipt": "At -O2 -G0 on this machine. A function of sfloat form a+b compiles to add.s, and float conversion to mtc1 plus cvt.s.w. Every double operation is an out-of-line call instead: a+b to dpadd, a-b to dpsub, a*b to dpmul, a/b to dpdiv, a<b to dpcmp, (int)a to dptoli, (unsigned)a to dptoul, (double)a to litodp, (float)a to dptofp and (double) a float to fptodp - the relocations name exactly these routines. Adding -mhard-float does not change any of it (dpadd remains), while -msoft-float removes the hardware single-precision instructions as well. -O3 behaves like -O2. The default is therefore hardware single precision plus software double precision.",
+      "falsifies": "the expectation that a MIPS COP1 double instruction (add.d) can appear in this build, and that -mhard-float enables hardware doubles",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0 plus -mhard-float/-msoft-float/-O3, synthetic one-operation functions covering add/sub/mul/div/compare/conversions",
+      "evidence": [
+        "private:out/evidence/ee_gcc_double_softfloat.txt"
+      ]
+    },
+    {
+      "id": "L-EE-030",
+      "title": "An aggregate of 8 bytes or less is passed by value in a register, a larger one by invisible reference, and a returned aggregate uses a hidden pointer in $4 that shifts the other arguments",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips.c",
+        "line": 0,
+        "note": "The aggregate part of the EE EABI lives in the MIPS backend; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 8,
+            "at": "aggregate size boundary",
+            "means": "8 bytes and below go by value, 9 and above by reference"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "22.lreg"
+      ],
+      "symptom": [
+        "the target's prologue loads a field from 0($4) but your candidate stores $4 to the stack first, or the reverse",
+        "a function that returns a structure seems to take one more argument than the source declares"
+      ],
+      "lever": [
+        "<= 8-byte aggregates are passed by value in a register; larger ones arrive as a pointer in $4, so a field read at 0($4) means 'by reference' and an sd $4,0($sp) followed by stack reads means 'by value'",
+        "a function returning an aggregate receives a hidden return pointer in $4, which shifts every other argument one slot: int x in 'S8 make8(int x)' is read from $5, and the pointer comes back in $2"
+      ],
+      "receipt": "At -O2 -G0 on this machine, reading the callee side. struct{int a;} (4 bytes) arrives in $4 and is used directly (move v0,a0); struct{char c[8];} and struct{short a,b,c,d;} (8 bytes) arrive in $4 and are stored to the stack before their fields are read (sd a0,0(sp) then lb/lh from (sp)); struct{int a,b,c;} (12), struct{int a,b,c,d;} (16) and struct{char c[9];} (9) are dereferenced instead (lw t7,0(a0), ldl t4,7(a0)), so they arrive as pointers. The boundary is therefore 8 bytes inclusive. For returns, S8 make8(int x) writes through a0 (sw a1,0(a0)), reads x from a1 and returns a0 in v0, and its caller moves the argument into a1 and the hidden slot into a0 before the call.",
+      "falsifies": "the assumption that a small structure is passed in a register pair, and that a structure-returning function's first argument is in $4",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0, synthetic functions with 4/8/9/12/16/32-byte aggregates, on the callee and the caller side; unions, bitfields and varargs were not measured",
+      "evidence": [
+        "private:out/evidence/ee_gcc_struct_abi.txt"
+      ]
+    },
+    {
+      "id": "L-EE-031",
+      "title": "A variadic function saves the argument registers after its last named parameter into 8-byte slots and calls __builtin_va_start; there is no floating-point save area",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips.c",
+        "line": 0,
+        "note": "The varargs save area is set up by the backend's function prologue; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "__builtin_va_start",
+            "at": "R_MIPS_26 relocation",
+            "means": "every variadic function calls this helper"
+          },
+          {
+            "kind": "int",
+            "value": 7,
+            "at": "saved argument registers for one named parameter",
+            "means": "8 minus the named parameter count"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "22.lreg"
+      ],
+      "symptom": [
+        "a prologue stores a1 through t3 to consecutive stack slots",
+        "you are looking for an sdc1-based floating-point save area in a variadic function"
+      ],
+      "lever": [
+        "a cluster of sd from a1..t3 into 8-byte slots means the function is variadic, and the count is 8 minus the number of named parameters",
+        "jal __builtin_va_start is the hardest evidence: the call appears as a relocation in the object",
+        "there is no floating-point save area - a variadic float or double is promoted to double and travels in the integer register sequence, so compare variadic call sites against $4-$11 and not against $f12"
+      ],
+      "receipt": "At -O2 -G0 on this machine. v1(const char *a, ...) saves a1,a2,a3,t0,t1,t2,t3 - seven registers, 8 bytes each - in an 80-byte frame; v2(const char *a, int b, ...) saves six (a2..t3) in a 64-byte frame; v5 with five named parameters saves three (t1,t2,t3) in a 48-byte frame; so the count is 8 minus the named parameter count. Every one of them calls __builtin_va_start (the relocation names it). A variadic function returning a double saves only the integer registers - there is no sdc1 or swc1 save area - and its caller passes 1.5f or 1.5 as a double in a1 (li a1,2047 then dsll32 a1,a1,0x13), i.e. in the integer register sequence rather than in an FP register.",
+      "falsifies": "the expectation that a variadic function has a floating-point register save area, and that its floating-point arguments travel in $f12",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0, synthetic variadic functions with one, two and five named parameters plus a variadic double and float call; the va_list layout itself was not decoded",
+      "evidence": [
+        "private:out/evidence/ee_gcc_varargs.txt"
+      ]
+    },
+    {
+      "id": "L-EE-032",
+      "title": "32-bit division is a hardware div/divu with a beqzl+break zero check, only power-of-two constant divisors become shifts, and every 64-bit division, modulo and multiply is a libgcc call",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "config/mips/mips.md",
+        "line": 0,
+        "note": "The division patterns and the libgcc fallbacks live in the MIPS backend; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "__divdi3",
+            "at": "R_MIPS_26 relocation",
+            "means": "64-bit division is out of line"
+          },
+          {
+            "kind": "string",
+            "value": "__muldi3",
+            "at": "R_MIPS_26 relocation",
+            "means": "even 64-bit multiplication is out of line"
+          },
+          {
+            "kind": "string",
+            "value": "break",
+            "at": "after beqzl",
+            "means": "the divide-by-zero trap"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "17.combine"
+      ],
+      "symptom": [
+        "you are looking for a magic-number multiply for a constant division",
+        "a division in the target does not have the beqzl+break pair, or a 64-bit operation is inline"
+      ],
+      "lever": [
+        "a runtime division is div/divu followed by beqzl + break (the zero check) and mflo (or mfhi for a remainder) - the three instructions belong to one operation",
+        "only a power-of-two constant divisor becomes a shift with sign correction (slti/movn/sra for signed, srl for unsigned); a divisor like 3 stays li + div, so li+div in the target means the source divided by a non-power-of-two constant",
+        "every 64-bit division, modulo and multiplication is a libgcc call: __divdi3, __moddi3, __udivdi3, __umoddi3 and __muldi3 - so a call to one of them means the source used long long, just as dpadd means double"
+      ],
+      "receipt": "At -O2 -G0 on this machine. int/int compiles to div, beql $r,$0 (printed beqzl by objdump), break 7, mflo; unsigned to divu and the same check; a%b to div/divu plus mfhi; and 32-bit a*b to mult + mflo. Constant divisors: a/8 (signed) becomes slti + movn + sra with no div, unsigned a/8 becomes srl, signed a%8 becomes slti + movz + sra + sll + subu and unsigned a%8 becomes andi - but a/3 and a/-7 stay li + div, so there is no reciprocal-multiplication transformation for MIPS in this build. Everything 64-bit is out of line: long long / and % call __divdi3 and __moddi3, unsigned long long call __udivdi3 and __umoddi3, and long long * long long calls __muldi3 even though the 32-bit multiply is the hardware mult instruction. Two naming details: the compiler's own assembly writes the zero check as beql (objdump prints it as beqzl, the same instruction), and the constant-divisor case carries break 7 but no branch at all, because the divisor is known to be non-zero - so the branch is what marks a divisor the compiler cannot prove non-zero.",
+      "falsifies": "the expectation that a constant division becomes a multiply by a magic number, and that 64-bit multiplication is inline",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0, synthetic one-operation functions covering signed/unsigned division, modulo, multiplications and constant divisors (2, 3, 8 and -7)",
+      "evidence": [
+        "private:out/evidence/ee_gcc_divmod.txt"
+      ]
+    },
+    {
+      "id": "L-EE-033",
+      "title": "The data model has 4-byte pointers but an 8-byte long: long is 64-bit by default and aligns to 8, and long double is 8 bytes",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips.h",
+        "line": 0,
+        "note": "The type sizes come from the port's SIZE_TYPE/LONG_TYPE_SIZE macros; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 8,
+            "at": "sizeof(long)",
+            "means": "long is 64-bit by default"
+          },
+          {
+            "kind": "int",
+            "value": 4,
+            "at": "sizeof(void*)",
+            "means": "pointers stay 32-bit"
+          },
+          {
+            "kind": "int",
+            "value": 8,
+            "at": "sizeof(long double)",
+            "means": "long double is the same as double"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "a field access in the target uses sd/ld where your reconstruction assumes a 4-byte field",
+        "a struct in your reconstruction is smaller than the target's frame or data usage implies"
+      ],
+      "lever": [
+        "sizeof(long) is 8 on this target - the default is -mlong64, and only -mlong32 makes it 4 - so a long field is loaded and stored with ld/sd and a 64-bit operation on a long goes to libgcc",
+        "pointers are still 4 bytes and long double is 8, i.e. the same as double",
+        "alignment equals the type's size, so an 8-byte member is 8-aligned: struct{char;double} and struct{char;long} are both 16 bytes with the second member at offset 8"
+      ],
+      "receipt": "At -O2 -G0 on this machine, reading the immediates the compiler emits for sizeof: char 1, short 2, int 4, long 8, long long 8, void* 4, float 4, double 8, long double 8. With -mlong32 the same program reports long 4, and with -mlong64 it reports 8, so the default is the 64-bit long. Struct offsets read out of the generated accesses: {char,int} has b at 4; {char,short,int} has b at 2 and c at 4; {char,double}, {char,long long} and {char,long} all place the second member at 8 and are 16 bytes; {int,long long} puts q at 8; {char,long,int,void*} is 24 bytes with l at 8, i at 16 and p at 20.",
+      "falsifies": "the assumption that a 32-bit-pointer target has a 32-bit long, which is the usual ILP32 model",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0 (plus -mlong32/-mlong64 for the switch), synthetic types and structs; bitfields and packed attributes were not measured",
+      "evidence": [
+        "private:out/evidence/ee_gcc_data_model.txt"
+      ]
+    },
+    {
+      "id": "L-EE-034",
+      "title": "The most common optimisation level in this project is -Os, and every measured rule holds there; -Os also implies 4-byte function alignment",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "toplev.c",
+        "line": 3316,
+        "note": "The level decides the pass pipeline (see L-EE-020); which rules survive -Os was measured rather than read."
+      },
+      "binary_anchor": {
+        "symbol": "global_alloc",
+        "addr": "0x081aa2c4",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 687,
+            "at": "config/source_flags.tsv",
+            "means": "files built with -Os in this project - the largest group"
+          },
+          {
+            "kind": "int",
+            "value": 4,
+            "at": "-Os function alignment",
+            "means": "-Os aligns functions to 4 bytes, not 8"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "you assume -O2 behaviour for a translation unit that is actually built with -Os",
+        "function padding differs from what -O2 would produce"
+      ],
+      "lever": [
+        "run the handbook's fixtures at the unit's real level: every rule asserted here still passes with -Os, so -O2 reasoning carries over",
+        "remember that -Os aligns functions to 4 bytes where -O2 uses 8 - the project's -falign-functions=4 hides this, but a unit built without it will not match",
+        "two rules are level-dependent in the other direction: -O3 inlines plain static functions (L-EE-023) and -O1 keeps an upward loop comparison instead of a countdown (L-EE-025)"
+      ],
+      "receipt": "Counting config/source_flags.tsv, this project builds 687 files with -Os, 542 with -O1, 264 with -O2 and 98 with -O3 - so -Os is the most common level. Running tools/compiler/ee-gcc-observe.py --selftest --flags='-Os -G0' passes all 34 fixtures, i.e. the frame rule (80 bytes with regs 10 for the eight-value fixture), the switch threshold (4 cases chain, 5 and 6 table), the inlining gate (a plain static helper keeps its call), the float/double constant forms and the division idioms all behave as documented at -Os. The same run at -O1 fails one fixture and -O3 fails one: at -O1 the constant-trip loop keeps an upward induction (addu $14,$14,1 / slt $15,$14,8 / bnel) instead of a countdown, and at -O3 the plain static helper is inlined - both are what L-EE-025 and L-EE-023 already say. Separately, -Os emits only .align 2 between functions where -O2 emits .p2align 3,,7.",
+      "falsifies": "the assumption that -O2 is the reference level for this project, and that -Os behaves like -O2 for function alignment",
+      "scope": "ee-gcc 3.2-ee-040921 at -O1/-O2/-Os/-O3 with -G0; the fixture suite covers the laws it asserts, not every rule in the handbook",
+      "evidence": [
+        "private:out/evidence/ee_gcc_os_and_levels.txt"
+      ]
+    },
+    {
+      "id": "L-EE-035",
+      "title": "Bitfields are allocated LSB-first in a container the size of the declared type and never straddle a 32-bit boundary; reads are narrowed and sign-extended, writes are masked read-modify-writes",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "stor-layout.c",
+        "line": 0,
+        "note": "Bitfield layout is decided by stor-layout.c plus the backend's bitfield access patterns; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": -65536,
+            "at": "li before and",
+            "means": "a 64-bit mask is built for a bitfield write"
+          },
+          {
+            "kind": "int",
+            "value": 4,
+            "at": "sizeof(struct{unsigned a:1;b:3;c:12;d:16;})",
+            "means": "four bitfields totalling 32 bits take one word"
+          },
+          {
+            "kind": "int",
+            "value": 8,
+            "at": "sizeof(struct{unsigned a:20;b:20;})",
+            "means": "40 bits cannot fit one word, so a second word is used"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "a field read uses lh or lbu instead of lw",
+        "a write contains li with a negative value followed by and/or"
+      ],
+      "lever": [
+        "bitfields fill their container from the least significant bit upward and never straddle a 32-bit boundary, so {unsigned a:20; unsigned b:20;} is 8 bytes with b in the second word",
+        "a read is narrowed to the smallest aligned access: a 16-bit field on a 16-bit boundary is a bare lhu, an unsigned field otherwise is lw plus srl plus andi, and a signed field is a sign-extending load (lh/lbu) plus sra",
+        "a write is a masked read-modify-write: li with a 64-bit negative mask, and/or, then sw - the mask immediate is the giveaway"
+      ],
+      "receipt": "At -O2 -G0 on this machine. Layout and sizes: struct{unsigned a:1;b:3;c:12;d:16;} is 4 bytes with the fields at bits 0, 1, 4 and 16; struct{int a:1;b:3;c:12;d:16;} is also 4; struct{unsigned char a:3;b:5;} is 1 byte; struct{unsigned short a:4;b:12;} is 2; and struct{unsigned a:20;b:20;} is 8, with the second field starting in the second word rather than straddling. Reads: an unsigned 3-bit field at bit 1 is lw + srl 1 + andi 0x7; an unsigned 16-bit field at bit 16 is a bare lhu $2,2($4); a signed 12-bit field at bit 4 is lh $2,0($4) + sra 4; a 5-bit field in an unsigned char container is lbu + srl 3. Writes: p->c = v becomes lw, li $15,-65536 (a 64-bit mask), andi $5,$5,0xfff, ori $15,$15,0xf, and, sll $5,$5,4, or, sw.",
+      "falsifies": "the assumption that every bitfield read is a masked lw (aligned fields use a narrower load) and that a write is a shift-and-insert",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0, synthetic structures with 1- to 20-bit fields in char, short and int containers; packed attributes and bitfields wider than their container were not measured",
+      "evidence": [
+        "private:out/evidence/ee_gcc_bitfields.txt"
+      ]
+    },
+    {
+      "id": "L-EE-036",
+      "title": "Tail calls are jumps: -foptimize-sibling-calls is on at -O2/-Os/-O3, so a call in tail position becomes j target and the function may contain no jal at all - at -O1 it stays jal plus j $31",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "calls.c",
+        "line": 0,
+        "note": "Sibling-call expansion happens in calls.c plus the backend's sibcall patterns; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "jal",
+            "at": "-O1 tail call",
+            "means": "at -O1 a tail call is still jal plus j $31"
+          },
+          {
+            "kind": "string",
+            "value": "j",
+            "at": "-O2 tail call",
+            "means": "at -O2 the same call is a bare jump"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "the target has no jal where your reconstruction calls a function",
+        "your reconstruction has jal plus j $31 where the target jumps straight out"
+      ],
+      "lever": [
+        "at -O2/-Os/-O3 a call in tail position is j target, so a function can end in a jump to an external symbol with no jal and no jr $31 at all",
+        "at -O0/-O1 sibling calls are not optimised: the same source keeps jal target plus j $31 - and 542 files in this project are built at -O1",
+        "the flag is the switch: -O1 -foptimize-sibling-calls turns the jumps on and -O2 -fno-optimize-sibling-calls turns them off"
+      ],
+      "receipt": "At -G0 on this machine. int t1(int a){return g(a);} compiles to j g at -O2 and -Os, and to jal g followed by j $31 at -O0 and -O1. Adding -foptimize-sibling-calls to -O1 produces j g, and adding -fno-optimize-sibling-calls to -O2 restores jal plus j $31, so the transformation is exactly that flag and it is not enabled below -O2. The same jump appears in every tail position tested: with a local variable (int x=a+1; return g(x)), in both branches of an if/else returning from different calls, for a void call, and for return g(*p).",
+      "falsifies": "the expectation that a function's calls all appear as jal, and that the level does not change call shape",
+      "scope": "ee-gcc 3.2-ee-040921 at -O0/-O1/-O2/-Os with -G0 plus the two sibling-call flags, synthetic one-call functions",
+      "evidence": [
+        "private:out/evidence/ee_gcc_tail_calls.txt"
+      ]
+    },
+    {
+      "id": "L-EE-037",
+      "title": "volatile is visible as unmerged accesses: the same address is loaded once without it and once per mention with it, and a store stops being sunk into the return jump's delay slot",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "expr.c",
+        "line": 0,
+        "note": "Volatility is honoured throughout the RTL passes rather than at one site; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 2,
+            "at": "addu ...,2 for two increments",
+            "means": "the two non-volatile read-modify-writes merged"
+          },
+          {
+            "kind": "int",
+            "value": 1,
+            "at": "addu ...,1 twice",
+            "means": "the volatile form keeps both"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "17.combine"
+      ],
+      "symptom": [
+        "the target loads the same address twice where your reconstruction loads it once",
+        "the target stores to a pointer before the final j $31 where your build puts the store in its delay slot"
+      ],
+      "lever": [
+        "without volatile the compiler merges repeated accesses: *p = *p + 1 twice becomes one lw, addu ...,2 and one sw; with volatile each mention is its own lw/addu/sw",
+        "without volatile a store can be sunk into the delay slot of the following j $31; with volatile the sw stays before the jump",
+        "two loads from the same address in the target therefore mean the source read it twice through a volatile pointer, or that a call sits between the reads"
+      ],
+      "receipt": "At -O2 and -Os on this machine, with the same shapes at both levels. void f(int *p){*p = *p + 1; *p = *p + 1;} becomes one lw, addu $15,$15,2 and one sw, while the volatile version becomes two lw/addu $15,$15,1/sw triples. int g(void){int a=*p; int b=*p; return a+b;} loads once without volatile and twice with it. For a global, gi = gi + 1 emits lw, addu 1, j $31, sw (the store is in the jump's delay slot) while the volatile version emits lw, addu 1, sw, j $31.",
+      "falsifies": "the assumption that repeated reads are always separate instructions (the compiler merges them) and that volatile only reorders accesses rather than changing how many there are",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 and -Os with -G0, synthetic functions reading and writing the same address twice; atomic builtins and volatile bitfields were not measured",
+      "evidence": [
+        "private:out/evidence/ee_gcc_volatile.txt"
+      ]
+    },
+    {
+      "id": "L-EE-038",
+      "title": "An aggregate copy is unrolled into lw/sw pairs up to 32 bytes and becomes an inline ldl/ldr-sdl/sdr loop above that - memcpy is never called",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "expr.c",
+        "line": 0,
+        "note": "Aggregate copies go through store/load expansion (movstr patterns) in expr.c plus the backend; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 32,
+            "at": "largest fully unrolled copy",
+            "means": "eight words are unrolled; nine words become a loop"
+          },
+          {
+            "kind": "int",
+            "value": 16,
+            "at": "bytes per loop iteration",
+            "means": "ldl/ldr-sdl/sdr move 16 bytes per trip"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "17.combine"
+      ],
+      "symptom": [
+        "the target has an ldl/ldr-sdl/sdr loop where your reconstruction calls memcpy",
+        "the target has a run of lw/sw pairs where your reconstruction calls memcpy for a small structure"
+      ],
+      "lever": [
+        "a copy of 32 bytes or less is fully unrolled into lw/sw pairs, one pair per word",
+        "a copy of more than 32 bytes becomes an inline loop moving 16 bytes per iteration with the unaligned ldl/ldr and sdl/sdr pairs - not a memcpy call, at any size tested up to 256 bytes",
+        "do not confuse ld/sd (aligned 64-bit, used for long and double) with ldl/ldr/sdl/sdr (unaligned, used by these copy loops)"
+      ],
+      "receipt": "At -O2 -G0 on this machine, with void f(struct S *d, struct S *s){*d = *s;} for structures of 4 to 256 bytes. Copies of 4, 8, 12, 16, 20, 24, 28 and 32 bytes are unrolled into lw/sw pairs (2 instructions per word plus the return). At 36 bytes and above the compiler emits an inline loop: ldl/ldr pairs to load 16 bytes, sdl/sdr to store them, addiu to advance both pointers and a bne to close the loop - 14 to 20 instructions regardless of total size. No memcpy or memmove relocation appears at any size tested.",
+      "falsifies": "the expectation that a large structure assignment becomes a memcpy call, and that copies use the aligned ld/sd pairs",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0, structures of 4 to 256 bytes made of int fields; structs with padding, arrays of structs and memcpy with a known constant size were not measured separately",
+      "evidence": [
+        "private:out/evidence/ee_gcc_struct_copy.txt"
+      ]
+    },
+    {
+      "id": "L-EE-039",
+      "title": "An indirect call is jalr $reg with the target in an ordinary register, and it is never turned into a tail jump - even in tail position it keeps the call plus j $31",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "config/mips/mips.md",
+        "line": 0,
+        "note": "The indirect-call pattern is in the MIPS backend; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "jalr",
+            "at": "object disassembly",
+            "means": "indirect calls; the assembly prints jal $31,$reg"
+          },
+          {
+            "kind": "string",
+            "value": "jal $31,$reg",
+            "at": "assembly",
+            "means": "the same instruction as the compiler writes it"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "the target calls through a register where your reconstruction calls a named function",
+        "the target has jalr plus j $31 where the direct equivalent would be a bare jump"
+      ],
+      "lever": [
+        "an indirect call is jalr $reg (the assembly writes jal $31,$reg) with the target in an allocation-dependent general register - not $25 or $t9, so do not look for a fixed register",
+        "sibling-call optimisation applies only to direct calls: a function pointer called in tail position still saves $31, calls, restores $31 and returns with j $31, while the direct equivalent becomes a bare j target (L-EE-036)",
+        "the same shape appears at -O1, -O2 and -Os, so an indirect call tells you nothing about the level"
+      ],
+      "receipt": "At -O2, -Os and -O1 with -G0, all three levels identical. int c1(int a){return gfp(a);} loads the global function pointer (lw $2,%lo(gfp)($15)) and calls jalr $2; a call through a structure field loads it from the struct, a function-pointer parameter is moved into $2 first, and a void pointer call uses jalr $4 - so the register is whatever the allocator picks. The object disassembles the instruction as jalr while the assembly writes it as jal $31,$2. In tail position the contrast with a direct call is complete: int d(int a){return g(a);} becomes a bare j g with no jal, while int i(int a){return gp(a);} keeps lw, jal $31,$2, ld $31 and j $31.",
+      "falsifies": "the expectation that an indirect tail call becomes a jump like a direct one (sibling calls only cover direct calls), and that an indirect call target travels in $25/t9",
+      "scope": "ee-gcc 3.2-ee-040921 at -O1/-O2/-Os with -G0, synthetic function-pointer calls through a global, a struct field and a parameter; calls through arrays of pointers and varargs callees were not measured",
+      "evidence": [
+        "private:out/evidence/ee_gcc_indirect_calls.txt"
+      ]
+    },
+    {
+      "id": "L-EE-040",
+      "title": "Comparisons used as values are materialised (== is xor plus sltu, <= is an inverted slt plus xori) and comparisons used as conditions either branch or become a branchless select with movn/movz; && is branchless and || is not",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "config/mips/mips.md",
+        "line": 0,
+        "note": "These are the backend's comparison and conditional-move patterns; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 1,
+            "at": "sltu $r,$r,1",
+            "means": "equality is materialised as less-than-one"
+          },
+          {
+            "kind": "int",
+            "value": 1,
+            "at": "xori $r,$r,1",
+            "means": "<= is an inverted, operand-swapped <"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "08.null",
+        "17.combine"
+      ],
+      "symptom": [
+        "you expect beq/bne for == or != and find xor plus sltu",
+        "your reconstruction branches where the target has movz, or the reverse"
+      ],
+      "lever": [
+        "a comparison whose result is used as a value is materialised: a==b is xor $r,$a,$b plus sltu $r,$r,1, a!=b is the same xor plus sltu $r,$0,$r, a==0 is sltu $r,$a,1 and a<b is slt (sltu when unsigned)",
+        "a<=b is not one instruction: it is sltu/slt with the operands swapped (b<a) and then xori $r,$r,0x1",
+        "a comparison used as a condition branches on the operands instead (bne/beq), so a bare bne in the target means the source compared in an if/while",
+        "the two logical operators are not symmetric: a&&b is branchless (sltu plus movz) while a||b uses branches, and min/max use movz rather than branches",
+        "when both arms of an if are cheap values the compiler selects branchlessly with movn/movz, so movn/movz does not by itself mean the source used a ternary"
+      ],
+      "receipt": "At -O2 and -Os on this machine, identical row for row. Materialised results: a==b gives xor $4,$4,$5 then sltu $4,$4,1; a!=b gives the same xor then sltu $4,$0,$4; a==0 gives sltu $4,$4,1; a!=0 gives sltu $4,$0,$4; !a gives sltu $4,$4,1; a<b gives slt (sltu unsigned); a>b gives slt with the operands swapped; a<=b gives slt $5,$5,$4 then xori $5,$5,0x1; a&&b gives sltu $5,$0,$5 then movz $5,$0,$4; a||b is branchy (bne, beq, li $2,1); a<b?a:b gives slt plus movz. As a condition the same comparison branches instead: if(a==b) emits bne $4,$5,$L with no xor or sltu, and a loop test if(i==3) emits xori $13,$12,0x3 with movz. The condition half has two outcomes, not one: with a call in one arm (if (a==b) return g();) the compiler branches (bne $4,$5,$L), but when both arms are simple values (if (a==b) return 1; return 2;) it converts the if into a branchless select - xor $4,$4,$5 then movn $2,$15,$4 - so a materialised xor paired with movn/movz can also come from an if statement. Which conditional move is picked is not fixed: -O2 uses movn with the constants in one order and -O1 uses movz with them swapped, so assert on movn-or-movz rather than on one of them.",
+      "falsifies": "the expectation that == compiles to beq, that <= is a single comparison instruction, and that && and || compile the same way",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 and -Os with -G0, synthetic one-expression functions over int, unsigned and zero comparisons; 64-bit comparisons and comparisons of floating-point values were not measured",
+      "evidence": [
+        "private:out/evidence/ee_gcc_bool_idioms.txt"
+      ]
+    },
+    {
+      "id": "L-EE-041",
+      "title": "A 128-bit vector type compiles to lq/sq, is passed in a register pair, cannot be returned by value, and is the way to tell a 16-byte vector copy from a struct copy",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips5900.md",
+        "line": 0,
+        "note": "The lq/sq patterns are EE-specific; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "lq",
+            "at": "128-bit load",
+            "means": "a 128-bit container is loaded with the MMI instruction"
+          },
+          {
+            "kind": "string",
+            "value": "sq",
+            "at": "128-bit store",
+            "means": "...and stored with sq"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "16.life"
+      ],
+      "symptom": [
+        "the target moves 16 bytes with lq/sq where your reconstruction uses lw/sw pairs",
+        "you are reconstructing a 16-byte value as a vector and the compiler rejects the return"
+      ],
+      "lever": [
+        "a mode(V4SI)/s128 value is loaded and stored with lq and sq, so lq/sq in the target means the source used a 128-bit type there, not a plain structure",
+        "the discriminator: the same 16 bytes copied as a struct unrolls into lw/sw pairs, copied as a vector becomes one lq plus one sq",
+        "a 128-bit parameter travels in a register pair from $4, its first element is extracted with dsll/dsra and later elements need the whole value spilled with sq and reloaded with lw",
+        "a 128-bit value cannot be returned by value - the compiler errors with 'output_operand: invalid expression as operand' - so a target function returning 16 bytes by value is a struct with a hidden pointer, never a vector",
+        "vector arithmetic is not supported in 3.2 (a + b on two vectors is an error), so these types are opaque 128-bit containers"
+      ],
+      "receipt": "At -O2 and -Os with -G0, identical. With typedef int v4si __attribute__((mode(V4SI))): v4si x = *p loads with lq $2,0($4); *p = v stores with sq $5,0($4); *d = *s copies with one lq and one sq; ((int*)p)[i] is sll/addu/lw and the store form is sll/addu/sw; element 0 is extracted with dsll $4,$4,32 then dsra $4,$4,32 while elements 1 and 3 require sq $4,0($sp) followed by lw $2,4($sp) or lw $2,12($sp). A 16-byte struct copy of the same size is lw/sw pairs instead, so lq/sq is the discriminator. Returning a v4si by value fails to compile with 'output_operand: invalid expression as operand', and adding two v4si values fails with 'invalid operands to binary +'. In this project 1141 of the reconstructed source files use mode(V4SI) types.",
+      "falsifies": "the assumption that a 16-byte copy always unrolls into lw/sw pairs (a vector type uses lq/sq), and that a 128-bit value can be returned by value like a structure",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 and -Os with -G0, synthetic mode(V4SI) functions for load, store, copy, element access and parameter passing; the ABI slots beyond the first pair and unaligned lq/sq were not measured",
+      "evidence": [
+        "private:out/evidence/ee_gcc_v4si.txt"
+      ]
+    },
+    {
+      "id": "L-EE-042",
+      "title": "float lives in COP1 and double lives in general registers: l.s/s.s and c.lt.s plus bc1t against ld/sd plus dpadd and dpcmp, with no l.d anywhere",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips.md",
+        "line": 0,
+        "note": "Which mode uses COP1 is decided by the port's patterns; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "l.s",
+            "at": "float load",
+            "means": "single precision uses COP1"
+          },
+          {
+            "kind": "string",
+            "value": "dpadd",
+            "at": "double addition",
+            "means": "double precision uses libgcc"
+          },
+          {
+            "kind": "string",
+            "value": "bc1t",
+            "at": "float branch",
+            "means": "float comparisons branch in COP1"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "17.combine"
+      ],
+      "symptom": [
+        "you cannot tell whether a target value is float or double",
+        "you are looking for l.d or c.lt.d in a target that does double arithmetic"
+      ],
+      "lever": [
+        "float lives in the COP1 registers: l.s/s.s to load and store, add.s/mul.s to compute, c.lt.s plus bc1t to compare, mtc1/cvt.s.w and cvt.w.s/mfc1 to convert",
+        "double lives in general registers: ld/sd move it, dpadd/dpsub/dpmul/dpdiv compute it, dpcmp compares it against an integer compare, and litodp/dptoli/fptodp/dptofp convert it",
+        "l.s/s.s/c.*.s/bc1t in the target means float; ld/sd into a GPR followed by jal dp* means double; there is no l.d or c.lt.d in this build at all"
+      ],
+      "receipt": "At -O2 -G0 on this machine, with float and double globals and one operation per function. A float global is loaded with l.s $f0,%lo(gf)($15) and stored with s.s $f12,%lo(gf)($15); a double global is loaded with ld $2,%lo(gd)($15) and stored with sd $4,%lo(gd)($15), i.e. into general registers. float a+b is add.s $f0,$f12,$f13 while double a+b is jal dpadd; a float comparison is c.lt.s $f12,$f13 followed by bc1t while a double comparison is jal dpcmp followed by an integer compare and movn/movz. Conversions follow the same split: int to float is mtc1 plus cvt.s.w, float to int is cvt.w.s plus mfc1, int to double is jal litodp, double to float is jal dptofp, float to double is jal fptodp. Comparing against zero uses mtc1 $0,$f0 plus c.eq.s for float and dpcmp for double. The relocations in the object name dpadd, dpcmp (twice), dptofp, fptodp and litodp - and no l.d or c.lt.d appears anywhere.",
+      "falsifies": "the expectation that double uses the COP1 registers like float, and that a double comparison is a c.lt.d instruction",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0, synthetic single-operation functions over float and double globals; arrays of floats, struct members and varargs were not measured separately",
+      "evidence": [
+        "private:out/evidence/ee_gcc_float_vs_double.txt"
+      ]
+    },
+    {
+      "id": "L-EE-043",
+      "title": "64-bit integer add, subtract, shift, bitwise and compare are native inline instructions (daddu, dsll, dsra, dsrl, slt); only multiply, divide and modulo call libgcc",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips5900.md",
+        "line": 0,
+        "note": "The 64-bit GPR patterns are EE-specific (mainline MIPS would call libgcc); no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "daddu",
+            "at": "64-bit addition",
+            "means": "the R5900 adds 64-bit values inline"
+          },
+          {
+            "kind": "string",
+            "value": "dsll",
+            "at": "64-bit shift",
+            "means": "shifts are native, not libgcc calls"
+          },
+          {
+            "kind": "int",
+            "value": 32,
+            "at": "dsll then dsra",
+            "means": "the narrow-a-64-bit-value-to-32-bits idiom"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "17.combine"
+      ],
+      "symptom": [
+        "you expect a libgcc call for 64-bit arithmetic and the target has daddu or dsll",
+        "the target has dsll $r,$r,32 followed by dsra $r,$r,32"
+      ],
+      "lever": [
+        "64-bit integer arithmetic is native: daddu/dsubu/daddiu for add, subtract and increment, dsll/dsra/dsrl for shifts, and/or/xor for bitwise, and slt for comparison",
+        "only multiply, divide and modulo leave the function: __muldi3, __divdi3, __moddi3, __udivdi3, __umoddi3 (L-EE-032)",
+        "int to long long is a no-op move because the ABI sign-extends a 32-bit argument; long long to int is dsll $r,$r,32 then dsra $r,$r,32, and unsigned to long long is dsll then dsrl",
+        "the dsll-32-then-dsra-32 pair is the 'narrow a 64-bit value to 32 bits' idiom and is also how element 0 of a128-bit vector is extracted (L-EE-041)"
+      ],
+      "receipt": "At -O1, -O2 and -Os with -G0, identical, and the object contains no R_MIPS_26 relocation for this set. long long a+b is daddu $4,$4,$5; a-b is dsubu; a+1 is daddiu; -a is dsubu $4,$0,$4; a<<4 and a<<n are dsll; a>>4 is dsra (dsrl unsigned); &, | and ^ are and/or/xor; a<b is a single slt; a==b is xor plus sltu ...,1. A long long to int conversion is dsll $4,$4,32 then dsra $4,$4,32, an unsigned to long long conversion is dsll then dsrl, and an int to long long conversion is a bare move. Only multiply, divide and modulo are out of line, which L-EE-032 records as __muldi3, __divdi3, __moddi3, __udivdi3 and __umoddi3.",
+      "falsifies": "the assumption that 64-bit integer arithmetic is out of line like double arithmetic, and that a 64-bit compare needs a helper",
+      "scope": "ee-gcc 3.2-ee-040921 at -O1/-O2/-Os with -G0, synthetic one-operation functions over long long and unsigned long long; 64-bit floating point and 128-bit values are covered by L-EE-029 and L-EE-041",
+      "evidence": [
+        "private:out/evidence/ee_gcc_int64.txt"
+      ]
+    },
+    {
+      "id": "L-EE-044",
+      "title": "Unaligned access: a pointer cast emits a plain lw, a constant-size memcpy emits lwl/lwr or ldl/ldr pairs, and packed members emit ulw/usw - which are assembler pseudo-instructions",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips5900.md",
+        "line": 0,
+        "note": "The unaligned patterns are EE-specific; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "lwl",
+            "at": "unaligned word load (low half)",
+            "means": "half of an unaligned word access"
+          },
+          {
+            "kind": "string",
+            "value": "ulw",
+            "at": "the assembly pseudo-instruction",
+            "means": "expands to lwr plus lwl, so the object never contains ulw"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "17.combine"
+      ],
+      "symptom": [
+        "you see an lwl/lwr pair and cannot tell whether it is a copy or a packed member",
+        "you are grepping a disassembly for ulw or usw and cannot find them"
+      ],
+      "lever": [
+        "a pointer cast writes the plain instruction with the unaligned offset (lw $2,1($4)) - the compiler trusts the cast and synthesises nothing",
+        "a constant-size memcpy is expanded: 1 byte lbu/sb, 2 bytes lb/sb twice, 4 bytes an lwl/lwr pair stored with swl/swr, 8 bytes ldl/ldr stored with sdl/sdr",
+        "a packed structure member is written as the pseudo-instruction ulw/usw in the assembly, which the assembler expands into an lwr plus lwl (or swr plus swl) pair - so the object never contains ulw or usw and a packed access looks like any other unaligned word access"
+      ],
+      "receipt": "At -O1, -O2 and -Os with -G0, identical. *(int*)(p+1) becomes lw $2,1($4) - a plain word load at an unaligned offset. memcpy(d,s,4) becomes lwl t4,3(a1), lwr t4,0(a1), swl t4,3(a0), swr t4,0(a0); the 8-byte form uses ldl/ldr and sdl/sdr; 2 bytes are lb twice plus sb twice; 1 byte is lbu plus sb. A member of a packed structure read as p->b is written ulw $2,1($4) in the assembly, and the object shows lwr v0,1(a0) followed by lwl v0,4(a0) - the pseudo-instruction expands to a pair, so grepping an object or a disassembly for ulw or usw finds nothing.",
+      "falsifies": "the expectation that an unaligned pointer cast is handled by the compiler (it emits a plain instruction), and that ulw/usw exist in the object",
+      "scope": "ee-gcc 3.2-ee-040921 at -O1/-O2/-Os with -G0, synthetic functions using pointer casts, constant-size memcpy and a packed structure; unaligned double and 128-bit accesses were not measured",
+      "evidence": [
+        "private:out/evidence/ee_gcc_unaligned.txt"
+      ]
+    },
+    {
+      "id": "L-EE-045",
+      "title": "Forward branches use the plain forms while loop back edges use the branch-likely forms (bnel, beql, bgtzl), whose delay slot runs only when the branch is taken",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips.md",
+        "line": 0,
+        "note": "The branch-likely patterns are EE/MIPS-specific; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "bnel",
+            "at": "loop back edge",
+            "means": "the loop back edge is a branch-likely"
+          },
+          {
+            "kind": "string",
+            "value": "beqzl",
+            "at": "objdump rendering",
+            "means": "beql against $0 is printed beqzl"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "20.sched"
+      ],
+      "symptom": [
+        "a loop back edge is written bnel/beql/bgtzl instead of bne/beq, or the reverse",
+        "you are grepping for beql and only find beqzl"
+      ],
+      "lever": [
+        "the loop back edge uses the branch-likely form, so bnel/beql/bgtzl at the end of a body means a loop and its delay slot holds an instruction that must only run when the branch is taken",
+        "forward branches - if/else, guards, && and || - use the plain forms beq/bne/blez/bltz",
+        "the assembly writes beql/bnel while objdump prints beqzl/bnezl when the comparison is against $0, so grep for both spellings",
+        "at -Os an individual loop may be restructured into a plain branch plus an unconditional b back edge"
+      ],
+      "receipt": "At -O2 -G0 on this machine: if (p == 0) return -1; uses a plain beq, if (x) return 1; uses beq/bne, if (a && b) uses beq/bne, and an if/else chain uses beq. Loops differ: while (n--) ends in bnel, for (i=0;i<n;i++) has a blez guard and a bnel back edge, do { } while (n > 0) ends in bgtzl, and while (*p == 0) p++ ends in beql. The likely form's delay slot runs only when the branch is taken, which is why a bnel at the bottom of a loop can carry the loop's own work (at -O1 the same loop puts its mult in that slot). -O1 and -O2 agree; at -Os the while (*p == 0) p++ loop is restructured to a bne plus an unconditional b. The assembly spells these beql/bnel while objdump prints beqzl/bnezl against $0. A 170-file sample of this project's matched sources shows bnezl 11 times and beqzl 7 times, alongside addiu 384, move 322, ld 267, sd 235 and jal 185.",
+      "falsifies": "the expectation that a loop back edge uses the same branch form as an if, and that beql always appears as beql in a disassembly",
+      "scope": "ee-gcc 3.2-ee-040921 at -O1/-O2/-Os with -G0, synthetic loop and branch shapes plus a 170-file instruction-mix sample of the project's matched sources; branch prediction annotations were not measured",
+      "evidence": [
+        "private:out/evidence/ee_gcc_branch_likely.txt"
+      ]
+    },
+    {
+      "id": "L-EE-046",
+      "title": "Every move is daddu $d,$s,$0 - a 64-bit copy - and objdump prints it as move, so the mnemonic never reveals the encoding",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips.md",
+        "line": 0,
+        "note": "Which move pattern the backend picks is port-specific; no line was read from the shipped tree, so the rule is measured from the object encodings."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 45,
+            "at": "funct field 0x2d",
+            "means": "every move is DADDU, the 64-bit form"
+          },
+          {
+            "kind": "int",
+            "value": 33,
+            "at": "funct field 0x21",
+            "means": "ADDU, the 32-bit form, is never used for a copy"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "22.lreg"
+      ],
+      "symptom": [
+        "your reconstruction writes addu $d,$s,$0 and the bytes do not match",
+        "you are grepping a disassembly for daddu and the histogram shows none of them"
+      ],
+      "lever": [
+        "the compiler copies registers with the 64-bit form, so every move in the object is daddu $d,$s,$0 (funct 0x2d) - even when the C type is int",
+        "objdump prints daddu $d,$s,$0 as move, which is why a mnemonic histogram of real code shows move but no daddu at all",
+        "addu (funct 0x21) is never emitted as a copy, so writing addu $d,$s,$0 in a reconstruction will not match the bytes",
+        "in practice most moves are argument shuffling (targets a0/a1/a2), a large minority fill branch and jump delay slots, and move $d,$0 materialises zero"
+      ],
+      "receipt": "At -O2 -G0 on this machine, decoding the object words of int c32(int a){int b=a;return b;} and long long c64(long long a){long long b=a;return b;} gives 0x0080102d for both - DADDU v0,a0,zero, the 64-bit special-function code 0x2d, not ADDU's 0x21. The same holds for every move in the sample: int x=0 and long long x=0 both produce 0x0000102d, and g(b,a) produces 0x0080782d, 0x00a0202d and 0x01e0282d. Because objdump renders daddu $d,$s,$0 as move, a 170-file mnemonic histogram of this project's sources lists move 322 times and daddu zero times. A 60-file context count of 125 moves shows 48 in branch or jump delay slots, 57 in ordinary positions, 19 as move $d,$0, and targets dominated by a0 (46), a1 (18) and a2 (7).",
+      "falsifies": "the assumption that move expands to addu, and that the mnemonic tells you whether a copy is 32-bit or 64-bit",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0, object-word decoding of synthetic 32-bit and 64-bit copies plus a 60-file context sample; moves of floating-point and vector values were not measured",
+      "evidence": [
+        "private:out/evidence/ee_gcc_move_encoding.txt"
+      ]
+    },
+    {
+      "id": "L-EE-047",
+      "title": "The printed mnemonic is an alias: li is ADDIU or ORI or a lui+ori pair, nop is sll $0,$0,0, beqz/bnez/b are beq/bne against $0, and move is daddu - so compare encodings, not spellings",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips.md",
+        "line": 0,
+        "note": "The pseudo-instruction set is the assembler's, not the compiler's; no line was read from the shipped tree, so the table is measured by decoding object words."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "int",
+            "value": 9,
+            "at": "opcode 0x09",
+            "means": "ADDIU, printed as addiu or as li for a small immediate"
+          },
+          {
+            "kind": "int",
+            "value": 13,
+            "at": "opcode 0x0d",
+            "means": "ORI, printed as li for an immediate up to 0xffff"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "your assembly says li and the target has addiu, or the reverse",
+        "two instruction streams look identical as text but differ in bytes"
+      ],
+      "lever": [
+        "li is a pseudo-instruction: an immediate within signed 16 bits becomes ADDIU, up to 0xffff becomes ORI (zero-extending), and anything larger becomes a lui plus ori pair which objdump prints as two instructions",
+        "nop is SLL $0,$0,0; beqz/bnez/b are BEQ/BNE against $0; move is DADDU $d,$s,$0 (L-EE-046); ulw/usw are LWR+LWL and SWR+SWL pairs (L-EE-044)",
+        "in a 60-file sample of this project's sources every encoding maps to one or more mnemonics but no mnemonic maps to two base encodings, so comparing encodings is always safe while comparing mnemonics is not"
+      ],
+      "receipt": "Decoding object words at -O2 -G0. return 5 is ADDIU $2,$0,5 and return -5 is ADDIU $2,$0,0xfffb, both printed li; return 0xffff is ORI $2,$0,0xffff (also printed li); return 0x12345 is printed as lui v0,0x1 plus ori v0,v0,0x2345, two real instructions with no li alias. Over 60 files of this project's matched sources the encoding op=0x09 is printed addiu 110 times and li 35 times, SPECIAL funct 0x00 is printed nop 23 times and sll 3 times, op=0x04 is printed beqz 7 times and b twice, and op=0x05 is printed bnez 3 times and bne once - while no mnemonic in the sample maps to two different base encodings.",
+      "falsifies": "the expectation that a mnemonic identifies an encoding, and that li is a real instruction",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0, object-word decoding of synthetic immediates plus a 60-file mnemonic-to-encoding census; floating-point and vector pseudo-instructions are covered by L-EE-019, L-EE-041 and L-EE-044",
+      "evidence": [
+        "private:out/evidence/ee_gcc_aliases.txt"
+      ]
+    },
+    {
+      "id": "L-EE-048",
+      "title": "COP2/VU0 instructions cannot be produced from C by this compiler: vector types use lq/sq in general registers, vector arithmetic and by-value returns fail to compile, and only inline assembly emits lqc2/sqc2",
+      "tier": "T1",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips5900.md",
+        "line": 0,
+        "note": "The backend carries VU0 operand predicates and a -mvu0-use- flag, so the patterns exist; no C construct was found that reaches them, and the negative results are measured."
+      },
+      "binary_anchor": {
+        "symbol": "vu0_register_operand",
+        "addr": "0x081723b0",
+        "related": [
+          {
+            "symbol": "vu0_dest_operand",
+            "addr": "0x08172460"
+          },
+          {
+            "symbol": "vu0_field_operand",
+            "addr": "0x08172490"
+          },
+          {
+            "symbol": "mips_vu0_use_range",
+            "addr": "0x0830fb98"
+          }
+        ],
+        "constants": [
+          {
+            "kind": "string",
+            "value": "-mvu0-use-",
+            "at": "--target-help",
+            "means": "the flag restricts which VU0 registers may be used"
+          },
+          {
+            "kind": "string",
+            "value": "lqc2",
+            "at": "inline asm output",
+            "means": "only inline assembly emits COP2 loads"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "00.rtl"
+      ],
+      "symptom": [
+        "the target contains lqc2, sqc2, qmtc2, qmfc2, cfc2, ctc2 or v* instructions and your C reconstruction cannot produce them",
+        "you are trying to express a VU0 operation with a vector type"
+      ],
+      "lever": [
+        "this compiler never emits COP2 from C: mode(V4SI) and mode(V4SF) loads, stores and copies use lq/sq in general registers, adding two vectors is a compile error, and returning one by value is a compile error too",
+        "the backend does carry VU0 machinery (vu0_register_operand and friends, plus the -mvu0-use-REG1-REG2 flag) but no builtin reaches it, and the v constraint is 'impossible' for a vector value",
+        "the one working path is inline assembly: asm volatile(\"lqc2 $vf1,0(%0)\" :: \"r\"(p)) compiles and emits lqc2, so any COP2 instruction in a binary came from hand-written assembly in the original source",
+        "consequence for reconstruction: such sites cannot be matched by C alone - write inline assembly there, or accept that the function cannot be reproduced in C"
+      ],
+      "receipt": "Measured on this machine at -O2 -G0. mode(V4SI) and mode(V4SF) loads, stores and copies compile to lq/sq in general registers, never to lqc2/sqc2; a + b on two vectors fails with 'invalid operands to binary +'; returning a vector by value fails with 'output_operand: invalid expression as operand' (V4SI) or 'unrecognizable insn' (V4SF); and using the v constraint on a vector value fails with 'impossible register constraint in asm'. The compiler does have VU0 support: --target-help lists -mvu0-use-REG1-REG2 and cc1 exports vu0_register_operand, vu0_dest_operand, vu0_field_operand, vu0_float_operand, vu0_int_register_operand, vu0_reg_imm5_operand and mips_vu0_use_range. Inline assembly works: asm volatile(\"lqc2 $vf1,0(%0)\" :: \"r\"(&v)) emits lqc2, and the same with sqc2 emits sqc2.",
+      "falsifies": "the expectation that a 128-bit or float-vector C type makes the compiler use the VU0, and that COP2 instructions in a binary could come from ordinary C",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0 with mode(V4SI) and mode(V4SF) types and inline assembly; the -mvu0-use- flag and the VU0 operand predicates are recorded but not exercised, and no attempt was made to reach COP2 through them",
+      "evidence": [
+        "private:out/evidence/ee_gcc_cop2_from_c.txt"
+      ]
+    },
+    {
+      "id": "L-EE-049",
+      "title": "Variable shifts are sllv/srav/srlv and integer negation is negu (two more alias pairs), float copy/negate/compare are mov.s/neg.s/c.le.s plus bc1t, and the second multiplier mult1 appears at -O2/-O3 but not at -O1/-Os",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips.md",
+        "line": 0,
+        "note": "The operator patterns and the two multiplier units are backend- and EE-specific; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "sllv",
+            "at": "register shift in the object",
+            "means": "the assembly writes sll $d,$s,$t"
+          },
+          {
+            "kind": "string",
+            "value": "negu",
+            "at": "integer negation in the object",
+            "means": "the assembly writes subu $d,$0,$s"
+          },
+          {
+            "kind": "string",
+            "value": "mult1",
+            "at": "second multiplier",
+            "means": "the scheduler uses the EE's second integer multiply unit"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "20.sched"
+      ],
+      "symptom": [
+        "the target has sllv, srlv or negu where your reconstruction expects sll, srl or subu",
+        "the target uses mult1 and you cannot produce it from C"
+      ],
+      "lever": [
+        "a shift by a variable amount is a register shift: the assembly writes sll/sra/srl $d,$s,$t but the object contains sllv/srav/srlv, so these are ordinary C expressions and not inline assembly",
+        "integer negation is nego in the object (the assembly writes subu $d,$0,$s); float copy is mov.s, float negation is neg.s, and float comparisons are c.lt.s/c.le.s/c.eq.s followed by bc1t (bc1f for the inverted test)",
+        "mult and mult1 are the EE's two integer multiplier units: at -O2 and -O3 the scheduler moves one multiply to mult1 when two can overlap (three independent multiplies, or a dependent chain), while -O1 and -Os use mult throughout - so mult1 in a target is a scheduling signal and also a level hint",
+        "madd.s was an open question in this entry and is resolved by L-EE-050: it comes from a sum of two or more products in one float expression"
+      ],
+      "receipt": "At -O2 -G0 on this machine. a<<n gives sllv a0,a0,a1 in the object (sll $4,$4,$5 in the assembly), a>>n gives srav or srlv, and -a gives negu a0,a0 (subu $4,$0,$4); float negation is neg.s $f0,$f12, a float copy is mov.s, and a<=b is c.le.s $f12,$f13 followed by bc1t, with c.lt.s and c.eq.s for the other comparisons. The second multiplier: one multiply uses mult only; two independent multiplies still use mult only; three independent multiplies produce mult plus mult1; a dependent pair (x=a*b; return x*b;) also produces mult plus mult1; and the second multiplier is level-dependent (see below). No C spelling tried for a*b+c produced madd.s - it always compiled to mul.s plus add.s; L-EE-050 resolved this: a sum of two or more products in one expression uses the COP1 accumulator (mula.s plus madd.s), so madd.s is ordinary C after all. The second multiplier is level-dependent: the same three-multiply fixture compiles to mult three times at -O1 and -Os, but to mult twice plus mult1 once at -O2 and -O3. The earlier count that suggested -O2 and -Os agreed came from a different fixture (two independent multiplies), which uses mult only at every level. multu is not used for a plain unsigned 32-bit multiply (that is mult) - it appears when a 32-bit unsigned multiply must produce a 64-bit result, and the 64-bit forms also carry object suffixes dsrav (variable shift) alongside dsllv and dsrlv.",
+      "falsifies": "the expectation that sllv/srlv/negu in a binary indicate hand-written assembly, and that mult1 needs inline assembly",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2/-Os with -G0, synthetic one-operator functions over int, unsigned and float; other EE multiply-unit shapes and madd.s were not resolved",
+      "evidence": [
+        "private:out/evidence/ee_gcc_ops_remaining.txt"
+      ]
+    },
+    {
+      "id": "L-EE-050",
+      "title": "A float expression that sums two or more products uses the COP1 accumulator (mula.s then madd.s, madda.s mid-chain, msub.s for subtraction) while a statement form does not, and float stores are swc1",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips.md",
+        "line": 0,
+        "note": "The accumulator patterns are backend-specific; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "mula.s",
+            "at": "accumulator start",
+            "means": "the first product goes into the COP1 accumulator"
+          },
+          {
+            "kind": "string",
+            "value": "madd.s",
+            "at": "accumulator chain",
+            "means": "each further product is added in the accumulator"
+          },
+          {
+            "kind": "string",
+            "value": "swc1",
+            "at": "float store",
+            "means": "stores use the COP1 form, printed s.s in the assembly"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "17.combine"
+      ],
+      "symptom": [
+        "the target has mula.s/madd.s (or madda.s/msub.s) where your reconstruction produces mul.s plus add.s",
+        "you cannot produce the madd.s you saw in the target"
+      ],
+      "lever": [
+        "a single float expression that sums two or more products is evaluated in the COP1 accumulator: the first product is mula.s, each further one madd.s, and a chain that needs the intermediate value uses madda.s; subtraction uses msub.s",
+        "a statement form (s = a*b; s += c;) or a loop accumulation uses mul.s plus add.s instead, so the accumulator is a signal that the source wrote the sum of products as one expression",
+        "the accumulator is hard register 71 (FP_ACC of L-EE-016), i.e. it is genuinely used",
+        "float stores are swc1 (printed s.s in the assembly) against lwc1 for loads - both are COP1 forms",
+        "the 64-bit shifts and negation appear in the object with a suffix: dsra32, dsrl32, dsllv, dsrlv and dnegu"
+      ],
+      "receipt": "At -O2 -G0 on this machine. a*b+c gives mul.s plus add.s, but a*b+c*d gives mula.s $f12,$f13 followed by madd.s $f0,$f14,$f15; a*b+c*d+e*g gives mula.s, madda.s, madd.s; a*b+c*d+e gives mula.s, madd.s, add.s; and a*b-c*d gives mula.s plus msub.s. The statement form float s=a*b; s+=c; and the loop form for(...) s += p[i]*q[i]; both give mul.s plus add.s, so the accumulator depends on the expression shape rather than the operation. A float global store is swc1 $f12,off (s.s in the assembly) where the load is lwc1. In the object the 64-bit forms carry suffixes: dsra32, dsrl32, dsllv, dsrlv and dnegu, while the assembly writes dsra/dsrl by 32, dsll/dsrl by register, and dsubu $d,$0,$s. The accumulator also covers subtraction: an expression that subtracts products (c - a*b - d*e) compiles to mul.s plus suba.s plus msub.s (and msuba.s in other shapes), so the accumulator family is mula.s/madd.s/madda.s for sums and mul.s/suba.s/msub.s/msuba.s for differences.",
+      "falsifies": "the earlier note that madd.s could not be produced from C, and the assumption that a float multiply-accumulate always uses the accumulator",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 with -G0, synthetic float expressions over one to three products plus statement and loop forms; the same shapes for double go to libgcc (L-EE-029)",
+      "evidence": [
+        "private:out/evidence/ee_gcc_fp_accumulator.txt"
+      ]
+    },
+    {
+      "id": "L-EE-051",
+      "title": "A zero comparison in control flow becomes an inverted REGIMM branch (bltz/bgez/bgtz/blez with likely forms on the back edge), a negated float condition is bc1f, and sqrtf is inlined as sqrt.s",
+      "tier": "T2",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips.md",
+        "line": 0,
+        "note": "The branch patterns and the sqrtf pattern are backend-specific; no line was read from the shipped tree, so the rule is measured."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "blez",
+            "at": "loop guard",
+            "means": "a while (n > 0) loop exits on a blez test"
+          },
+          {
+            "kind": "string",
+            "value": "bc1f",
+            "at": "negated float condition",
+            "means": "the source wrote !(comparison)"
+          },
+          {
+            "kind": "string",
+            "value": "sqrt.s",
+            "at": "sqrtf inline",
+            "means": "sqrtf is recognised by name and becomes a COP1 instruction"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "17.combine"
+      ],
+      "symptom": [
+        "the target branches with bltz/bgez/bgtz/blez where your reconstruction has no branch",
+        "the target uses bc1f and your reconstruction does not negate the condition",
+        "the target has sqrt.s instead of a call"
+      ],
+      "lever": [
+        "a comparison against zero becomes a REGIMM branch only in control-flow position; as a value it is materialised (L-EE-040) and a simple if with constant arms becomes branchless",
+        "loop conditions are emitted inverted as the exit test and that is level-independent: while (n > 0) produces blez and while (n >= 0) produces bltz at -O1, -O2 and -Os alike; the back edge itself is level-dependent - bgtzl/bgezl at -O2/-O3 but a plain b at -O1/-Os",
+        "on floats the source's condition is used as written for bc1t, so bc1f means the source negated the condition (if (!(a < b))), and bc1tl/bc1fl are the likely forms",
+        "sqrtf is recognised by name and inlined as sqrt.s rather than calling libm"
+      ],
+      "receipt": "At -O2 -G0 on this machine. return a<0 and if (a<0) return 1; return 0; produce no branch at all (the first is materialised with slti, the second is converted to a branchless select), but while (n > 0) { s += n; n--; } emits blez as the exit test at -O1, -O2 and -Os alike (level-independent), while the back edge differs by level: at -O2 it is bgtzl with the loop's own addu in its delay slot, and at -Os it is a plain b with the loop restructured; while (n >= 0) emits bltz. On floats, if (a >= b) emits c.le.s with the operands swapped plus bc1t, while if (!(a < b)) emits bc1f, and a < 0.0f ? -a : a emits c.lt.s plus bc1tl plus neg.s. An extern float sqrtf(float) called with one argument compiles to sqrt.s $f0,$f12 with no call. The inlined math names are exactly sqrtf and fabsf in this compiler: sqrtf becomes sqrt.s and fabsf becomes abs.s, while every other libm name tested (sinf, cosf, floorf, copysignf, fminf and others) becomes an ordinary tail call (j sinf). The likely branch spellings include bltzl, blezl and bc1fl alongside bgtzl/bgezl/bc1tl.",
+      "falsifies": "the expectation that a zero comparison always materialises or always branches the same way, and that sqrtf is a libm call",
+      "scope": "ee-gcc 3.2-ee-040921 at -O2 -G0, synthetic comparison, loop and float-condition functions plus sqrtf; other libm names were not tested for inlining",
+      "evidence": [
+        "private:out/evidence/ee_gcc_branches_zero_cop1.txt"
+      ]
+    },
+    {
+      "id": "L-EE-052",
+      "title": "No latency nops: COP1 loads, moves and compares are never padded, so floating-point instruction order is entirely scheduler-driven",
+      "tier": "T3",
+      "ee_specific": true,
+      "source_anchor": {
+        "file": "config/mips/mips5900.md",
+        "line": 0,
+        "note": "Latency modelling lives in the port's scheduling description; no line was read from the shipped tree, so the absence is measured rather than read."
+      },
+      "binary_anchor": {
+        "symbol": "",
+        "addr": "",
+        "constants": [
+          {
+            "kind": "string",
+            "value": "l.s",
+            "at": "COP1 load",
+            "means": "a COP1 load is followed by its use with no padding"
+          },
+          {
+            "kind": "string",
+            "value": "mfc1",
+            "at": "COP1 to GPR",
+            "means": "the move sits in a delay slot rather than after a nop"
+          }
+        ],
+        "struct": {}
+      },
+      "pass": [
+        "29.sched2"
+      ],
+      "symptom": [
+        "you are looking for a missing nop between a floating-point load and its use",
+        "an FP sequence's order differs from the target and you are attributing it to latency"
+      ],
+      "lever": [
+        "this compiler never inserts a latency nop: l.s is immediately followed by its use, cvt.w.s follows the load it consumes, and mfc1/mtc1 are placed in branch delay slots",
+        "therefore floating-point instruction order is decided by optimisation and scheduling alone - never by latency padding - so an order difference must be explained by a source-shape lever, not by a missing nop",
+        "the same measurement shows the scheduler reordering independent COP1 loads (a dot product loads offsets 0, 4, 12, 8 at -O2), and -O2 and -Os differing in FP loop order"
+      ],
+      "receipt": "At -O1, -O2 and -Os with -G0. float f(float*p,float*q){return *p+*q;} is l.s $f0,0($4); l.s $f1,0($5); j $31; add.s $f0,$f0,$f1 - the add sits in the branch delay slot. int f(float*p){return (int)*p;} is l.s $f0,0($4) immediately followed by cvt.w.s $f1,$f0, then j $31 with mfc1 $2,$f1. float f(float*p){return *p;} puts l.s in the delay slot of j $31. A float comparison is l.s followed directly by mtc1/c.lt.s. Counting nops over five floating-point shapes (including a loop accumulation and a 64-bit double load) at all three levels gives zero in every case. The same compiles show the four loads of p[0]*p[1]+p[2]*p[3] reordered to offsets 0, 4, 12, 8, and the FP accumulation loop ordered differently at -O2 (mtc1 $0,$f1) than at -Os (mtc1 $0,$f0 plus mov.s $f1,$f0).",
+      "falsifies": "the expectation that a load-delay or COP1-latency nop should appear between a floating-point load and its first use",
+      "scope": "ee-gcc 3.2-ee-040921 at -O1/-O2/-Os with -G0, five floating-point shapes plus a double load; integer load delays and the 2.96 compiler were not measured here",
+      "evidence": [
+        "private:out/evidence/ee_gcc_no_latency_nops.txt"
+      ]
+    },
+    {
+      "id": "L-EE-053",
+      "title": "A copy records a hard-register preference on whichever side is a global pseudo",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "global.c",
+        "line": 1615,
+        "note": "mainline gcc-3.2.3 set_preference (the shipped binary resolves set_preference to global.c:1967). T2, not T1: the shipped body was located and its effects observed, but its two branches were not read line by line in the disassembly."
+      },
+      "binary_anchor": {
+        "symbol": "set_preference",
+        "addr": "0x081ae780",
+        "constants": [],
+        "struct": {
+          "name": "allocno",
+          "byte_size": 144,
+          "fields": {
+            "hard_reg_preferences": 48
+          }
+        }
+      },
+      "pass": [
+        "23.greg"
+      ],
+      "symptom": [
+        "a value prefers the register used on the other side of a copy, in the direction you did not expect",
+        "a preference appears that no source-level copy seems to justify"
+      ],
+      "lever": [
+        "do not replay the preference: record the mask before and after the call and read the bits that changed",
+        "reg_renumber already maps locally placed values to hard registers, so the recorded preference can point at a register that never appears in the source"
+      ],
+      "receipt": "func_001d4b88 at -Os -fno-thread-jumps: 842 decoded set_preference calls, 84 changed a preference mask. Examples (effect-diff): allocno 2 +{5} (dest pseudo 151 -> src $a1); allocno 24 +{13,14} (the preferences point at $t5/$t6, the hard registers of the *destination* side, and are recorded on the source allocno); allocno 13/11 +{15} ($t7). The return-point diff agrees with the prune-entry snapshot.",
+      "falsifies": "the assumption that a preference only comes from a parameter's ABI home or from a same-direction copy",
+      "scope": "ee-gcc 3.2-ee-040921 at -Os -fno-thread-jumps on one reconstruction (func_001d4b88); the rule text is mainline gcc-3.2.3 global.c",
+      "evidence": [
+        "private:out/evidence/ee_gcc_alloc_setpref_001d4b88.txt",
+        "party:R39-ee-gcc-3.2-分配决策在线观测器.md"
+      ]
+    },
+    {
+      "id": "L-EE-054",
+      "title": "Preferences are pruned before ordering: conflicts, fixed, caller-saved for call-crossing values, and out-of-class registers are removed",
+      "tier": "T2",
+      "ee_specific": false,
+      "source_anchor": {
+        "file": "global.c",
+        "line": 903,
+        "note": "mainline gcc-3.2.3 prune_preferences (the shipped binary resolves it to global.c:1236). T2, not T1: the shipped body was located and its effects observed, but not read line by line."
+      },
+      "binary_anchor": {
+        "symbol": "prune_preferences",
+        "addr": "0x081ac580",
+        "constants": [],
+        "struct": {
+          "name": "allocno",
+          "byte_size": 144,
+          "fields": {
+            "hard_reg_preferences": 48
+          }
+        }
+      },
+      "pass": [
+        "23.greg"
+      ],
+      "symptom": [
+        "a caller-saved preference visible in an expand dump is gone by the time ordering runs",
+        "a value that crosses a call keeps no preference at all"
+      ],
+      "lever": [
+        "check whether the preference survives pruning before blaming the choice rule",
+        "for a call-crossing value, shorten the live range or move the copy; a respelled copy cannot keep a caller-saved preference across the call"
+      ],
+      "receipt": "func_001d4b88 at -Os -fno-thread-jumps: 83 allocnos changed a preference mask at expand, 112 at prune. Of the 6 allocnos that got no register, 4 carried only caller-saved preferences ({5} / {13,14} / {15}, calls_crossed 2-30) and left prune with empty sets; the other 2 (allocnos 12 and 9) had no preference at all. The greg dump prints its `;; N preferences:` lines after prune.",
+      "falsifies": "the reading that the preference list printed in a dump is the list the choice rule sees",
+      "scope": "ee-gcc 3.2-ee-040921 at -Os -fno-thread-jumps on one reconstruction (func_001d4b88); the rule text is mainline gcc-3.2.3 global.c",
+      "evidence": [
+        "private:out/evidence/ee_gcc_alloc_prefs_001d4b88.txt",
+        "party:R39-ee-gcc-3.2-分配决策在线观测器.md"
+      ]
+    }
+  ],
+  "verification": {
+    "anchors_checked": 40,
+    "anchors_ok": 40,
+    "ambiguous_names": [
+      "find_reg"
+    ],
+    "method": "tools/compiler/ee-gcc-anchor.py symbol <name> against the shipped cc1; a law verifies when any candidate's address equals the cited one",
+    "note": "40 symbol claims across 22 laws (related anchors included); four laws are T3 (behaviour only). Re-run after any toolchain change."
+  }
+}

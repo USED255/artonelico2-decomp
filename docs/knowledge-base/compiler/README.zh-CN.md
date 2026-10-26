@@ -1,0 +1,84 @@
+# EE GCC 3.2 代码生成手册
+
+[English](README.md) · [laws](LAWS.zh-CN.md) · [实战案例](CASE-STUDY.zh-CN.md) · [源码研究](SOURCE-STUDY.zh-CN.md) · [agent 技能](AGENT-SKILL.zh-CN.md) · [pass 地图](PASSES.zh-CN.md) · [诊断流程](DIAGNOSTICS.zh-CN.md) · [杠杆表](FIELD-GUIDE.zh-CN.md) · 机器可读索引：[`laws.json`](laws.json)
+
+**对出厂编译器核验过**：本手册引用的 **40 条符号声明**（22 条 law，含 related 锚点）已全部对出厂 `cc1` 复核、
+地址一致；另有 4 条 law 属 `T3`（仅行为证据）。`python3 tools/check/test_compiler_laws.py` 会强制分级前置条件，
+并在本机有工具链时逐条复核。
+
+本手册记录 **`ee-gcc 3.2-ee-040921`** 的行为——本项目 PS2 Emotion Engine 代码所用的编译器，
+构建参数为 `-O2 -falign-functions=4 -ffunction-sections`。
+
+写作目的是**匹配反编译**：匹配要求逐字节相同，所以「编译器为什么发这条指令」是最费时间的问题。
+每条 law 回答一个这样的问题并给出证据；每条杠杆给出「源写法 → 预期读数移动」。
+
+## 内容
+
+| 页面 | 写的是什么 |
+| --- | --- |
+| [LAWS.md](LAWS.zh-CN.md) | 编译器**怎么做**：分配顺序、结构宽度、频率口径、EE 专有后端。每条带 tier、源码锚点、二进制锚点、receipt、scope |
+| [PASSES.md](PASSES.zh-CN.md) | 3.2 的 26 份 `-da` dump（2.96 是 22 份）、各自归哪个源文件、出厂源码与 mainline 的位移 |
+| [DIAGNOSTICS.md](DIAGNOSTICS.zh-CN.md) | 从「diff 不对」走到「这个 pass 负责」：第一分叉流程、两个假信号、什么时候别用模型 |
+| [FIELD-GUIDE.md](FIELD-GUIDE.zh-CN.md) | 能移动读数的源写法，以及每种写法移动哪个读数 |
+| [CASE-STUDY.zh-CN.md](CASE-STUDY.zh-CN.md) | 一个函数从头走到尾：工具、查过的 law、试过的改动，以及为什么否掉它 |
+| [CASE-STUDY-LARGE.zh-CN.md](CASE-STUDY-LARGE.zh-CN.md) | 大函数：把帧当作结构指纹、能让它变 6.5 倍的改法，以及那个什么也改不动的改法 |
+| [SOURCE-STUDY.zh-CN.md](SOURCE-STUDY.zh-CN.md) | 有哪些源码、没有哪些、规则怎么对锚，以及为什么社区 EE 补丁是另一棵树 |
+| [AGENT-SKILL.md](AGENT-SKILL.zh-CN.md) | agent（或赶时间的人）跑的循环：测量 → 定位 pass → 查 law → 用杠杆 → 复测 |
+| [ABI.zh-CN.md](ABI.zh-CN.md) | 一页看懂调用约定：实参与返回值走哪里、帧怎么算、怎么反推目标签名 |
+| [CROSS-2.96.zh-CN.md](CROSS-2.96.zh-CN.md) | 哪些规则能迁移到编译 CRI 中间件的 2.96，哪些不能 |
+| [QUICK-REFERENCE.zh-CN.md](QUICK-REFERENCE.zh-CN.md) | 从眼前的形状出发：帧 / 指令流 / 数据段里看到的东西对应哪条 law |
+| [COVERAGE.zh-CN.md](COVERAGE.zh-CN.md) | 本手册解释了一个二进制的多少：在你自己的反汇编上跑审计，看还剩什么 |
+| [VERIFY.zh-CN.md](VERIFY.zh-CN.md) | 这些结论钉定在哪个工具链上（含哈希）、每条校验验什么跳什么、以及怎么全部重跑 |
+| [`laws.json`](laws.json) | 同一批 law 的机器可读版本，供工具与 agent 查询 |
+
+## 工具
+
+| 工具 | 作用 |
+| --- | --- |
+| `tools/compiler/laws-query.py` | 按 id、pass、症状、杠杆或自由文本查询 law（`--json` 供工具使用） |
+| `tools/compiler/ee-gcc-anchor.py` | 在出厂 `cc1` 里解析符号、地址、结构体或常量；`selftest` 复核本机能验证的锚点 |
+| `tools/compiler/ee-gcc-passdiff.py` | 编译同一函数的两种写法，报出第一个分叉的 pass |
+| `tools/compiler/ee-gcc-spill-map.py` | 把过大的帧映射到区块与源码行，并把每次溢出溯源到定义该值的那一行 |
+| `tools/compiler/ee-gcc-coverage.py` | 测量手册解释了一份反汇编的多少，并把剩下的分成「只能来自汇编」与「尚未解释」 |
+| `tools/compiler/ee-gcc-observe.py` | 编译 81 组合成夹具并断言「本手册说必须出现的东西」（`--selftest`），或对你自己的文件打印帧/常量池/助记符观测 |
+| `tools/compiler/ee-gcc-observe-alloc.py` | 在 gdb 下**实时观测**全局分配决策：分配顺序、每次 `find_reg` 尝试、溢出集合，`--prefs` 还给出偏好修改；并与 `-da` 的 dispositions 自校验（`--selftest` 需要 gdb） |
+
+`make check` 会跑 law 数据校验、二进制锚点复核，以及上述每条命令的冒烟测试。
+
+## 证据分级
+
+匹配社区里最常见的问题，是**自信、合理、但错误**的规则。分级就是为了让这种事可见：
+
+| 级别 | 需要同时满足 |
+| --- | --- |
+| **T1** | 从编译器源码读到规则 **且** 在同一段代码在出厂二进制里定位到（符号 / 地址 / 常量 / 结构偏移）**且** 行为一致 |
+| **T2** | 源码规则 **或** 二进制锚点，加行为一致 |
+| **T3** | 只有行为证据 |
+
+`T1` 要求两个锚点，是因为**出厂编译器不是 mainline 源码**：已经实测到两处差异（L-EE-003、L-EE-004），
+而另一处**疑似**差异查源码后证明是我自己误读了注释（L-EE-005）。这类错误分级能拦住，靠文风拦不住。
+
+每条 law 还带 **scope**（实际覆盖到什么范围）。本手册**不作「不可能」断言**：关闭的杠杆记录的是搜过的空间。
+
+## 两个锚点
+
+出厂 `cc1` **未 strip 且带 DWARF**，所以出厂二进制本身就是一等证据来源。自备工具链后：
+
+```sh
+CC1=~/eecc/ee-gcc3.2-040921/lib/gcc-lib/ee/3.2-ee-040921/cc1
+
+python3 tools/compiler/ee-gcc-anchor.py --cc1 "$CC1" symbol allocno_compare --disasm 64
+python3 tools/compiler/ee-gcc-anchor.py --cc1 "$CC1" struct allocno
+python3 tools/compiler/ee-gcc-anchor.py --cc1 "$CC1" const 0x821e360 --bytes 8
+python3 tools/compiler/ee-gcc-anchor.py --cc1 "$CC1" selftest
+```
+
+`python3 tools/check/test_compiler_laws.py` 校验 `laws.json` 与 `LAWS.md` 双向一致、分级前置条件成立，
+并在本机存在 `cc1` 时逐条核对二进制锚点。
+
+## 范围与诚实边界
+
+* 全部结论只属于 **`ee-gcc 3.2-ee-040921`**。`ee-gcc 2.96-ee-001003-1` 编译本项目的 CRI 中间件，pass 编号不同，本手册不替它下结论。
+* mainline **gcc-3.2.3** 只作**语义**参照，不作行号参照；逐函数位移见 L-EE-006。
+* 本仓库不含游戏资产、游戏反汇编与编译器二进制。锚点是编译器内部符号、地址、行号与常量，属符号级事实。
+* 手册是版本化且持续维护的：攻击大函数时发现的新机制，应当以 law 或杠杆的形式带证据回到这里。

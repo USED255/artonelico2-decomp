@@ -19,8 +19,16 @@ a large change.
 
 ## 2. Before you start
 
-Read [docs/BUILD.md](docs/BUILD.md). You must supply your own copy of the game
-and the original compiler toolchain. This repository does not contain them.
+Read [docs/BUILD.md](docs/BUILD.md). When a function compiles but does not match, work through
+[docs/knowledge-base/compiler/DIAGNOSTICS.md](docs/knowledge-base/compiler/DIAGNOSTICS.md) — it routes
+a residual to the pass that owns it — and
+[docs/knowledge-base/compiler/FIELD-GUIDE.md](docs/knowledge-base/compiler/FIELD-GUIDE.md) for
+source-level changes that move the numbers. If the function is a known blocker, stop where
+[docs/knowledge-base/KNOWN-BLOCKERS.md](docs/knowledge-base/KNOWN-BLOCKERS.md) says to stop.
+`python3 tools/compiler/laws-query.py` answers "what does this compiler do at pass X".
+
+You must supply your own copy of the game and the original compiler toolchain. This repository does
+not contain them.
 
 Check your work on your machine:
 
