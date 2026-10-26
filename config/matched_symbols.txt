@@ -5209,3 +5209,4 @@ func_00339be0    # ghidra_draft manual
 func_00339c60    # ghidra_draft manual
 func_00339b58    # ghidra_draft manual
 func_00339cf0    # ghidra_draft manual
+func_0033a4a0    # ghidra_draft manual
