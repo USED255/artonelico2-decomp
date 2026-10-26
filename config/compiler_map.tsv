@@ -738,3 +738,6 @@ func_00324fe0	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹
 func_0033a520	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹配
 func_0033a618	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹配
 func_003398f8	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹配
+func_0033d940	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹配
+func_0033dbc8	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹配
+func_0033d8e8	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹配
