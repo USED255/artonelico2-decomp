@@ -1,0 +1,1 @@
+void func_002259c4(char *p){ int x; *(int *)(p + 0x34) = 0; *(int *)(p + 0x38) = 0; *(int *)(p + 0x40) = 0; x = *(int *)(p + 0x3C); x &= ~1; *(short *)(p + 0x30) = 0x24E; *(short *)(p + 0x32) = 0xB4; x &= ~2; *(int *)(p + 0x3C) = x; }
