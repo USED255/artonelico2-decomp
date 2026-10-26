@@ -1,0 +1,4 @@
+struct S { char pad[0x10]; int f10; };
+extern int func_00303108(struct S *);
+extern int func_00303f50(struct S *);
+int func_00302110(struct S *p){ switch (p->f10) { case 0x64: return func_00303108(p); case 0xC8: return func_00303f50(p); default: return 0; } }
