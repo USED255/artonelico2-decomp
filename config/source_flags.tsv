@@ -3004,3 +3004,4 @@ func_0031cfb0	-mabi=eabi -G0
 func_0031d040	-mabi=eabi -G0
 func_0031d0d0	-mabi=eabi -G0
 func_002a79e8	-fno-schedule-insns
+func_002fb2f0	-fno-optimize-sibling-calls
