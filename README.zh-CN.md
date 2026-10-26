@@ -13,11 +13,11 @@
 
 ## 进度
 
-截至 2026-10-26（[progress/baseline.json](progress/baseline.json)，构建版本 `f494e4a`，
-报告 `sha256:e45e7b7f8a4d…`，载荷 `sha1:7cc42d275750600d…`）：
+截至 2026-10-27（[progress/baseline.json](progress/baseline.json)，构建版本 `e8943ae`，
+报告 `sha256:333ec25825c5…`，载荷 `sha1:7cc42d275750600d…`）：
 
-- 已匹配函数：**4,627 / 10,923（42.36%）**
-- 已匹配代码：**256,892 / 2,276,780 字节（11.28%）**
+- 已匹配函数：**4,671 / 10,923（42.76%）**
+- 已匹配代码：**259,796 / 2,276,780 字节（11.41%）**
 
 主口径只算重建的 C，详见 [docs/TRANSCRIPTION.zh-CN.md](docs/TRANSCRIPTION.zh-CN.md)。
 
