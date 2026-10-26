@@ -1,0 +1,1 @@
+void func_001f5518(char *p){ int i; for (i = 0; i < 4; i++) { short *q = (short *)(i * 2 + (int)p); q[2] = -1; q[6] = -1; } *(short *)(p + 0) = -1; *(short *)(p + 2) = -1; *(short *)(p + 0x14) = 0; *(short *)(p + 0x16) = 0; }
