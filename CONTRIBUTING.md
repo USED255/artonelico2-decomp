@@ -19,16 +19,8 @@ a large change.
 
 ## 2. Before you start
 
-Read [docs/BUILD.md](docs/BUILD.md). When a function compiles but does not match, work through
-[docs/knowledge-base/compiler/DIAGNOSTICS.md](docs/knowledge-base/compiler/DIAGNOSTICS.md) — it routes
-a residual to the pass that owns it — and
-[docs/knowledge-base/compiler/FIELD-GUIDE.md](docs/knowledge-base/compiler/FIELD-GUIDE.md) for
-source-level changes that move the numbers. If the function is a known blocker, stop where
-[docs/knowledge-base/KNOWN-BLOCKERS.md](docs/knowledge-base/KNOWN-BLOCKERS.md) says to stop.
-`python3 tools/compiler/laws-query.py` answers "what does this compiler do at pass X".
-
-You must supply your own copy of the game and the original compiler toolchain. This repository does
-not contain them.
+Read [docs/BUILD.md](docs/BUILD.md). You must supply your own copy of the game
+and the original compiler toolchain. This repository does not contain them.
 
 Check your work on your machine:
 
@@ -39,7 +31,32 @@ make delta BASE=origin/main      # each changed file in src/matched/ must match 
 make check                       # repository checks
 ```
 
-## 3. Send a pull request
+## 3. How to match a function
+
+A match is a loop, not a single step. This is the loop:
+
+1. **Pick a function.** Take a small unmatched function, read its retail assembly, and read the
+   data around it.
+2. **Write C that should produce it.** Reproduce the source shape the compiler saw: the types, the
+   order of statements, and the way values are reused. The instruction selection follows.
+3. **Compile and compare.** Run `make delta BASE=<the base commit>`. Every changed file must report
+   100%. Read the diff in `objdiff` when it does not.
+4. **Diagnose before guessing.** Find where the two instruction streams first differ, then look up
+   the compiler rule behind it: [DIAGNOSTICS](docs/knowledge-base/compiler/DIAGNOSTICS.md) routes a
+   residual to the pass that owns it, and [FIELD-GUIDE](docs/knowledge-base/compiler/FIELD-GUIDE.md)
+   lists source spellings that move a measurement. `python3 tools/compiler/laws-query.py` answers
+   "what does this compiler do at pass X".
+5. **Sweep before you rewrite.** The winning optimisation tier is not always the recorded one. Try
+   `-O1`, `-O2`, `-O3` and `-Os` before you conclude that the source is wrong. For the traps that
+   produce false results, and for the functions that cannot be matched, read
+   [KNOWN-BLOCKERS](docs/knowledge-base/KNOWN-BLOCKERS.md) and stop where it says to stop.
+6. **Send the evidence.** Add the file, run the commands in section 2, and open a pull request with
+   the objdiff result.
+
+A function that only matches by copying the retail instructions is a transcription, not a match.
+It is counted separately: see [docs/TRANSCRIPTION.md](docs/TRANSCRIPTION.md).
+
+## 4. Send a pull request
 
 1. Fork this repository.
 2. Make a branch. Add or change the files.
@@ -48,18 +65,18 @@ make check                       # repository checks
 5. In the description, give your evidence: the tool you used, the command, and
    the result. For a matched function, give the objdiff result (100%).
 
-## 4. What CI does
+## 5. What CI does
 
 | Workflow | Your pull request |
 | --- | --- |
 | `validate` | Runs in **contribution mode**. It allows an addition or a change in the contribution paths. It rejects a change outside them, a non-text file, a symbolic link, a file above 1 MiB, and any changed path that is not a regular file in the working tree (the check fails closed, so a path it cannot inspect is never accepted). A branch of this repository may also rename or delete a file. A pull request from an external fork must still only add or change files. |
 | `matching-gate` | Needs the retail executable and the Sony toolchain. A pull request from a fork cannot get them, so the job runs its notice step only; a manual run refuses a fork pull request outright, because the gate would otherwise execute a fork's scripts next to the private material. A maintainer then verifies your commit. An internal pull request picks a mode from your change set: documentation and pure tests run no build at all, and a change that only touches `src/matched/**`, `config/**` (except the two files `splat split` reads), and the progress report assembles the baseline and runs the mixed build, the per-function check, and the report, without the separate baseline link. Any change to a build input or to the tooling that decides how the gate runs takes the whole pipeline. A green run publishes the report and its provenance record; `tools/maintainer/publish_report.py` refuses to publish without a passing provenance. See [docs/BUILD.md](docs/BUILD.md) section 4. |
 
-## 5. What happens after CI
+## 6. What happens after CI
 
 A maintainer reviews your change and merges it. Your name stays in the history.
 
-## 6. Path rules
+## 7. Path rules
 
 You can add or change these paths:
 
@@ -92,19 +109,19 @@ entry. A maintainer adds it for you. `config/matched_symbols.txt` and
 `config/symbol_addrs.txt` are read-only configuration. A maintainer fills them
 for you. Read [config/README.md](config/README.md).
 
-## 7. Writing style
+## 8. Writing style
 
 Documents in this repository use the **ASD-STE100** style.
 
 The ASD-STE100 dictionary has a copyright. We do not copy it into this
 repository. The standard is at <https://www.asd-ste100.org/>.
 
-## 8. Licence
+## 9. Licence
 
 This repository is GPL-3.0. When you submit a contribution, you agree to publish
 it under the same licence. You keep the copyright of your work.
 
-## 9. Report a policy problem
+## 10. Report a policy problem
 
 Read [docs/PUBLICATION-POLICY.md](docs/PUBLICATION-POLICY.md). Open an issue if
 this repository contains material that it must not contain. We treat that report
