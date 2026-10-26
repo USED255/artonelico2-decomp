@@ -5061,3 +5061,9 @@ func_00301ee0    # ghidra_draft manual
 func_00301f30    # ghidra_draft manual
 func_00301f80    # ghidra_draft manual
 func_00301fd0    # ghidra_draft manual
+func_00302020    # ghidra_draft manual
+func_00302070    # ghidra_draft manual
+func_003020c0    # ghidra_draft manual
+func_00302110    # ghidra_draft manual
+func_00302160    # ghidra_draft manual
+func_003021b0    # ghidra_draft manual
