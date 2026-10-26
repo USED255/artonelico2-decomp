@@ -5237,3 +5237,4 @@ func_00307ad8    # ghidra_draft manual
 func_00320d08    # ghidra_draft manual
 func_00320d30    # ghidra_draft manual
 func_0031bbb8    # ghidra_draft manual
+func_0031bb88    # ghidra_draft manual
