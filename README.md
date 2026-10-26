@@ -15,14 +15,15 @@ The build compares the result with the retail binary byte by byte. A function is
 
 ## Status
 
-As of 2026-10-15 ([progress/baseline.json](progress/baseline.json), build `f244e49`,
-report `sha256:3ddb055d08c9…`, payload `sha1:7cc42d275750600d…`):
+As of 2026-10-25 ([progress/baseline.json](progress/baseline.json), build `d41a5de`,
+report `sha256:307fcf819c07…`, payload `sha1:7cc42d275750600d…`):
 
-- Matched functions: **3,634 / 10,923 (33.27%)**
-- Matched code: **193,992 / 2,276,780 bytes (8.52%)**
+- Matched functions: **4,281 / 10,923 (39.19%)**
+- Matched code: **233,156 / 2,276,780 bytes (10.24%)**
 
-We do not count the assembly stubs that we copied. CI does not publish a report
-that is worse than the baseline. Progress history:
+The main metric counts reconstructed C only — see [docs/TRANSCRIPTION.md](docs/TRANSCRIPTION.md).
+
+CI does not publish a report that is worse than the baseline. Progress history:
 <https://decomp.dev/USED255/artonelico2-decomp>.
 
 ## Build

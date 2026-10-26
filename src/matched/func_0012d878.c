@@ -1,0 +1,22 @@
+extern char D_00AD8420[];
+__asm__(
+  ".set noreorder\n"
+  ".globl func_0012d878\n"
+  "func_0012d878:\n"
+  "addiu $29,$29,-16\n"
+  "lui $15, %hi(D_00AD8420)\n"
+  "move $13,$6\n"
+  "sd $31,0($29)\n"
+  "addiu $15,$15, %lo(D_00AD8420)\n"
+  "lq $6,0($4)\n"
+  "sq $6,0($15)\n"
+  "addiu $14,$15,16\n"
+  "lq $6,0($5)\n"
+  "sq $6,0($14)\n"
+  "addiu $15,$15,32\n"
+  "lq $6,0($13)\n"
+  "sq $6,0($15)\n"
+  "ld $31,0($29)\n"
+  "j func_0012d8b8\n"
+  "addiu $29,$29,16\n"
+  ".set reorder\n");

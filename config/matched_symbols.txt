@@ -736,6 +736,7 @@ func_00191588    # ghidra_draft:-O2
 func_001915a8    # ghidra_draft:-O2
 func_001915c8    # ghidra_draft:-O2
 func_001915e8    # permuter
+func_00191760    # permuter
 func_00191860    # llm_draft
 func_001919e4    # permuter
 func_00191a08    # llm_draft
@@ -900,6 +901,7 @@ func_001a1da8    # ret_data_load
 func_001a1db4    # llm_draft
 func_001a1ddc    # permuter
 func_001a1e08    # ret_data_load
+func_001a1fd4    # permuter
 func_001a20e0    # ret_data_addr
 func_001a2220    # store_data_const
 func_001a2d78    # permuter
@@ -1068,6 +1070,7 @@ func_001d98b8    # permuter
 func_001d9e40    # store_arg0
 func_001d9ee0    # store_data
 func_001da218    # wrapper_o2_tail
+func_001da34c    # permuter
 func_001da3d0    # wrapper_o2_tail
 func_001da3e4    # wrapper_o2_tail
 func_001da3f8    # ghidra_draft:-O2
@@ -1193,6 +1196,7 @@ func_001ec7d8    # permuter
 func_001ec804    # permuter
 func_001ec8b0    # permuter
 func_001ec944    # idx_load
+func_001ec980    # permuter
 func_001ecc38    # empty
 func_001ecdbc    # llm_draft
 func_001ed000    # ghidra_draft:-O1
@@ -1551,6 +1555,7 @@ func_0023966c    # store_data
 func_00239678    # store_data
 func_00239af8    # permuter
 func_0023ab04    # llm_draft
+func_0023b010    # permuter
 func_0023b404    # llm_draft
 func_0023b794    # ghidra_draft:-O2
 func_0023bb10    # ghidra_draft:-O2
@@ -1578,6 +1583,7 @@ func_002406b4    # permuter
 func_00240768    # permuter
 func_00241470    # permuter
 func_00241a04    # permuter
+func_00241a4c    # permuter
 func_00241dd0    # permuter
 func_00242214    # permuter
 func_002424b0    # permuter
@@ -1811,6 +1817,7 @@ func_00260c24    # llm_draft
 func_00260c50    # ghidra_draft:-O2
 func_00261be8    # ghidra_draft:-Os
 func_00261ef0    # permuter
+func_00264040    # permuter
 func_00264894    # llm_draft
 func_002648c4    # permuter
 func_00264c74    # ghidra_draft:-O2
@@ -3644,3 +3651,1263 @@ func_00140974    # llm_draft+permuter
 func_0029cd98    # llm_draft
 baseelf_81    # llm_draft
 func_0023631c    # llm_draft
+func_002d8ce0    # cri_draft
+func_002a8cc8    # cri_draft
+func_003217d0    # cri_draft
+func_001ce9e8    # cri_draft
+func_002b9610    # cri_draft
+func_002dec30    # cri_draft
+func_002dfb28    # cri_draft
+func_002dfed0    # cri_draft
+func_002e0388    # cri_draft
+func_002e0ac0    # cri_draft
+func_002e4130    # cri_draft
+func_002e87d0    # cri_draft
+func_002e9270    # cri_draft
+func_002e95d0    # cri_draft
+func_002e9ed0    # cri_draft
+func_002ef230    # cri_draft
+func_002efa18    # cri_draft
+func_002f02c8    # cri_draft
+func_002f9dd8    # cri_draft
+func_002ffe50    # cri_draft
+func_00302f18    # cri_draft
+func_003030b0    # cri_draft
+func_00303cf0    # cri_draft
+func_00305f10    # cri_draft
+func_00312e58    # cri_draft
+func_00319660    # cri_draft
+func_00319b18    # cri_draft
+func_00319d38    # cri_draft
+func_00322750    # cri_draft
+func_00322780    # cri_draft
+func_003260e8    # cri_draft
+func_00327418    # cri_draft
+func_003361e0    # cri_draft
+func_0033f098    # cri_draft
+func_0033f0c8    # cri_draft
+func_00340518    # cri_draft
+func_00344270    # cri_draft
+func_002f2538    # cri_draft
+func_0032f530    # cri_draft
+func_002a5f38    # cri_draft
+func_002b3950    # cri_draft
+func_002b92a0    # cri_draft
+func_003059b0    # cri_draft
+func_00324718    # cri_draft
+func_0032c218    # cri_draft
+func_002b2320    # cri_draft
+func_002b2338    # cri_draft
+func_002b7978    # cri_draft
+func_002de408    # cri_draft
+func_002de5a8    # cri_draft
+func_002de5c8    # cri_draft
+func_002de810    # cri_draft
+func_002deaa8    # cri_draft
+func_002e1818    # cri_draft
+func_002e2b58    # cri_draft
+func_002e3b48    # cri_draft
+func_002e3c28    # cri_draft
+func_002e3ee8    # cri_draft
+func_002e4388    # cri_draft
+func_002e4a38    # cri_draft
+func_002e4a60    # cri_draft
+func_002e5230    # cri_draft
+func_002e5300    # cri_draft
+func_002e56a8    # cri_draft
+func_002e5cc8    # cri_draft
+func_002e6690    # cri_draft
+func_002e6740    # cri_draft
+func_002e69b8    # cri_draft
+func_002e6b50    # cri_draft
+func_002e7e58    # cri_draft
+func_002e8590    # cri_draft
+func_002e8600    # cri_draft
+func_002e9488    # cri_draft
+func_002e9838    # cri_draft
+func_002e9e40    # cri_draft
+func_002ea438    # cri_draft
+func_002ea460    # cri_draft
+func_002ea6d0    # cri_draft
+func_002eb908    # cri_draft
+func_002ec868    # cri_draft
+func_002edd80    # cri_draft
+func_002eddb8    # cri_draft
+func_002ef100    # cri_draft
+func_002ef340    # cri_draft
+func_002ef3f8    # cri_draft
+func_002f7378    # cri_draft
+func_002f9d98    # cri_draft
+func_002fc8d0    # cri_draft
+func_002fd118    # cri_draft
+func_002fd4d0    # cri_draft
+func_002fd520    # cri_draft
+func_00300548    # cri_draft
+func_00301178    # cri_draft
+func_00301558    # cri_draft
+func_00302e10    # cri_draft
+func_00305cc8    # cri_draft
+func_00305d50    # cri_draft
+func_00306ef0    # cri_draft
+func_0030b8d0    # cri_draft
+func_0030ee80    # cri_draft
+func_00312148    # cri_draft
+func_003128d8    # cri_draft
+func_00313250    # cri_draft
+func_00313278    # cri_draft
+func_003132d0    # cri_draft
+func_003132f8    # cri_draft
+func_00313320    # cri_draft
+func_00313348    # cri_draft
+func_00313370    # cri_draft
+func_00313398    # cri_draft
+func_003133c0    # cri_draft
+func_003133e8    # cri_draft
+func_00313410    # cri_draft
+func_00313438    # cri_draft
+func_00313490    # cri_draft
+func_003134b8    # cri_draft
+func_003134e0    # cri_draft
+func_00313508    # cri_draft
+func_00313530    # cri_draft
+func_003141e0    # cri_draft
+func_003193c8    # cri_draft
+func_00319870    # cri_draft
+func_0031aea8    # cri_draft
+func_0031c7e0    # cri_draft
+func_0031c818    # cri_draft
+func_0031c850    # cri_draft
+func_0031cc40    # cri_draft
+func_0031cdb0    # cri_draft
+func_0031ce40    # cri_draft
+func_0031cf48    # cri_draft
+func_0031cfd8    # cri_draft
+func_0031d068    # cri_draft
+func_0031d0f8    # cri_draft
+func_0031d1d0    # cri_draft
+func_0031d298    # cri_draft
+func_0031d370    # cri_draft
+func_0031d7d0    # cri_draft
+func_0031dc30    # cri_draft
+func_0031dc68    # cri_draft
+func_0031de90    # cri_draft
+func_0031df98    # cri_draft
+func_0031e088    # cri_draft
+func_0031e160    # cri_draft
+func_0031e3d8    # cri_draft
+func_0031e4c0    # cri_draft
+func_0031e508    # cri_draft
+func_0031e728    # cri_draft
+func_0031e888    # cri_draft
+func_0031e970    # cri_draft
+func_0031ec40    # cri_draft
+func_0031ee00    # cri_draft
+func_0031f070    # cri_draft
+func_0031f200    # cri_draft
+func_0031f238    # cri_draft
+func_0031f268    # cri_draft
+func_0031f370    # cri_draft
+func_0031f470    # cri_draft
+func_0031f508    # cri_draft
+func_0031f570    # cri_draft
+func_0031f650    # cri_draft
+func_0031f6f8    # cri_draft
+func_0031f928    # cri_draft
+func_0031f960    # cri_draft
+func_0031f978    # cri_draft
+func_0031f9c8    # cri_draft
+func_0031fa40    # cri_draft
+func_0031fae8    # cri_draft
+func_0031fb60    # cri_draft
+func_0031fbd0    # cri_draft
+func_0031fc40    # cri_draft
+func_0031fce0    # cri_draft
+func_00320398    # cri_draft
+func_003203f8    # cri_draft
+func_003204c8    # cri_draft
+func_00320730    # cri_draft
+func_00320790    # cri_draft
+func_003209a8    # cri_draft
+func_00320d58    # cri_draft
+func_00322f90    # cri_draft
+func_00322fa8    # cri_draft
+func_00323240    # cri_draft
+func_003232a8    # cri_draft
+func_003232f8    # cri_draft
+func_00323338    # cri_draft
+func_00323398    # cri_draft
+func_00324248    # cri_draft
+func_00324b00    # cri_draft
+func_00324c18    # cri_draft
+func_00324d10    # cri_draft
+func_00324ee8    # cri_draft
+func_00324f28    # cri_draft
+func_00324f90    # cri_draft
+func_00325018    # cri_draft
+func_00325050    # cri_draft
+func_00325090    # cri_draft
+func_003250d8    # cri_draft
+func_00325238    # cri_draft
+func_00325298    # cri_draft
+func_003252f0    # cri_draft
+func_00325c30    # cri_draft
+func_00325ca8    # cri_draft
+func_00325d18    # cri_draft
+func_00325d58    # cri_draft
+func_00325dc0    # cri_draft
+func_00325e20    # cri_draft
+func_00325e68    # cri_draft
+func_00325ea8    # cri_draft
+func_00325ee8    # cri_draft
+func_00325f38    # cri_draft
+func_00325f88    # cri_draft
+func_00325fd8    # cri_draft
+func_00326020    # cri_draft
+func_00326060    # cri_draft
+func_003260a0    # cri_draft
+func_00326130    # cri_draft
+func_003261a8    # cri_draft
+func_00326268    # cri_draft
+func_003262a8    # cri_draft
+func_003262c0    # cri_draft
+func_00326300    # cri_draft
+func_00326360    # cri_draft
+func_003263a8    # cri_draft
+func_003263f0    # cri_draft
+func_00326a98    # cri_draft
+func_00326e18    # cri_draft
+func_00326eb8    # cri_draft
+func_00326ee0    # cri_draft
+func_00326f08    # cri_draft
+func_00327160    # cri_draft
+func_003273d8    # cri_draft
+func_00327660    # cri_draft
+func_00327730    # cri_draft
+func_00327848    # cri_draft
+func_003279c8    # cri_draft
+func_003279e0    # cri_draft
+func_00327d28    # cri_draft
+func_00327db0    # cri_draft
+func_00327e38    # cri_draft
+func_00327ec0    # cri_draft
+func_00327f48    # cri_draft
+func_00327fd0    # cri_draft
+func_00328058    # cri_draft
+func_003281c0    # cri_draft
+func_00328248    # cri_draft
+func_00328310    # cri_draft
+func_00328378    # cri_draft
+func_00328428    # cri_draft
+func_00328490    # cri_draft
+func_003284e8    # cri_draft
+func_00328550    # cri_draft
+func_003285a0    # cri_draft
+func_00328620    # cri_draft
+func_003286d8    # cri_draft
+func_003286f0    # cri_draft
+func_00328928    # cri_draft
+func_003289c8    # cri_draft
+func_00328a60    # cri_draft
+func_00328aa8    # cri_draft
+func_00328c38    # cri_draft
+func_00328ce0    # cri_draft
+func_00328d28    # cri_draft
+func_00328fc8    # cri_draft
+func_003290a0    # cri_draft
+func_00329108    # cri_draft
+func_00329278    # cri_draft
+func_003292e0    # cri_draft
+func_00329350    # cri_draft
+func_003293b8    # cri_draft
+func_00329528    # cri_draft
+func_00329628    # cri_draft
+func_00329678    # cri_draft
+func_003296d8    # cri_draft
+func_00329778    # cri_draft
+func_00329848    # cri_draft
+func_00329978    # cri_draft
+func_003299b8    # cri_draft
+func_00329a00    # cri_draft
+func_00329a60    # cri_draft
+func_00329ad8    # cri_draft
+func_00329b18    # cri_draft
+func_00329b80    # cri_draft
+func_00329bf0    # cri_draft
+func_00329c60    # cri_draft
+func_00329db8    # cri_draft
+func_0032a070    # cri_draft
+func_0032a128    # cri_draft
+func_0032a168    # cri_draft
+func_0032a1c0    # cri_draft
+func_0032a218    # cri_draft
+func_0032a268    # cri_draft
+func_0032a3b0    # cri_draft
+func_0032a528    # cri_draft
+func_0032a580    # cri_draft
+func_0032a6a8    # cri_draft
+func_0032a868    # cri_draft
+func_0032a928    # cri_draft
+func_0032c320    # cri_draft
+func_0032c5f0    # cri_draft
+func_0032c6d8    # cri_draft
+func_0032cc60    # cri_draft
+func_0032ccc8    # cri_draft
+func_0032cef8    # cri_draft
+func_0032d020    # cri_draft
+func_0032d330    # cri_draft
+func_0032d3f8    # cri_draft
+func_0032d668    # cri_draft
+func_0032d6d8    # cri_draft
+func_0032d748    # cri_draft
+func_0032d7b8    # cri_draft
+func_0032d820    # cri_draft
+func_0032d9b8    # cri_draft
+func_0032da90    # cri_draft
+func_0032db00    # cri_draft
+func_0032dbd8    # cri_draft
+func_0032dc68    # cri_draft
+func_0032dcf8    # cri_draft
+func_0032dd88    # cri_draft
+func_0032e7c0    # cri_draft
+func_0032e8b0    # cri_draft
+func_0032e960    # cri_draft
+func_0032ea30    # cri_draft
+func_0032ef00    # cri_draft
+func_0032efb8    # cri_draft
+func_0032f020    # cri_draft
+func_0032f0a8    # cri_draft
+func_0032f168    # cri_draft
+func_0032f1b8    # cri_draft
+func_00330628    # cri_draft
+func_00330708    # cri_draft
+func_00331f48    # cri_draft
+func_003324b0    # cri_draft
+func_00336d58    # cri_draft
+func_00336f18    # cri_draft
+func_00336f60    # cri_draft
+func_00336fd0    # cri_draft
+func_003373a0    # cri_draft
+func_00337448    # cri_draft
+func_003374a8    # cri_draft
+func_00337510    # cri_draft
+func_00337578    # cri_draft
+func_00337650    # cri_draft
+func_00337730    # cri_draft
+func_00337810    # cri_draft
+func_003378f0    # cri_draft
+func_00337998    # cri_draft
+func_00337a78    # cri_draft
+func_00337b28    # cri_draft
+func_003382b8    # cri_draft
+func_00338bc8    # cri_draft
+func_0033ab00    # cri_draft
+func_0033aee0    # cri_draft
+func_0033afb0    # cri_draft
+func_0033b0f8    # cri_draft
+func_0033b2c0    # cri_draft
+func_0033b350    # cri_draft
+func_0033b498    # cri_draft
+func_0033b4e0    # cri_draft
+func_0033b620    # cri_draft
+func_0033b710    # cri_draft
+func_0033b860    # cri_draft
+func_0033b9c8    # cri_draft
+func_0033bb10    # cri_draft
+func_0033bc48    # cri_draft
+func_0033bd50    # cri_draft
+func_0033c010    # cri_draft
+func_0033c400    # cri_draft
+func_0033c630    # cri_draft
+func_0033c7f8    # cri_draft
+func_0033c940    # cri_draft
+func_0033cb38    # cri_draft
+func_0033cbc8    # cri_draft
+func_0033cd80    # cri_draft
+func_0033ce80    # cri_draft
+func_0033d030    # cri_draft
+func_0033d1a8    # cri_draft
+func_0033d318    # cri_draft
+func_0033d448    # cri_draft
+func_0033d520    # cri_draft
+func_0033d780    # cri_draft
+func_0033e7a8    # cri_draft
+func_0033e8d0    # cri_draft
+func_0033e9c0    # cri_draft
+func_0033f108    # cri_draft
+func_0033f340    # cri_draft
+func_0033f3f8    # cri_draft
+func_0033fbd0    # cri_draft
+func_0033fc18    # cri_draft
+func_003403c0    # cri_draft
+func_003434b0    # cri_draft
+func_00344480    # cri_draft
+func_003444c0    # cri_draft
+func_003445a8    # cri_draft
+func_003445c0    # cri_draft
+func_003447c8    # cri_draft
+func_00344998    # cri_draft
+func_00344b98    # cri_draft
+func_00344c98    # cri_draft
+iopreset_7    # cri_draft
+loadcore_3    # cri_draft
+modload_3    # cri_draft
+sifcmd_5    # cri_draft
+sysmem_3    # cri_draft
+func_002efab8    # cri_draft
+func_00325db0    # cri_draft
+func_001002f8    # hand_c
+func_00100370    # hand_c
+func_0035ee88    # hand_c
+func_002b3828    # cri_draft
+func_002b38d8    # cri_draft
+func_002b38e8    # cri_draft
+func_002b3a78    # cri_draft
+func_002b3ab0    # cri_draft
+func_002b3af0    # cri_draft
+func_002b3c08    # cri_draft
+func_002b3c18    # cri_draft
+func_002b3c50    # cri_draft
+func_00140de4    # hand_c
+func_00140e04    # hand_c
+func_001a1df8    # hand_c
+func_001a2210    # hand_c
+func_001a9938    # cri_draft
+func_001a9a14    # cri_draft
+func_001a9b1c    # cri_draft
+func_001a9bf8    # cri_draft
+func_001a9cd4    # cri_draft
+func_0013adc0    # cri_draft
+func_00238800    # cri_draft
+func_002e8560    # cri_draft
+func_002e8578    # cri_draft
+func_003003e8    # cri_draft
+func_00300400    # cri_draft
+func_00300418    # cri_draft
+func_00300430    # cri_draft
+func_00305790    # cri_draft
+func_0033ec08    # cri_draft
+func_0033ec20    # cri_draft
+func_0033f068    # cri_draft
+func_0033f080    # cri_draft
+func_00245328    # hand_c
+func_0024752c    # hand_c
+func_00272dd4    # cri_draft
+func_0027a988    # cri_draft
+func_002b3838    # cri_draft
+func_002b3858    # cri_draft
+func_002ed378    # cri_draft
+func_002ed398    # cri_draft
+func_002e8290    # cri_draft
+func_002e8308    # cri_draft
+func_00303a50    # cri_draft
+func_00303a78    # cri_draft
+func_0013f39c    # permuter
+func_002425dc    # cri_draft
+func_0026b00c    # cri_draft
+func_002e7aa8    # cri_draft
+func_002e8d48    # cri_draft
+func_002f9aa0    # cri_draft
+func_00305f38    # cri_draft
+func_00322880    # cri_draft
+func_0032d060    # cri_draft
+func_00334670    # cri_draft
+func_00344788    # cri_draft
+func_001dc708    # flag_matrix
+func_0028c320    # flag_matrix
+func_0013b850    # transcription_asm
+func_0015f67c    # transcription_asm
+func_0018c304    # transcription_asm
+func_001a9f64    # transcription_asm
+func_001b9728    # transcription_asm
+func_001e89ec    # transcription_asm
+func_001ed198    # transcription_asm
+func_001ed1cc    # transcription_asm
+func_001efa9c    # transcription_asm
+func_001f3580    # transcription_asm
+func_0029eeec    # transcription_asm
+func_002bb498    # transcription_asm
+func_0013c198    # transcription_asm
+func_0016ed7c    # transcription_asm
+func_001ed334    # transcription_asm
+func_001eddc8    # transcription_asm
+func_00266a48    # transcription_asm
+func_002db068    # transcription_asm
+func_0010e38c    # transcription_asm
+func_0011dfdc    # transcription_asm
+func_0012d408    # transcription_asm
+func_0012d450    # transcription_asm
+func_0012d878    # transcription_asm
+func_00157a2c    # transcription_asm
+func_00158808    # transcription_asm
+func_001589a0    # transcription_asm
+func_001591b4    # transcription_asm
+func_001592d0    # transcription_asm
+func_0015a95c    # transcription_asm
+func_0015b3fc    # transcription_asm
+func_00168d3c    # transcription_asm
+func_0016d270    # transcription_asm
+func_0017c320    # transcription_asm
+func_00184f10    # transcription_asm
+func_00184f50    # transcription_asm
+func_0018c2d0    # transcription_asm
+func_001a9f74    # transcription_asm
+func_001aac84    # transcription_asm
+func_001ac09c    # transcription_asm
+func_001ac4ec    # transcription_asm
+func_001acce8    # transcription_asm
+func_001ad6c0    # transcription_asm
+func_001af8e4    # transcription_asm
+func_001affc4    # transcription_asm
+func_001b0f00    # transcription_asm
+func_001b4608    # transcription_asm
+func_001b7ce8    # transcription_asm
+func_001cd89c    # transcription_asm
+func_001ceb00    # transcription_asm
+func_001d0750    # transcription_asm
+func_001d27c0    # transcription_asm
+func_001de864    # transcription_asm
+func_001e8790    # transcription_asm
+func_001e8a0c    # transcription_asm
+func_001e8a68    # transcription_asm
+func_001ece24    # transcription_asm
+func_001ed09c    # transcription_asm
+func_001ed268    # transcription_asm
+func_001ed850    # transcription_asm
+func_001ed93c    # transcription_asm
+func_001edde8    # transcription_asm
+func_001edeb8    # transcription_asm
+func_001edf38    # transcription_asm
+func_001ee07c    # transcription_asm
+func_001ee13c    # transcription_asm
+func_001f1660    # transcription_asm
+func_001f800c    # transcription_asm
+func_001f83cc    # transcription_asm
+func_001f8450    # transcription_asm
+func_001f8470    # transcription_asm
+func_001f8490    # transcription_asm
+func_001f84a8    # transcription_asm
+func_001f84c0    # transcription_asm
+func_001f88e4    # transcription_asm
+func_001f89bc    # transcription_asm
+func_001fdf04    # transcription_asm
+func_001fdffc    # transcription_asm
+func_001fe050    # transcription_asm
+func_001fe108    # transcription_asm
+func_00205978    # transcription_asm
+func_0021ea34    # transcription_asm
+func_0021f1d8    # transcription_asm
+func_00220eb4    # transcription_asm
+func_0023ed3c    # transcription_asm
+func_0023eeb4    # transcription_asm
+func_00252028    # transcription_asm
+func_0025389c    # transcription_asm
+func_00261b1c    # transcription_asm
+func_00263270    # transcription_asm
+func_002648f4    # transcription_asm
+func_00264928    # transcription_asm
+func_0026495c    # transcription_asm
+func_00268a70    # transcription_asm
+func_0026acd0    # transcription_asm
+func_00292128    # transcription_asm
+func_0029bb50    # transcription_asm
+func_002ace78    # transcription_asm
+func_002ba270    # transcription_asm
+func_002ba2c0    # transcription_asm
+func_002d1608    # transcription_asm
+func_002d8cf0    # transcription_asm
+func_002d8d48    # transcription_asm
+func_002dac78    # transcription_asm
+func_002daf10    # transcription_asm
+func_002dafa8    # transcription_asm
+func_002db138    # transcription_asm
+func_002db208    # transcription_asm
+func_002db320    # transcription_asm
+func_002db528    # transcription_asm
+func_002dba78    # transcription_asm
+func_002dbe70    # transcription_asm
+func_002dbf90    # transcription_asm
+func_002dc290    # transcription_asm
+func_002dc328    # transcription_asm
+func_002dc3d0    # transcription_asm
+func_002dc5b0    # transcription_asm
+func_002dcba8    # transcription_asm
+func_002dceb8    # transcription_asm
+func_0035ecb0    # transcription_asm
+func_0010d6e4    # transcription_asm
+func_0010d760    # transcription_asm
+func_0010d7d8    # transcription_asm
+func_0010d89c    # transcription_asm
+func_0010d958    # transcription_asm
+func_0010d9f4    # transcription_asm
+func_0010dcd8    # transcription_asm
+func_0010de2c    # transcription_asm
+func_0010dee8    # transcription_asm
+func_0010e108    # transcription_asm
+func_0010e2fc    # transcription_asm
+func_0010e520    # transcription_asm
+func_0010e60c    # transcription_asm
+func_0010e724    # transcription_asm
+func_0010e83c    # transcription_asm
+func_0010eac8    # transcription_asm
+func_0010ec60    # transcription_asm
+func_0010ed78    # transcription_asm
+func_0010eff0    # transcription_asm
+func_0010f910    # transcription_asm
+func_0010fb28    # transcription_asm
+func_0010fc44    # transcription_asm
+func_0010fd7c    # transcription_asm
+func_0010feb4    # transcription_asm
+func_001103c0    # transcription_asm
+func_00110588    # transcription_asm
+func_0011075c    # transcription_asm
+func_001108c0    # transcription_asm
+func_0011095c    # transcription_asm
+func_001109f8    # transcription_asm
+func_00110a8c    # transcription_asm
+func_00110be8    # transcription_asm
+func_00110ca0    # transcription_asm
+func_00110dfc    # transcription_asm
+func_001113ec    # transcription_asm
+func_0011a5a4    # transcription_asm
+func_0011cc48    # transcription_asm
+func_0011cd70    # transcription_asm
+func_0011d048    # transcription_asm
+func_0011d438    # transcription_asm
+func_0011d5d4    # transcription_asm
+func_0011dc18    # transcription_asm
+func_00123e04    # transcription_asm
+func_00124138    # transcription_asm
+func_00133cf4    # transcription_asm
+func_00138ae8    # transcription_asm
+func_00138ca4    # transcription_asm
+func_00138e90    # transcription_asm
+func_00138f64    # transcription_asm
+func_0013d3cc    # transcription_asm
+func_001538e4    # transcription_asm
+func_0015b540    # transcription_asm
+func_0015beb4    # transcription_asm
+func_0015bf9c    # transcription_asm
+func_0015c1e0    # transcription_asm
+func_0015c2b0    # transcription_asm
+func_0015c4b8    # transcription_asm
+func_0015c6a4    # transcription_asm
+func_0015c948    # transcription_asm
+func_0015e3d4    # transcription_asm
+func_0015e4d0    # transcription_asm
+func_0015e72c    # transcription_asm
+func_0015e8a4    # transcription_asm
+func_00171b60    # transcription_asm
+func_00175d2c    # transcription_asm
+func_0017e7b8    # transcription_asm
+func_0017e940    # transcription_asm
+func_001808bc    # transcription_asm
+func_001809c0    # transcription_asm
+func_00181004    # transcription_asm
+func_00181c0c    # transcription_asm
+func_00182054    # transcription_asm
+func_00182114    # transcription_asm
+func_00182258    # transcription_asm
+func_00182600    # transcription_asm
+func_001833e0    # transcription_asm
+func_001a10c0    # transcription_asm
+func_001b0e60    # transcription_asm
+func_001c72e4    # transcription_asm
+func_001e4eb0    # transcription_asm
+func_001e7ba4    # transcription_asm
+func_001f9aa0    # transcription_asm
+func_001fc3f8    # transcription_asm
+func_00209328    # transcription_asm
+func_0021d908    # transcription_asm
+func_0021db24    # transcription_asm
+func_0023a86c    # transcription_asm
+func_002489b4    # transcription_asm
+func_00251aa0    # transcription_asm
+func_00264274    # transcription_asm
+func_002642d4    # transcription_asm
+func_0026434c    # transcription_asm
+func_0029218c    # transcription_asm
+func_002a6b00    # transcription_asm
+func_002a7500    # transcription_asm
+func_002becf8    # transcription_asm
+func_002d8c88    # transcription_asm
+func_002d8f80    # transcription_asm
+func_002dc028    # transcription_asm
+func_002dc148    # transcription_asm
+func_002dc488    # transcription_asm
+func_001091cc    # transcription_asm
+func_0010a1a4    # transcription_asm
+func_0010a310    # transcription_asm
+func_0013b7b8    # transcription_asm
+func_0013baec    # transcription_asm
+func_0013be40    # transcription_asm
+func_00154648    # transcription_asm
+func_00156c58    # transcription_asm
+func_0015aed0    # transcription_asm
+func_0015b05c    # transcription_asm
+func_0015b144    # transcription_asm
+func_0015eda4    # transcription_asm
+func_0015fbc4    # transcription_asm
+func_001693b4    # transcription_asm
+func_0016c6bc    # transcription_asm
+func_0017194c    # transcription_asm
+func_0017c570    # transcription_asm
+func_001834e0    # transcription_asm
+func_00192368    # transcription_asm
+func_001a2934    # transcription_asm
+func_001a974c    # transcription_asm
+func_001a9818    # transcription_asm
+func_001a98dc    # transcription_asm
+func_001aad6c    # transcription_asm
+func_001abd40    # transcription_asm
+func_001ad2e4    # transcription_asm
+func_001b50cc    # transcription_asm
+func_001c37ac    # transcription_asm
+func_001c428c    # transcription_asm
+func_001c4640    # transcription_asm
+func_001c4ab0    # transcription_asm
+func_001c798c    # transcription_asm
+func_001c8234    # transcription_asm
+func_001cc230    # transcription_asm
+func_001cece0    # transcription_asm
+func_001d09a8    # transcription_asm
+func_001d0e10    # transcription_asm
+func_001d75e8    # transcription_asm
+func_001d7650    # transcription_asm
+func_001dfd3c    # transcription_asm
+func_001e701c    # transcription_asm
+func_001e7714    # transcription_asm
+func_001ea7d8    # transcription_asm
+func_001ec1ac    # transcription_asm
+func_001ec604    # transcription_asm
+func_001ece88    # transcription_asm
+func_001ed48c    # transcription_asm
+func_001ed4e8    # transcription_asm
+func_001ee1fc    # transcription_asm
+func_001ef674    # transcription_asm
+func_001f8920    # transcription_asm
+func_001f8cbc    # transcription_asm
+func_001f9ffc    # transcription_asm
+func_001fc9e4    # transcription_asm
+func_001fe1b4    # transcription_asm
+func_001fe288    # transcription_asm
+func_001fe41c    # transcription_asm
+func_0020046c    # transcription_asm
+func_00200ce8    # transcription_asm
+func_002039e4    # transcription_asm
+func_00204d50    # transcription_asm
+func_0021b9cc    # transcription_asm
+func_0021e988    # transcription_asm
+func_0021e9d4    # transcription_asm
+func_002208f8    # transcription_asm
+func_0022c0c8    # transcription_asm
+func_0022d634    # transcription_asm
+func_0024b4e8    # transcription_asm
+func_0024b568    # transcription_asm
+func_0025393c    # transcription_asm
+func_0026374c    # transcription_asm
+func_002646a0    # transcription_asm
+func_00264778    # transcription_asm
+func_002679b8    # transcription_asm
+func_00268cc4    # transcription_asm
+func_00268d38    # transcription_asm
+func_00269440    # transcription_asm
+func_002695c0    # transcription_asm
+func_00269708    # transcription_asm
+func_00269788    # transcription_asm
+func_00269ec4    # transcription_asm
+func_0026a46c    # transcription_asm
+func_0026a4f0    # transcription_asm
+func_0026a838    # transcription_asm
+func_0028f0fc    # transcription_asm
+func_0028f31c    # transcription_asm
+func_0028f760    # transcription_asm
+func_00290ba0    # transcription_asm
+func_00290eec    # transcription_asm
+func_00291ef8    # transcription_asm
+func_0029ef04    # transcription_asm
+func_0029f694    # transcription_asm
+func_002a2fdc    # transcription_asm
+func_002a305c    # transcription_asm
+func_002a5708    # transcription_asm
+func_002a9a98    # transcription_asm
+func_002af1c0    # transcription_asm
+func_002b4e98    # transcription_asm
+func_002b5090    # transcription_asm
+func_002b58d0    # transcription_asm
+func_002b5c00    # transcription_asm
+func_002b6100    # transcription_asm
+func_002b6b78    # transcription_asm
+func_002b7a98    # transcription_asm
+func_002b7ab0    # transcription_asm
+func_002b7bf8    # transcription_asm
+func_002b7c38    # transcription_asm
+func_002b7c48    # transcription_asm
+func_002b7c58    # transcription_asm
+func_002b7dc8    # transcription_asm
+func_002b9cc0    # transcription_asm
+func_002b9db0    # transcription_asm
+func_002ba050    # transcription_asm
+func_002ba0b8    # transcription_asm
+func_002ba120    # transcription_asm
+func_002ba188    # transcription_asm
+func_002ba1f0    # transcription_asm
+func_002ba868    # transcription_asm
+func_002baf80    # transcription_asm
+func_002bafe8    # transcription_asm
+func_002bb068    # transcription_asm
+func_002bb208    # transcription_asm
+func_00309168    # transcription_asm
+func_0035c2d0    # transcription_asm
+func_0035cdd0    # transcription_asm
+func_0012d6dc    # transcription_asm
+func_0012d968    # transcription_asm
+func_001ab5d4    # transcription_asm
+func_002ba4c0    # transcription_asm
+func_00106fbc    # transcription_asm
+func_00107224    # transcription_asm
+func_0011122c    # transcription_asm
+func_00112e6c    # transcription_asm
+func_0012a52c    # transcription_asm
+func_0012d488    # transcription_asm
+func_0012d5c4    # transcription_asm
+func_0012d8b8    # transcription_asm
+func_0012da2c    # transcription_asm
+func_0012db2c    # transcription_asm
+func_0012dc84    # transcription_asm
+func_0012ddd8    # transcription_asm
+func_0012ffc4    # transcription_asm
+func_0013009c    # transcription_asm
+func_00130164    # transcription_asm
+func_00130234    # transcription_asm
+func_001303a8    # transcription_asm
+func_001310c0    # transcription_asm
+func_001311fc    # transcription_asm
+func_00131314    # transcription_asm
+func_0013186c    # transcription_asm
+func_00132500    # transcription_asm
+func_0013af24    # transcription_asm
+func_00146a6c    # transcription_asm
+func_0015635c    # transcription_asm
+func_0015882c    # transcription_asm
+func_0015ab88    # transcription_asm
+func_0015b644    # transcription_asm
+func_0015bb18    # transcription_asm
+func_0015c0b0    # transcription_asm
+func_0015d118    # transcription_asm
+func_0015d864    # transcription_asm
+func_0015daa8    # transcription_asm
+func_0015ddcc    # transcription_asm
+func_0015e05c    # transcription_asm
+func_0015e9f8    # transcription_asm
+func_0015eedc    # transcription_asm
+func_00161ae4    # transcription_asm
+func_00161bd4    # transcription_asm
+func_001658b8    # transcription_asm
+func_00165c74    # transcription_asm
+func_00168e3c    # transcription_asm
+func_00169c88    # transcription_asm
+func_0016c8b8    # transcription_asm
+func_0016f314    # transcription_asm
+func_0017524c    # transcription_asm
+func_0017bb5c    # transcription_asm
+func_0017be08    # transcription_asm
+func_0017c7a4    # transcription_asm
+func_00182c04    # transcription_asm
+func_00185104    # transcription_asm
+func_001853ec    # transcription_asm
+func_0018c02c    # transcription_asm
+func_001a12f0    # transcription_asm
+func_001a15f4    # transcription_asm
+func_001a1e94    # transcription_asm
+func_001a1ee4    # transcription_asm
+func_001a4168    # transcription_asm
+func_001a4330    # transcription_asm
+func_001a5318    # transcription_asm
+func_001a5c08    # transcription_asm
+func_001a7258    # transcription_asm
+func_001a8424    # transcription_asm
+func_001a8770    # transcription_asm
+func_001a8aa4    # transcription_asm
+func_001aacf0    # transcription_asm
+func_001ab7a4    # transcription_asm
+func_001ab9fc    # transcription_asm
+func_001abaac    # transcription_asm
+func_001abe64    # transcription_asm
+func_001ac600    # transcription_asm
+func_001ac7b4    # transcription_asm
+func_001ad154    # transcription_asm
+func_001afaf0    # transcription_asm
+func_001b1290    # transcription_asm
+func_001b1530    # transcription_asm
+func_001b31d8    # transcription_asm
+func_001b3dd0    # transcription_asm
+func_001b5450    # transcription_asm
+func_001b8b64    # transcription_asm
+func_001b9120    # transcription_asm
+func_001b9418    # transcription_asm
+func_001b973c    # transcription_asm
+func_001b98b4    # transcription_asm
+func_001bb1fc    # transcription_asm
+func_001c3d88    # transcription_asm
+func_001cd070    # transcription_asm
+func_001e4360    # transcription_asm
+func_001e6a98    # transcription_asm
+func_001e6c9c    # transcription_asm
+func_001e77e0    # transcription_asm
+func_001e9190    # transcription_asm
+func_001e94bc    # transcription_asm
+func_001ebf7c    # transcription_asm
+func_001ec994    # transcription_asm
+func_001eca80    # transcription_asm
+func_001ecb5c    # transcription_asm
+func_001ed2bc    # transcription_asm
+func_001ef6e8    # transcription_asm
+func_001ef818    # transcription_asm
+func_001f0684    # transcription_asm
+func_001f19a4    # transcription_asm
+func_001f1b88    # transcription_asm
+func_001f2f2c    # transcription_asm
+func_001fce30    # transcription_asm
+func_001fe91c    # transcription_asm
+func_00204028    # transcription_asm
+func_002041a0    # transcription_asm
+func_002056e8    # transcription_asm
+func_0021de24    # transcription_asm
+func_0021ed6c    # transcription_asm
+func_002210f0    # transcription_asm
+func_00221b14    # transcription_asm
+func_00222670    # transcription_asm
+func_00225a30    # transcription_asm
+func_0022b0f4    # transcription_asm
+func_0023dbbc    # transcription_asm
+func_00252b78    # transcription_asm
+func_0025619c    # transcription_asm
+func_00256660    # transcription_asm
+func_00257088    # transcription_asm
+func_0026231c    # transcription_asm
+func_002625dc    # transcription_asm
+func_00264990    # transcription_asm
+func_00266830    # transcription_asm
+func_00269284    # transcription_asm
+func_0026a164    # transcription_asm
+func_0027f274    # transcription_asm
+func_0028c8cc    # transcription_asm
+func_0028d208    # transcription_asm
+func_002917d0    # transcription_asm
+func_00291954    # transcription_asm
+func_00295334    # transcription_asm
+func_00296190    # transcription_asm
+func_00297df4    # transcription_asm
+func_002996d4    # transcription_asm
+func_0029edfc    # transcription_asm
+func_002a0e9c    # transcription_asm
+func_002a225c    # transcription_asm
+func_002a3240    # transcription_asm
+func_002b06d0    # transcription_asm
+func_002b0d90    # transcription_asm
+func_002b0e98    # transcription_asm
+func_002b0f90    # transcription_asm
+func_002b1020    # transcription_asm
+func_002b1120    # transcription_asm
+func_002b4200    # transcription_asm
+func_002b4298    # transcription_asm
+func_002b4548    # transcription_asm
+func_002b4608    # transcription_asm
+func_002b47a0    # transcription_asm
+func_002b4860    # transcription_asm
+func_002b9b40    # transcription_asm
+func_002b9bc0    # transcription_asm
+func_002b9c50    # transcription_asm
+func_002b9d30    # transcription_asm
+func_002b9e38    # transcription_asm
+func_002b9ee8    # transcription_asm
+func_002b9f58    # transcription_asm
+func_002b9fc8    # transcription_asm
+func_002bad60    # transcription_asm
+func_002bae28    # transcription_asm
+func_002baef0    # transcription_asm
+func_002bb118    # transcription_asm
+func_00126e04    # transcription_asm
+func_0012c5bc    # transcription_asm
+func_0012ca74    # transcription_asm
+func_0012cd00    # transcription_asm
+func_0012cf90    # transcription_asm
+func_001394d8    # transcription_asm
+func_0013b8d8    # transcription_asm
+func_0013c1fc    # transcription_asm
+func_00151664    # transcription_asm
+func_001516d0    # transcription_asm
+func_0015173c    # transcription_asm
+func_00156824    # transcription_asm
+func_001576c0    # transcription_asm
+func_001581c0    # transcription_asm
+func_00159e80    # transcription_asm
+func_0015a2d4    # transcription_asm
+func_0015eaf8    # transcription_asm
+func_0016247c    # transcription_asm
+func_00163f68    # transcription_asm
+func_00169490    # transcription_asm
+func_0016c0ac    # transcription_asm
+func_001704dc    # transcription_asm
+func_001744f8    # transcription_asm
+func_0017cea8    # transcription_asm
+func_0018285c    # transcription_asm
+func_00185910    # transcription_asm
+func_0019c3d8    # transcription_asm
+func_001a3f60    # transcription_asm
+func_001a46fc    # transcription_asm
+func_001a8b6c    # transcription_asm
+func_001a8e1c    # transcription_asm
+func_001a8f24    # transcription_asm
+func_001a93b4    # transcription_asm
+func_001a9584    # transcription_asm
+func_001a9fec    # transcription_asm
+func_001aa190    # transcription_asm
+func_001aae5c    # transcription_asm
+func_001ab808    # transcription_asm
+func_001acfc0    # transcription_asm
+func_001b1a04    # transcription_asm
+func_001b23c8    # transcription_asm
+func_001b2eac    # transcription_asm
+func_001b4a18    # transcription_asm
+func_001b8ca4    # transcription_asm
+func_001ba230    # transcription_asm
+func_001ba710    # transcription_asm
+func_001bae80    # transcription_asm
+func_001c3974    # transcription_asm
+func_001c3b90    # transcription_asm
+func_001c7690    # transcription_asm
+func_001c86f0    # transcription_asm
+func_001cc7d8    # transcription_asm
+func_001cced4    # transcription_asm
+func_001cd92c    # transcription_asm
+func_001cdecc    # transcription_asm
+func_001ce150    # transcription_asm
+func_001d1058    # transcription_asm
+func_001df3bc    # transcription_asm
+func_001dfea8    # transcription_asm
+func_001e0504    # transcription_asm
+func_001e7384    # transcription_asm
+func_001ecc40    # transcription_asm
+func_001ed590    # transcription_asm
+func_001f2568    # transcription_asm
+func_001f35a4    # transcription_asm
+func_001f8870    # transcription_asm
+func_001f8e68    # transcription_asm
+func_001f9220    # transcription_asm
+func_001f940c    # transcription_asm
+func_001fb7b8    # transcription_asm
+func_001fe5dc    # transcription_asm
+func_001fe72c    # transcription_asm
+func_0021ee88    # transcription_asm
+func_00222b88    # transcription_asm
+func_00229fd4    # transcription_asm
+func_0022cf4c    # transcription_asm
+func_0022f7c4    # transcription_asm
+func_0024adc8    # transcription_asm
+func_0024b9c4    # transcription_asm
+func_00252230    # transcription_asm
+func_002539fc    # transcription_asm
+func_0025446c    # transcription_asm
+func_00260abc    # transcription_asm
+func_00260c68    # transcription_asm
+func_00261a94    # transcription_asm
+func_00261f74    # transcription_asm
+func_002629b0    # transcription_asm
+func_002645e8    # transcription_asm
+func_0026935c    # transcription_asm
+func_002697c4    # transcription_asm
+func_002698d8    # transcription_asm
+func_0026f9d8    # transcription_asm
+func_002735e4    # transcription_asm
+func_002799f0    # transcription_asm
+func_0027a438    # transcription_asm
+func_0028e5f4    # transcription_asm
+func_002904bc    # transcription_asm
+func_002909dc    # transcription_asm
+func_002915b8    # transcription_asm
+func_00293590    # transcription_asm
+func_0029e26c    # transcription_asm
+func_0029f014    # transcription_asm
+func_0029f6d0    # transcription_asm
+func_002d58a8    # transcription_asm
+func_002da388    # transcription_asm
+func_003554a8    # transcription_asm
+func_00245d70    # permuter
+func_002e8f78    # permuter
+func_001de69c    # permuter
+func_0025d748    # permuter
+func_0032c180    # permuter
+func_001b118c    # permuter
+func_00107338    # permuter
+func_002cb440    # permuter
+func_0025fa78    # typefix
+func_0018ff48    # typefix
+func_0024eef0    # typefix
+func_0025bde8    # typefix
+func_00149004    # typefix
+func_0024eb78    # permuter
+func_001d9814    # permuter
+func_00131768    # permuter
+func_0022394c    # permuter
+func_00271120    # permuter
+func_001d88fc    # permuter
+func_00192048    # permuter
+func_0024e7fc    # permuter
+func_00124a14    # permuter
+func_0029cde8    # permuter
+func_00233280    # permuter
+func_0019c238    # permuter
+func_0027ab84    # permuter
+
+# ---- matching batch: manual easy-to-hard (hand-written C; 2026-10-25) ----
+func_002f7500    # ghidra_draft manual
+func_0018cec0    # ghidra_draft manual
+func_001a1d8c    # ghidra_draft manual
+func_0023d8f4    # ghidra_draft manual
+func_003078e0    # ghidra_draft manual
+func_00332cc0    # ghidra_draft manual
+func_00335130    # ghidra_draft manual
+func_00344310    # ghidra_draft manual
+func_00344320    # ghidra_draft manual
+func_00184efc    # ghidra_draft manual
+func_0027395c    # ghidra_draft manual
+func_002b3958    # ghidra_draft manual
+func_002e8cb8    # ghidra_draft manual
+func_003131a8    # ghidra_draft manual
+func_001d79ec    # ghidra_draft manual
+func_00239654    # ghidra_draft manual
+func_002a38d8    # ghidra_draft manual
+func_0031f9b0    # ghidra_draft manual
+func_0013f618    # ghidra_draft manual
+func_001a21f4    # ghidra_draft manual
+func_00298318    # ghidra_draft manual
+func_002ffc08    # ghidra_draft manual
+func_00300448    # ghidra_draft manual
+func_00313168    # ghidra_draft manual
+func_00324ec8    # ghidra_draft manual
+func_00149134    # ghidra_draft manual
+func_0018cee8    # ghidra_draft manual
+func_00313188    # ghidra_draft manual
+func_003424b8    # ghidra_draft manual
+func_00335140    # ghidra_draft manual
+func_00236374    # ghidra_draft manual
+func_0023fdc8    # ghidra_draft manual
+func_00258230    # ghidra_draft manual
+func_0011f1f4    # ghidra_draft manual
+iopldfl_5    # ghidra_draft manual
+func_002f7f20    # ghidra_draft manual
+iopldfl_6    # ghidra_draft manual
+iopldfl_4    # ghidra_draft manual
+func_002e82b8    # ghidra_draft manual
+func_002e82e0    # ghidra_draft manual
+deci2api_5    # ghidra_draft manual
+deci2api_10    # ghidra_draft manual
+deci2api_11    # ghidra_draft manual
+deci2api_13    # ghidra_draft manual
+deci2api_15    # ghidra_draft manual
+func_002e75d8    # ghidra_draft manual
+func_00336b68    # ghidra_draft manual
+func_002edbe8    # ghidra_draft manual
+func_002edc10    # ghidra_draft manual
+func_00307b48    # ghidra_draft manual
+func_002cb3c0    # ghidra_draft manual
+func_002cb400    # ghidra_draft manual
+func_002cb480    # ghidra_draft manual
+func_002cb4c0    # ghidra_draft manual
+func_002cb500    # ghidra_draft manual
+func_002cb540    # ghidra_draft manual
+func_002cb580    # ghidra_draft manual
+func_002cb5c0    # ghidra_draft manual
+func_002cb600    # ghidra_draft manual
+func_002cb640    # ghidra_draft manual
+func_002cb680    # ghidra_draft manual
+func_002cb6c0    # ghidra_draft manual
+func_002cb740    # ghidra_draft manual
+func_002cb780    # ghidra_draft manual
+func_00303ea8    # ghidra_draft manual
+func_00303ee0    # ghidra_draft manual
+func_00303f18    # ghidra_draft manual
+func_00303f50    # ghidra_draft manual
+func_00303f88    # ghidra_draft manual
+func_00303fc0    # ghidra_draft manual
+func_00303ff8    # ghidra_draft manual
+func_0031f540    # ghidra_draft manual
+func_003290d8    # ghidra_draft manual
+func_0032d7f0    # ghidra_draft manual
+func_0032f0e0    # ghidra_draft manual
+func_00337548    # ghidra_draft manual
+func_003379d0    # ghidra_draft manual
+func_0033fba0    # ghidra_draft manual
+func_001b079c    # ghidra_draft manual
+func_001b0fc0    # ghidra_draft manual
+func_001b4028    # ghidra_draft manual
+func_001b407c    # ghidra_draft manual
+func_001b5204    # ghidra_draft manual
+func_001b5e0c    # ghidra_draft manual
+func_001b5e60    # ghidra_draft manual
+func_001b5eb4    # ghidra_draft manual
+func_00114890    # ghidra_draft manual
+baseelf_153    # ghidra_draft manual
+baseelf_89    # ghidra_draft manual
+baseelf_156    # ghidra_draft manual
+func_0011a918    # ghidra_draft manual
+func_0031f5a8    # ghidra_draft manual
+func_00327698    # ghidra_draft manual
+func_00329388    # ghidra_draft manual
+func_0032d300    # ghidra_draft manual
+func_003374e0    # ghidra_draft manual
+func_003292b0    # ghidra_draft manual
+func_0032d988    # ghidra_draft manual
+func_0032dac8    # ghidra_draft manual
+func_0032e790    # ghidra_draft manual
+func_00324ea8    # ghidra_draft manual
+func_002f2d90    # ghidra_draft manual
+func_00312820    # ghidra_draft manual
+func_00313c88    # ghidra_draft manual
+func_0030ed28    # ghidra_draft manual
+func_0033f028    # ghidra_draft manual
+func_00339d78    # ghidra_draft manual
+func_0033ab80    # ghidra_draft manual
+func_0033acb8    # ghidra_draft manual
+func_0033ad50    # ghidra_draft manual
+func_0033ade0    # ghidra_draft manual
+func_0027afdc    # ghidra_draft manual
+func_0013f370    # ghidra_draft manual
+func_00303bd8    # ghidra_draft manual
+func_00303c00    # ghidra_draft manual
+func_00329320    # ghidra_draft manual
+func_0032d6a8    # ghidra_draft manual
+func_0032d718    # ghidra_draft manual
+func_00337ab8    # ghidra_draft manual
+func_00247e54    # ghidra_draft manual
+func_0024807c    # ghidra_draft manual
+func_002480dc    # ghidra_draft manual
+func_001148b4    # ghidra_draft manual
+func_001148e0    # ghidra_draft manual
+func_001152d8    # ghidra_draft manual
+func_00143910    # ghidra_draft manual
+func_0014c814    # ghidra_draft manual
+func_001a4cf4    # ghidra_draft manual
+func_002e1b00    # ghidra_draft manual
+func_002e1d40    # ghidra_draft manual
+func_002e1d70    # ghidra_draft manual
+func_003209e0    # ghidra_draft manual
+func_00329bb8    # ghidra_draft manual
+func_00329c28    # ghidra_draft manual
+func_001249e8    # ghidra_draft manual
+func_002e8330    # ghidra_draft manual
+func_002e8360    # ghidra_draft manual
+func_00303d38    # ghidra_draft manual
+func_001e0824    # ghidra_draft manual
+func_001e08e0    # ghidra_draft manual
+func_00114200    # ghidra_draft manual
+func_00114290    # ghidra_draft manual
+func_00120340    # ghidra_draft manual
+func_0024b964    # ghidra_draft manual
+func_001409d0    # ghidra_draft manual
+func_00140a48    # ghidra_draft manual
+func_00258a84    # ghidra_draft manual
+func_00258abc    # ghidra_draft manual
+func_002792c0    # ghidra_draft manual
+func_00279304    # ghidra_draft manual

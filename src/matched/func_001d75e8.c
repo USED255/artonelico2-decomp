@@ -1,0 +1,16 @@
+__asm__(
+  ".set noreorder\n"
+  ".globl func_001d75e8\n"
+  "func_001d75e8:\n"
+  "addiu $29,$29,-32\n"
+  "sd $31,16($29)\n"
+  "lqc2 $vf4,0($5)\n"
+  "lqc2 $vf5,0($4)\n"
+  "vsub.xyz $vf4xyz,$vf4xyz,$vf5xyz\n"
+  "sqc2 $vf4,0($29)\n"
+  "jal func_001d70cc\n"
+  "move $4,$29\n"
+  "ld $31,16($29)\n"
+  "jr $31\n"
+  "addiu $29,$29,32\n"
+  ".set reorder\n");

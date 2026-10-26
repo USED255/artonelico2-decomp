@@ -1,0 +1,18 @@
+__asm__(
+  ".set noreorder\n"
+  ".globl func_001ed850\n"
+  "func_001ed850:\n"
+  "addiu $29,$29,-16\n"
+  "sd $16,0($29)\n"
+  "sd $31,8($29)\n"
+  "move $16,$4\n"
+  "jal func_001ed590\n"
+  "addiu $4,$4,2160\n"
+  "addiu $15,$16,2176\n"
+  "lq $6,0($15)\n"
+  "sq $6,0($16)\n"
+  "ld $16,0($29)\n"
+  "ld $31,8($29)\n"
+  "jr $31\n"
+  "addiu $29,$29,16\n"
+  ".set reorder\n");
