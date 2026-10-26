@@ -2999,3 +2999,7 @@ func_003228a8	-G0
 func_00337210	-fno-schedule-insns
 func_0033ebc8	-G0
 func_002f8af8	-G0
+func_0031ce18	-mabi=eabi -G0
+func_0031cfb0	-mabi=eabi -G0
+func_0031d040	-mabi=eabi -G0
+func_0031d0d0	-mabi=eabi -G0
