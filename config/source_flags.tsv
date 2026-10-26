@@ -3009,3 +3009,4 @@ func_002be300	-fno-schedule-insns
 func_002be328	-fno-schedule-insns
 func_00307990	-G0 -fno-optimize-sibling-calls
 func_001409f0	-Os
+func_002ffbd0	-G0
