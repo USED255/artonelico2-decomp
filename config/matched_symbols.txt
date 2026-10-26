@@ -5155,3 +5155,6 @@ func_0019f1d0    # ghidra_draft manual
 func_002e25e0    # ghidra_draft manual
 func_001e37fc    # ghidra_draft manual
 func_00319be0    # ghidra_draft manual
+glue_11    # ghidra_draft manual
+glue_14    # ghidra_draft manual
+glue_15    # ghidra_draft manual

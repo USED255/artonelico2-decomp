@@ -3055,3 +3055,6 @@ func_002b79b0	-O1
 func_001f9d34	-O1
 func_00205458	-O1
 func_001e37fc	-O1
+glue_11	-O3
+glue_14	-O3
+glue_15	-O3
