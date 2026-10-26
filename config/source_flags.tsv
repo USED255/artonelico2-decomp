@@ -3155,3 +3155,4 @@ func_0014d468	-Os
 func_0024501c	-Os
 func_00247248	-Os
 func_0022f570	-O1
+func_002d18c0	-O2 -G0
