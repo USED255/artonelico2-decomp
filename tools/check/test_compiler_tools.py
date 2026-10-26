@@ -8,7 +8,7 @@ data check (`test_compiler_laws.py`) verifies the handbook's *facts*; this scrip
 
 Two tiers, so this stays useful in CI (where the game and the Sony toolchain are absent):
 
-  1. Always: `tools/compiler/laws-query.py` against `docs/compiler/laws.json`. Every law id must be
+  1. Always: `tools/compiler/laws-query.py` against `docs/knowledge-base/compiler/laws.json`. Every law id must be
      reachable through `law`, `list` must mention all of them, and the symptom/lever/pass/guide lookups
      must return something.
   2. Only when the toolchain is present (detected through the tool itself): `ee-gcc-anchor.py selftest`,
@@ -37,7 +37,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-LAWS_JSON = ROOT / "docs" / "compiler" / "laws.json"
+LAWS_JSON = ROOT / "docs" / "knowledge-base" / "compiler" / "laws.json"
 LAWS_QUERY = ROOT / "tools" / "compiler" / "laws-query.py"
 ANCHOR = ROOT / "tools" / "compiler" / "ee-gcc-anchor.py"
 PASSDIFF = ROOT / "tools" / "compiler" / "ee-gcc-passdiff.py"

@@ -14,7 +14,7 @@ each check verifies and what it silently skips.
 | `cc1` size | 7 201 720 | 5 526 661 |
 
 The game's code is 3.2; the CRI middleware's is 2.96. Code and constants are anchored so that the binary
-`cc1` decides: where a symbol or constant is cited, [`ee-gcc-anchor.py`](../tools/compiler/ee-gcc-anchor.py)
+`cc1` decides: where a symbol or constant is cited, [`ee-gcc-anchor.py`](../../../tools/compiler/ee-gcc-anchor.py)
 resolves it in **this** binary, and the check suite re-resolves it on every run.
 
 **If your `cc1` has a different hash**, the binary anchors may move — addresses, struct sizes and enum values

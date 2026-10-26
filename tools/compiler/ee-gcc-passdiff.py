@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """ee_gcc_passdiff —— 把「最终指令不同」上溯到「第一个不同的编译器 pass」。
 
-背景（外部调研 2026-10-06，报告 R22）：
+背景（外部调研 2026-10-06）：
   dds-decomp（Digital Devil Saga，同 ee-gcc 2.96 工具链）文档化了一套 EE GCC
   优化流水线诊断法：用 `-da` 导出每个 pass 的 RTL，找到两份**都讲得通**的源码
   第一次分叉的 pass，再按 `compiler-decision-atlas.md` 的「决策族」去查该 pass
@@ -10,7 +10,7 @@
   那份 atlas 与工具（`ee_gcc_why.py`）**无 LICENSE**，本脚本是**独立重实现**，
   只借用「逐 pass RTL 比较」这一方法学；未复制其任何代码或文本。
 
-本机实测（2026-10-06，见 out/evidence/ee_gcc_rtl_dump_probe.txt）：
+本机实测（2026-10-06）：
   * ee-gcc 3.2-ee-040921 -da → 00.rtl 01.sibling 03.jump ... 20.sched ... 33.dbr
   * ee-gcc 2.96-ee-001003-1 -da → 00.rtl 01.sibling 02.jump ... 17.sched ... 29.dbr
   ⇒ 两个编译器都支持；**pass 编号不同**，比较表按同一编译器内才有意义。
@@ -26,7 +26,7 @@
   * 分叉在 09.cse/11.gcse/15.cse2           → CSE/翻译单元上下文
   * 分叉在 16.life/19.regmove/22.lreg/23.greg → 活跃区间与寄存器分配
   * 分叉在 17.combine/18.ce/20.sched/29.sched2 → 组合/调度与延迟槽
-  （编号为 3.2 的名称；2.96 的对应名见 out/evidence/ee_gcc_rtl_dump_probe.txt）
+  （编号为 3.2 的名称；2.96 的对应名可用同样的 `-da` 导出方法读出）
 
 退出码：0=两者逐 pass 相同；1=某 pass 起分叉；2=编译/参数错误。
 """

@@ -112,7 +112,7 @@ python3 tools/compiler/ee-gcc-observe-alloc.py --src candidate.c --flags="-O2 -G
 ## 6. 更深一层
 
 * 决策规则本身在 [LAWS.md](LAWS.md)，每条带源码锚点与二进制锚点。
-* 要核验**出厂**编译器在决策点到底怎么做，用 [`tools/compiler/ee-gcc-anchor.py`](../../tools/compiler/ee-gcc-anchor.py)：它把符号变成地址、源码行、结构布局或常量。
+* 要核验**出厂**编译器在决策点到底怎么做，用 [`tools/compiler/ee-gcc-anchor.py`](../../../tools/compiler/ee-gcc-anchor.py)：它把符号变成地址、源码行、结构布局或常量。
 * 读 `24.postreload` 的输出要靠上面的归一化：`reload_out (SI) = (reg:SI 2 v0 [149])` 那一段是重载簿记，**不是**寄存器引用；把它当引用会虚高使用次数。
 
 ## 记录在案的标定

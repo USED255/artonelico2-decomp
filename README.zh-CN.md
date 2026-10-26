@@ -41,22 +41,19 @@ make report     # 生成进度报告
 
 ## 文档
 
-全部文档索引见 [docs/README.zh-CN.md](docs/README.zh-CN.md)。刚接触本项目，从这里开始：
+全部文档索引见 [docs/README.zh-CN.md](docs/README.zh-CN.md)。[知识库](docs/knowledge-base/README.zh-CN.md)
+收录不随进度变化的参考资料：
 
 | | |
 | --- | --- |
 | [docs/BUILD.zh-CN.md](docs/BUILD.zh-CN.md) | 如何配置与构建 |
-| **[docs/compiler/README.zh-CN.md](docs/compiler/README.zh-CN.md)** | **EE GCC 3.2 代码生成手册**——每条 law 都以源码为骨、对锚出厂 `cc1`、并用行为复核 |
-| [docs/compiler/LAWS.md](docs/compiler/LAWS.zh-CN.md) | law 本体，含分级与 receipt |
-| [docs/compiler/CASE-STUDY.zh-CN.md](docs/compiler/CASE-STUDY.zh-CN.md) | 一个函数从头走到尾，含一个被否掉的改动 |
-| [docs/compiler/DIAGNOSTICS.zh-CN.md](docs/compiler/DIAGNOSTICS.zh-CN.md) | 从「diff 不对」走到「哪个 pass 负责」 |
-| [docs/compiler/FIELD-GUIDE.zh-CN.md](docs/compiler/FIELD-GUIDE.zh-CN.md) | 能移动读数的源级改动 |
-| [docs/compiler/SOURCE-STUDY.zh-CN.md](docs/compiler/SOURCE-STUDY.zh-CN.md) | 有哪些源码、没有哪些、规则怎么对锚 |
-| [docs/compiler/AGENT-SKILL.zh-CN.md](docs/compiler/AGENT-SKILL.zh-CN.md) | 自动化 agent 的循环 |
+| **[docs/knowledge-base/compiler/README.zh-CN.md](docs/knowledge-base/compiler/README.zh-CN.md)** | **EE GCC 3.2 代码生成手册**——每条 law 都以源码为骨、对锚出厂 `cc1`、并用行为复核 |
+| [docs/knowledge-base/KNOWN-BLOCKERS.zh-CN.md](docs/knowledge-base/KNOWN-BLOCKERS.zh-CN.md) | 本工具链收不了的东西，以及停止条件 |
+| [docs/knowledge-base/FORMATS.zh-CN.md](docs/knowledge-base/FORMATS.zh-CN.md) | 光盘上的资产与模块格式（实测） |
+| [docs/knowledge-base/TOOLCHAIN.zh-CN.md](docs/knowledge-base/TOOLCHAIN.zh-CN.md) | 哪个编译器编了什么、如何核验你手上的副本 |
+| [docs/knowledge-base/GLOSSARY.zh-CN.md](docs/knowledge-base/GLOSSARY.zh-CN.md) | 本项目使用的术语与缩写 |
 
-工具：`tools/compiler/laws-query.py`（查 law）、`tools/compiler/ee-gcc-anchor.py`（在出厂编译器里解析符号/地址/结构/常量）、
-`tools/compiler/ee-gcc-passdiff.py`（找第一个分叉的 pass）、`tools/compiler/ee-gcc-spill-map.py`（把过大的帧映射到源码行）。
-每页都有英文版（同名 `.md`）。
+手册的工具在 `tools/compiler/`。每页都有英文版（同名 `.md`）。
 
 ## 法律
 

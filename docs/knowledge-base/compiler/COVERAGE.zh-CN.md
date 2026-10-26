@@ -18,7 +18,7 @@ python3 tools/compiler/ee-gcc-coverage.py --selftest
 
 | | 含义 |
 | --- | --- |
-| **explained by a rule** | 该助记符在 `docs/compiler/` 里被点名，**并且**编译器能从 C 发出它 |
+| **explained by a rule** | 该助记符在 `docs/knowledge-base/compiler/` 里被点名，**并且**编译器能从 C 发出它 |
 | **assembly-only** | 编译器**不可能**从 C 发出它，所以它来自手写汇编 |
 | **unexplained** | 两者都不是 —— 这才是手册真正的缺口 |
 

@@ -256,7 +256,7 @@
         "count every register occurrence, including a read-modify-write in one insn"
       ],
       "receipt": "75 functions / 1,004 adjacent pairs: counting every register occurrence reproduces the exact allocation order in 44/75 (mean Kendall tau 0.877) against 33/75 (0.873) for a de-duplicated instruction proxy — the source reading wins by 11 functions. The binary's 10.0 constant confirms the REG_FREQ_MAX = 1000 factor.",
-      "falsifies": "the reading that the factor is 1 (a misread of the global.c comment; recorded as P-108)",
+      "falsifies": "the reading that the factor is 1 (a misread of the global.c comment)",
       "scope": "ee-gcc 3.2-ee-040921",
       "evidence": [
         "party:R33-EE-GCC-3.2编译器行为手册与社区先例调研.md",

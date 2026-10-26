@@ -6,7 +6,7 @@ The handbook is written for the moment when a matching diff is wrong and the que
 decision produced this?". This tool is the entry point for a person or an agent: give it a symptom,
 a pass, or a law id, and it prints the law, its anchors, its receipt and its levers.
 
-It reads `docs/compiler/laws.json` and never touches the game or the compiler.
+It reads `docs/knowledge-base/compiler/laws.json` and never touches the game or the compiler.
 
 Usage
 -----
@@ -34,7 +34,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-LAWS_JSON = ROOT / "docs" / "compiler" / "laws.json"
+LAWS_JSON = ROOT / "docs" / "knowledge-base" / "compiler" / "laws.json"
 
 
 def load() -> dict:
@@ -90,7 +90,7 @@ def render(law: dict) -> str:
 
 def load_guide_sections() -> list[tuple[str, str]]:
     """Split FIELD-GUIDE.md into `(heading, section text)` pairs."""
-    path = ROOT / "docs" / "compiler" / "FIELD-GUIDE.md"
+    path = ROOT / "docs" / "knowledge-base" / "compiler" / "FIELD-GUIDE.md"
     if not path.is_file():
         return []
     sections: list[tuple[str, str]] = []
@@ -110,7 +110,7 @@ def load_guide_sections() -> list[tuple[str, str]]:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         prog="laws-query",
-        description="Query the ee-gcc 3.2 compiler handbook (docs/compiler/laws.json).",
+        description="Query the ee-gcc 3.2 compiler handbook (docs/knowledge-base/compiler/laws.json).",
     )
     ap.add_argument("--json", action="store_true", help="print JSON instead of prose")
     ap.add_argument("command", choices=["list", "find", "law", "pass", "symptoms", "levers", "guide"])

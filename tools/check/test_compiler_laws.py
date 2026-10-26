@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Check the compiler handbook data: `docs/compiler/laws.json` and `docs/compiler/LAWS.md`.
+"""Check the compiler handbook data: `docs/knowledge-base/compiler/laws.json` and `docs/knowledge-base/compiler/LAWS.md`.
 
 What this stops
 ---------------
@@ -36,8 +36,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-LAWS_JSON = ROOT / "docs" / "compiler" / "laws.json"
-LAWS_MD = ROOT / "docs" / "compiler" / "LAWS.md"
+LAWS_JSON = ROOT / "docs" / "knowledge-base" / "compiler" / "laws.json"
+LAWS_MD = ROOT / "docs" / "knowledge-base" / "compiler" / "LAWS.md"
 ANCHOR_TOOL = ROOT / "tools" / "compiler" / "ee-gcc-anchor.py"
 OBSERVE_ALLOC = ROOT / "tools" / "compiler" / "ee-gcc-observe-alloc.py"
 
@@ -56,12 +56,12 @@ def check(label: str, ok: bool, detail: str = "") -> None:
 
 def load_laws() -> dict | None:
     if not LAWS_JSON.is_file():
-        check("docs/compiler/laws.json exists", False, str(LAWS_JSON))
+        check("docs/knowledge-base/compiler/laws.json exists", False, str(LAWS_JSON))
         return None
     try:
         return json.loads(LAWS_JSON.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
-        check("docs/compiler/laws.json parses", False, str(exc))
+        check("docs/knowledge-base/compiler/laws.json parses", False, str(exc))
         return None
 
 
@@ -76,7 +76,7 @@ def check_index(data: dict) -> None:
           all(len(i) == 8 and i.startswith("L-EE-") and i[5:].isdigit() for i in ids))
 
     mtime = LAWS_MD.read_text(encoding="utf-8") if LAWS_MD.is_file() else ""
-    check("docs/compiler/LAWS.md exists", bool(mtime), str(LAWS_MD))
+    check("docs/knowledge-base/compiler/LAWS.md exists", bool(mtime), str(LAWS_MD))
     for law_id in ids:
         check(f"LAWS.md documents {law_id}", law_id in mtime)
 
@@ -208,7 +208,7 @@ def check_quick_reference(data: dict) -> None:
     为什么：速查表是这份手册的入口页；一条 law 若不在里面，读者即使遇到那个形状也找不到它。
     实测过：40 条 law 里曾有 19 条不在速查表里（2026-10-15），所以这条检查是必要的。
     """
-    base = ROOT / "docs" / "compiler"
+    base = ROOT / "docs" / "knowledge-base" / "compiler"
     laws = [l["id"] for l in (data or {}).get("laws", [])]
     for name in ("QUICK-REFERENCE.md", "QUICK-REFERENCE.zh-CN.md"):
         path = base / name
@@ -263,7 +263,7 @@ def check_quick_reference(data: dict) -> None:
         body = observe.read_text(encoding="utf-8")
         actual = len(re.findall(r'^    \("', body, re.M))
         words = {52: "fifty-two", 74: "seventy-four", 77: "seventy-seven", 79: "seventy-nine", 80: "eighty", 81: "eighty-one"}
-        for page, pat in ((Path(__file__).resolve().parents[2] / "docs" / "compiler" / "README.md", "synthetic fixtures"),
+        for page, pat in ((Path(__file__).resolve().parents[2] / "docs" / "knowledge-base" / "compiler" / "README.md", "synthetic fixtures"),
                           (Path(__file__).resolve().parents[2] / "tools" / "README.md", "synthetic fixtures")):
             if page.exists():
                 text = page.read_text(encoding="utf-8")
@@ -271,7 +271,7 @@ def check_quick_reference(data: dict) -> None:
                 check("fixture count in the docs matches the tool",
                       bool(m) and m.group(1) == words.get(actual, m.group(1) if m else ""),
                       f"docs say {m.group(1) if m else '?'}, tool has {actual}")
-        for page in (Path(__file__).resolve().parents[2] / "docs" / "compiler" / "README.zh-CN.md",
+        for page in (Path(__file__).resolve().parents[2] / "docs" / "knowledge-base" / "compiler" / "README.zh-CN.md",
                      Path(__file__).resolve().parents[2] / "tools" / "README.zh-CN.md"):
             if page.exists():
                 m = re.search(r"(\d+) 组合成夹具", page.read_text(encoding="utf-8"))
@@ -280,7 +280,7 @@ def check_quick_reference(data: dict) -> None:
                       f"docs say {m.group(1) if m else '?'}, tool has {actual}")
 
     # 技能页漂移守卫：tools/compiler 下每个工具都必须在 AGENT-SKILL.md 里被提到
-    skill = Path(__file__).resolve().parents[2] / "docs" / "compiler" / "AGENT-SKILL.md"
+    skill = Path(__file__).resolve().parents[2] / "docs" / "knowledge-base" / "compiler" / "AGENT-SKILL.md"
     tools = sorted(p.name for p in (Path(__file__).resolve().parents[2] / "tools" / "compiler").glob("*.py"))
     if skill.exists() and tools:
         text = skill.read_text(encoding="utf-8")
@@ -320,7 +320,7 @@ def check_quick_reference(data: dict) -> None:
 
     # VERIFY 页的自校验：页里写的 cc1 sha256 必须等于本机 cc1 的哈希（缺任一则跳过）
     import hashlib
-    verify = Path(__file__).resolve().parents[2] / "docs" / "compiler" / "VERIFY.md"
+    verify = Path(__file__).resolve().parents[2] / "docs" / "knowledge-base" / "compiler" / "VERIFY.md"
     cc1s = {"3.2": Path.home() / "eecc" / "ee-gcc3.2-040921" / "lib" / "gcc-lib" / "ee" / "3.2-ee-040921" / "cc1",
             "2.96": Path.home() / "eecc" / "ee-gcc2.96" / "lib" / "gcc-lib" / "ee" / "2.96-ee-001003-1" / "cc1"}
     if verify.exists() and any(p.exists() for p in cc1s.values()):
@@ -364,7 +364,7 @@ def check_anchors() -> None:
     为什么单独查：相对**文件**链接有人查（`check_docs.py`），页内 `#anchor` 没人查；
     改一次标题就会静默产生 46 条死链（2026-10-15 实际发生过）。
     """
-    base = ROOT / "docs" / "compiler"
+    base = ROOT / "docs" / "knowledge-base" / "compiler"
     texts = {p.name: p.read_text(encoding="utf-8") for p in base.glob("*.md")}
     heads = {name: {_gh_slug(line) for line in text.splitlines() if line.startswith("#")}
              for name, text in texts.items()}

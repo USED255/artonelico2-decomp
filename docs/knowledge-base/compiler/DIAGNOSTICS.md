@@ -137,7 +137,7 @@ report must be read with care.
 * The decision rules themselves are in [LAWS.md](LAWS.md), each with a source anchor and a
   binary anchor.
 * To check what the *shipped* compiler actually does at a decision point, use
-  [`tools/compiler/ee-gcc-anchor.py`](../../tools/compiler/ee-gcc-anchor.py): it turns a symbol into
+  [`tools/compiler/ee-gcc-anchor.py`](../../../tools/compiler/ee-gcc-anchor.py): it turns a symbol into
   an address, a source line, a struct layout or a constant.
 * Reading `24.postreload` output needs the normalisation note above: the `reload_out (SI) = (reg:SI 2
   v0 [149])` section is reload bookkeeping, **not** a register reference. Counting those as

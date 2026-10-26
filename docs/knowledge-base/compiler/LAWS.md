@@ -12,7 +12,7 @@ each law live in [FIELD-GUIDE.md](FIELD-GUIDE.md); the workflow that finds the o
 | --- | --- |
 | **Tier** | `T1` source rule **+** factory-binary anchor **+** matching behaviour; `T2` source rule **or** binary anchor, plus behaviour; `T3` behaviour evidence only |
 | **Source anchor** | the mainline file and line that states the rule. Mainline is a *semantic* reference: line numbers do **not** transfer (see [L-EE-006](#l-ee-006--line-numbers-are-not-portable-between-trees)) |
-| **Binary anchor** | the symbol and address inside the shipped `cc1`, read with [`tools/compiler/ee-gcc-anchor.py`](../../tools/compiler/ee-gcc-anchor.py) |
+| **Binary anchor** | the symbol and address inside the shipped `cc1`, read with [`tools/compiler/ee-gcc-anchor.py`](../../../tools/compiler/ee-gcc-anchor.py) |
 | **Receipt** | the measurement behind the law, with its scope |
 | **Falsifies** | a claim this law replaced. Almost every law here replaced a plausible, wrong belief — reading only the conclusions would hide that |
 | **Scope** | what was actually covered. There are no impossibility claims on this page: a closed lever is recorded with the space that was covered |
@@ -126,8 +126,7 @@ one instruction counts twice. `regs.h:79` defines `REG_FREQ_MAX 1000`, which mak
   the exact allocation order in **44/75** (mean Kendall tau 0.877); a de-duplicated instruction proxy
   reaches 33/75 (0.873). The source reading wins by 11 functions, and the binary's 10.0 constant
   confirms the `REG_FREQ_MAX = 1000` factor.
-* **Falsifies** the reading that the factor is 1 — the misread is recorded in the research repository
-  as pitfall `P-108`. **Read the `#define`, not the comment.**
+* **Falsifies** the reading that the factor is 1. **Read the `#define`, not the comment.**
 * **Scope** `ee-gcc 3.2-ee-040921`.
 
 ## L-EE-006 · Line numbers are not portable between trees

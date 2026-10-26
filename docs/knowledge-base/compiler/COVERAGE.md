@@ -19,7 +19,7 @@ The tool reports three numbers and two lists:
 
 | | meaning |
 | --- | --- |
-| **explained by a rule** | the mnemonic is named in `docs/compiler/` **and** the compiler can emit it from C |
+| **explained by a rule** | the mnemonic is named in `docs/knowledge-base/compiler/` **and** the compiler can emit it from C |
 | **assembly-only** | the compiler **cannot** emit it from C, so it comes from hand-written assembly |
 | **unexplained** | neither — these are the handbook's real gaps |
 

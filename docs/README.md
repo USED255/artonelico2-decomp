@@ -4,24 +4,34 @@
 
 Where to start depends on what you are doing.
 
+## 1. Working on the repository
+
 | I want to… | Read |
 | --- | --- |
 | build the project | [BUILD.md](BUILD.md) |
 | know what may be published | [PUBLICATION-POLICY.md](PUBLICATION-POLICY.md) |
-| **understand why the compiler emitted this code** | **[compiler/README.md](compiler/README.md)** — the EE GCC 3.2 codegen handbook |
-| fix a function that compiles but does not match | [compiler/DIAGNOSTICS.md](compiler/DIAGNOSTICS.md), then [compiler/FIELD-GUIDE.md](compiler/FIELD-GUIDE.md) |
-| see the handbook's rules and their evidence | [compiler/LAWS.md](compiler/LAWS.md) |
-| work one function end to end, including a rejected edit | [compiler/CASE-STUDY.md](compiler/CASE-STUDY.md) |
-| know what compiler source exists and how rules are anchored | [compiler/SOURCE-STUDY.md](compiler/SOURCE-STUDY.md) |
-| name the law behind a shape I am looking at | [compiler/QUICK-REFERENCE.md](compiler/QUICK-REFERENCE.md) |
-| work out a target function's signature | [compiler/ABI.md](compiler/ABI.md) |
-| know whether these rules apply to the CRI middleware | [compiler/CROSS-2.96.md](compiler/CROSS-2.96.md) |
-| drive the handbook from an agent | [compiler/AGENT-SKILL.md](compiler/AGENT-SKILL.md) |
+| understand the transcription metric | [TRANSCRIPTION.md](TRANSCRIPTION.md) |
+| contribute a matched function | [../CONTRIBUTING.md](../CONTRIBUTING.md) |
 
-Every handbook page has a Chinese edition next to it (`*.zh-CN.md`). The handbook is data-backed:
-[`compiler/laws.json`](compiler/laws.json) is the machine-readable index, and `make check` verifies the
-laws, re-checks every binary anchor against the `cc1` on your machine, and smoke-tests every command the
-handbook documents.
+## 2. Reference material
+
+The [knowledge base](knowledge-base/README.md) keeps what does not change every day: how the
+compiler behaves, what the disc contains, and what cannot be matched.
+
+| I want to… | Read |
+| --- | --- |
+| understand why the compiler emitted this code | [knowledge-base/compiler/README.md](knowledge-base/compiler/README.md) |
+| know what cannot be matched, and where to stop | [knowledge-base/KNOWN-BLOCKERS.md](knowledge-base/KNOWN-BLOCKERS.md) |
+| read the asset and module formats on the disc | [knowledge-base/FORMATS.md](knowledge-base/FORMATS.md) |
+| check which compiler built the game code | [knowledge-base/TOOLCHAIN.md](knowledge-base/TOOLCHAIN.md) |
+| decide between C and C++ | [knowledge-base/LANGUAGE.md](knowledge-base/LANGUAGE.md) |
+| look up a term or abbreviation | [knowledge-base/GLOSSARY.md](knowledge-base/GLOSSARY.md) |
+| browse the whole knowledge base | [knowledge-base/README.md](knowledge-base/README.md) |
+
+Every document has a Chinese edition next to it (`*.zh-CN.md`). The handbook is data-backed:
+[`knowledge-base/compiler/laws.json`](knowledge-base/compiler/laws.json) is its machine-readable
+index, and `make check` verifies the laws, re-checks every binary anchor against the `cc1` on your
+machine, and smoke-tests every command the handbook documents.
 
 Repository-wide entry points: [README.md](../README.md), [CONTRIBUTING.md](../CONTRIBUTING.md),
 [tools/README.md](../tools/README.md).

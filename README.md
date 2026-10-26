@@ -45,23 +45,20 @@ make report     # write the progress report
 
 ## Documentation
 
-Full index: [docs/README.md](docs/README.md). New to the project? Start with:
+Full index: [docs/README.md](docs/README.md). The [knowledge base](docs/knowledge-base/README.md)
+keeps the reference material that does not change every day:
 
 | | |
 | --- | --- |
 | [docs/BUILD.md](docs/BUILD.md) | how to configure and build |
-| **[docs/compiler/README.md](docs/compiler/README.md)** | **the EE GCC 3.2 code generation handbook** — every law is source-anchored, anchored to the shipped `cc1`, and verified by behaviour |
-| [docs/compiler/LAWS.md](docs/compiler/LAWS.md) | the laws themselves, with tiers and receipts |
-| [docs/compiler/CASE-STUDY.md](docs/compiler/CASE-STUDY.md) | one function end to end, including a rejected edit |
-| [docs/compiler/DIAGNOSTICS.md](docs/compiler/DIAGNOSTICS.md) | from "the diff is wrong" to "which pass is responsible" |
-| [docs/compiler/FIELD-GUIDE.md](docs/compiler/FIELD-GUIDE.md) | source-level changes that move the numbers |
-| [docs/compiler/SOURCE-STUDY.md](docs/compiler/SOURCE-STUDY.md) | what compiler source exists, what does not, and how a rule is anchored |
-| [docs/compiler/AGENT-SKILL.md](docs/compiler/AGENT-SKILL.md) | the loop for an automated agent |
+| **[docs/knowledge-base/compiler/README.md](docs/knowledge-base/compiler/README.md)** | **the EE GCC 3.2 code generation handbook** — every law is source-anchored, anchored to the shipped `cc1`, and verified by behaviour |
+| [docs/knowledge-base/KNOWN-BLOCKERS.md](docs/knowledge-base/KNOWN-BLOCKERS.md) | what cannot be matched with this toolchain, and where to stop |
+| [docs/knowledge-base/FORMATS.md](docs/knowledge-base/FORMATS.md) | the disc's asset and module formats, as measured |
+| [docs/knowledge-base/TOOLCHAIN.md](docs/knowledge-base/TOOLCHAIN.md) | which compiler built what, and how to verify your copy |
+| [docs/knowledge-base/GLOSSARY.md](docs/knowledge-base/GLOSSARY.md) | terms and abbreviations used by this project |
 
-Tools: `tools/compiler/laws-query.py` (query the laws), `tools/compiler/ee-gcc-anchor.py` (resolve a
-symbol, address, struct or constant in the shipped compiler), `tools/compiler/ee-gcc-passdiff.py`
-(first diverging pass), `tools/compiler/ee-gcc-spill-map.py` (map a too-large frame onto source lines).
-Chinese editions of every handbook page sit next to it (`*.zh-CN.md`).
+The handbook's tools live in `tools/compiler/`. Every page has a Chinese edition next to it
+(`*.zh-CN.md`).
 
 ## Legal
 
