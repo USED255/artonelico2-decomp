@@ -5034,3 +5034,6 @@ func_002f0968    # ghidra_draft manual
 func_00149154    # ghidra_draft manual
 func_00329cb0    # ghidra_draft manual
 func_0032a0b0    # ghidra_draft manual
+func_00253514    # ghidra_draft manual
+func_00253728    # ghidra_draft manual
+func_002e49d0    # ghidra_draft manual
