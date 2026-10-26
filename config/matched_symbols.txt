@@ -5159,3 +5159,5 @@ glue_11    # ghidra_draft manual
 glue_14    # ghidra_draft manual
 glue_15    # ghidra_draft manual
 func_002e9a38    # ghidra_draft manual
+func_002664a8    # ghidra_draft manual
+func_002ff2e8    # ghidra_draft manual
