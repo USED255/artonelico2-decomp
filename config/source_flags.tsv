@@ -3175,3 +3175,5 @@ func_00106408	-Os
 func_001dcfbc	-O1
 func_001dcfe8	-Os
 func_001b743c	-Os
+func_00106554	-O2
+func_0025097c	-O2
