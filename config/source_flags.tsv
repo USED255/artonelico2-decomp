@@ -3060,3 +3060,21 @@ glue_14	-O3
 glue_15	-O3
 func_002e9a38	-O2 -fno-schedule-insns
 func_001efa74	-O1
+func_00301ad0	-O2 -fno-optimize-sibling-calls
+func_00301b28	-O2 -fno-optimize-sibling-calls
+func_003022e0	-O2 -fno-optimize-sibling-calls
+func_00302338	-O2 -fno-optimize-sibling-calls
+func_00302390	-O2 -fno-optimize-sibling-calls
+func_003023e8	-O2 -fno-optimize-sibling-calls
+func_003024d0	-O2 -fno-optimize-sibling-calls
+func_00302528	-O2 -fno-optimize-sibling-calls
+func_003025d8	-O2 -fno-optimize-sibling-calls
+func_00302630	-O2 -fno-optimize-sibling-calls
+func_00302718	-O2 -fno-optimize-sibling-calls
+func_00302770	-O2 -fno-optimize-sibling-calls
+func_003027c8	-O2 -fno-optimize-sibling-calls
+func_00302820	-O2 -fno-optimize-sibling-calls
+func_00302878	-O2 -fno-optimize-sibling-calls
+func_003028d0	-O2 -fno-optimize-sibling-calls
+func_00302928	-O2 -fno-optimize-sibling-calls
+func_00302980	-O2 -fno-optimize-sibling-calls
