@@ -3027,3 +3027,9 @@ func_00301ee0	-fno-optimize-sibling-calls
 func_00301f30	-fno-optimize-sibling-calls
 func_00301f80	-fno-optimize-sibling-calls
 func_00301fd0	-fno-optimize-sibling-calls
+func_00302020	-fno-optimize-sibling-calls
+func_00302070	-fno-optimize-sibling-calls
+func_003020c0	-fno-optimize-sibling-calls
+func_00302110	-fno-optimize-sibling-calls
+func_00302160	-fno-optimize-sibling-calls
+func_003021b0	-fno-optimize-sibling-calls
