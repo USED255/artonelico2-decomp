@@ -3079,3 +3079,4 @@ func_003028d0	-O2 -fno-optimize-sibling-calls
 func_00302928	-O2 -fno-optimize-sibling-calls
 func_00302980	-O2 -fno-optimize-sibling-calls
 func_00302580	-O2 -fno-optimize-sibling-calls
+func_0031fff8	-O2 -G0
