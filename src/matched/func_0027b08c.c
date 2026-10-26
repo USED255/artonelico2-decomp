@@ -1,0 +1,1 @@
+void func_0027b08c(char *p, int v){ int x = *(int *)(p + 0xC); *(char *)(p + 0x28) = 1; *(int *)(p + 0xC) = x | 1; *(char *)(p + 0x29) = v; *(int *)(p + 0x10) = 1; *(int *)(p + 0x18) = v; *(int *)(p + 0x14) = 1; }

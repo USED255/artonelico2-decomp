@@ -3103,3 +3103,13 @@ func_00333598	-O2 -G0
 func_003335d0	-O2 -G0
 func_00333608	-O2 -G0
 func_00333640	-O2 -G0
+func_00322250	-O2 -G0
+func_00307ad8	-O2 -G0
+func_00320d08	-O2 -G0
+func_00320d30	-O2 -G0
+func_0031bbb8	-O2 -G0
+func_0031bb88	-O2 -G0
+func_00332878	-O2 -G0
+func_00333768	-O2 -G0
+func_002259c4	-O1
+func_0026f370	-Os
