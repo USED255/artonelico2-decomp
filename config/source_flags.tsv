@@ -3115,3 +3115,5 @@ func_002259c4	-O1
 func_0026f370	-Os
 func_001490c4	-Os
 func_001e41b8	-O1
+func_0034e344	-O1 -fno-omit-frame-pointer
+func_00350aec	-O1 -fno-omit-frame-pointer
