@@ -3166,3 +3166,4 @@ func_0021b834	-O1
 func_00258aec	-O2
 func_00279340	-O2
 func_00155cc8	-O2
+func_00286240	-Os
