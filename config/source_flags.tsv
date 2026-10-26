@@ -3150,3 +3150,5 @@ func_001e4030	-O1
 func_001e3fc8	-O1
 func_00233d18	-O1
 func_001de978	-Os
+func_0014d04c	-Os
+func_0014d468	-Os
