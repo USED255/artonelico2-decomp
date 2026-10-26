@@ -1,0 +1,1 @@
+void func_0033f8f0(char *p){ unsigned char *q = *(unsigned char **)(p + 8); unsigned int v; q[0] = 0x72; q[1] = 0xF8; q[2] = 0x1F; q[3] = 0x4E; q[4] = 1; q[5] = *(unsigned char *)(p + 0x38); v = (*(unsigned int *)(p + 0x34) << 3) & 0xFFFF; q[6] = v; q[7] = v >> 8; }
