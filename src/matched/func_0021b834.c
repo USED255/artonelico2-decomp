@@ -1,0 +1,1 @@
+void func_0021b834(char *p){ int v; *(int *)p = 0; *(short *)(p + 4) = 0; *(short *)(p + 6) = 0; *(char *)(p + 8) = -1; *(short *)(p + 0xA) = -1; *(char *)(p + 9) = -1; *(char *)(p + 0xC) = 0; v = *(int *)(p + 0xC); v = v & ~0x100; v = v & ~0x200; v = v & ~0x400; *(int *)(p + 0xC) = v; }
