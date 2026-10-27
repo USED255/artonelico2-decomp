@@ -1,0 +1,1 @@
+int baseelf_162(char *p){ unsigned long long v = *(unsigned long long *)(p + 0x4FA8); if (v & (1ULL << 34)) { return *(short *)(p + 0x3784) * *(short *)(p + 0x4F8E) + *(short *)(p + 0x3786); } if (v & (1ULL << 33)) return *(short *)(p + 0x3784); return *(short *)(p + 0x3786); }
