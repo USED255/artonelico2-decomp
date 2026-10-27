@@ -1,0 +1,1 @@
+int func_002fdec0(char *p, int v){ int a = *(int *)(p + 0x294); int b = *(int *)(p + 0x298); int c = *(int *)(p + 0x29C); int r; if (v < a + b) r = a + b; else { r = 0x7FFFFFFF; if (v < a + c) r = a + c; } return r; }
