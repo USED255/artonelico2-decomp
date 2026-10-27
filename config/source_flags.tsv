@@ -3193,3 +3193,6 @@ func_0022979c	-O2
 func_0022afec	-O1
 func_00310420	-O1
 func_00146f20	-O1
+func_0029c084	-O2
+baseelf_56	-O1
+baseelf_92	-O1
