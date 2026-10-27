@@ -3218,3 +3218,6 @@ func_0033b028	-O2
 func_0033ba40	-O2
 func_0033c870	-O2
 func_0033fd38	-O2
+func_00302f68	-Os
+func_00303d60	-Os
+func_002e4228	-Os
