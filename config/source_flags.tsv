@@ -3243,3 +3243,4 @@ func_0022b98c	-O1
 func_002e4170	-Os -G0
 func_002bb580	-Os
 func_003018e8	-Os
+baseelf_14	-O1
