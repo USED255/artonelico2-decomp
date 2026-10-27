@@ -832,3 +832,7 @@ func_002ebfb0	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹
 func_002f7670	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹配
 func_0030fe60	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹配
 func_00313ee8	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹配
+func_0033b028	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹配
+func_0033ba40	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹配
+func_0033c870	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹配
+func_0033fd38	cri	CRI 中间件（ee-gcc 2.96）；仅 CRI 编译器下 100% 匹配

@@ -3214,3 +3214,7 @@ func_002ebfb0	-O2
 func_002f7670	-O2
 func_0030fe60	-Os
 func_00313ee8	-Os
+func_0033b028	-O2
+func_0033ba40	-O2
+func_0033c870	-O2
+func_0033fd38	-O2
