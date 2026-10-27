@@ -3212,3 +3212,5 @@ baseelf_162	-Os
 func_00180f34	-Os
 func_002ebfb0	-O2
 func_002f7670	-O2
+func_0030fe60	-Os
+func_00313ee8	-Os
