@@ -5383,3 +5383,4 @@ func_00146f20    # ghidra_draft manual
 func_0029c084    # ghidra_draft manual
 baseelf_56    # ghidra_draft manual
 baseelf_92    # ghidra_draft manual
+func_003425b8    # ghidra_draft manual

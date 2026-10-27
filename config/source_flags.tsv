@@ -3196,3 +3196,4 @@ func_00146f20	-O1
 func_0029c084	-O2
 baseelf_56	-O1
 baseelf_92	-O1
+func_003425b8	-Os
