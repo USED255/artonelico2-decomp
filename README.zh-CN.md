@@ -19,8 +19,6 @@
 - 已匹配函数：**4,800 / 10,923（43.94%）**
 - 已匹配代码：**268,372 / 2,276,780 字节（11.79%）**
 
-主口径只算重建的 C，详见 [docs/TRANSCRIPTION.zh-CN.md](docs/TRANSCRIPTION.zh-CN.md)。
-
 比基线更差的报告，CI 不会发布。进度历史：<https://decomp.dev/USED255/artonelico2-decomp>。
 
 ## 构建

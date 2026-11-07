@@ -75,7 +75,7 @@ mechanism). GNU `ld` does not generate them.
 
 This project does not try to rebuild the container: it keeps the retail ELF container and verifies
 the **payload** (the concatenation of the loadable segments) byte for byte. That is the acceptance
-rule described in [BUILD.md](../BUILD.md) and [TRANSCRIPTION.md](../TRANSCRIPTION.md).
+rule described in [BUILD.md](../BUILD.md).
 
 ## 6. Related pages
 

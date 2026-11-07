@@ -66,7 +66,7 @@
 Sony 的其它工具生成。GNU `ld` 不会生成它们。
 
 本项目不试图重建容器：它沿用零售 ELF 容器，只把**载荷**（可加载段按文件偏移拼接）逐字节校验。
-验收口径见 [BUILD.zh-CN.md](../BUILD.zh-CN.md) 与 [TRANSCRIPTION.zh-CN.md](../TRANSCRIPTION.zh-CN.md)。
+验收口径见 [BUILD.zh-CN.md](../BUILD.zh-CN.md)。
 
 ## 6. 相关页面
 
