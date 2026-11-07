@@ -304,7 +304,13 @@ def main() -> int:
         if isinstance(prov, dict) and prov.get("measures") != measures(src):
             problems.append("the provenance measures differ from the report")
 
-    problems += regression_problems(measures(src), measures(BASELINE))
+    # `--force` is the documented override: it skips the provenance and regression gates, and the
+    # reason is recorded in PUBLISHED.json. The publication PR still passes the always-on checks in
+    # tools/check/check_public_repo.py, so an inconsistent record is refused there.
+    # `--force` 是文档写明的越过方式：跳过 provenance 与不回归门，理由记进 PUBLISHED.json；
+    # 发布 PR 仍要过 check_public_repo.py 的常驻校验，自相矛盾的记录会被拒绝。
+    if not a.force:
+        problems += regression_problems(measures(src), measures(BASELINE))
     if problems:
         print("FAIL: " + "; ".join(problems), file=sys.stderr)
         return 1
