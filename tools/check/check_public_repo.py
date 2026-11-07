@@ -351,14 +351,68 @@ def regression_hits(base_measures: dict, cur_measures: dict) -> tuple[list[str],
     return problems, oks
 
 
+def category_measures(doc: dict, category: str) -> dict:
+    """The measures of one progress category.
+
+    The generated report stores `categories` as a list; the frozen provenance baseline stores it
+    as an object keyed by id. A document without that category returns an empty dict.
+    取一个进度分类的 measures。生成的报告里 `categories` 是列表，冻结基线里是按 id 的字典；
+    没有该分类时返回空字典。
+    """
+    cats = doc.get("categories")
+    if isinstance(cats, dict):
+        got = cats.get(category)
+        return got if isinstance(got, dict) else {}
+    if isinstance(cats, list):
+        for item in cats:
+            if isinstance(item, dict) and (item.get("id") or "") == category:
+                return item.get("measures") or {}
+    return {}
+
+
+def c_only_measures(doc: dict) -> dict:
+    """The reconstructed-C measures over the full universe: the main progress metric.
+
+    Matched counters come from the `c` category; the universe denominators come from the
+    document's top-level `measures`. A report without categories (an older one) falls back to the
+    top-level measures.
+
+    重建 C 口径 = `c` 分类的匹配计数 + 顶层分母，即主进度指标。没有分类的旧报告回退到顶层 measures。
+    """
+    top = doc.get("measures") or {}
+    cat = category_measures(doc, "c")
+    if not cat:
+        return top
+    try:
+        mf = int(cat.get("matched_functions") or 0)
+        mc = int(cat.get("matched_code") or 0)
+        tf = int(top.get("total_functions") or 0)
+        tc = int(top.get("total_code") or 0)
+    except (TypeError, ValueError):
+        return top
+    return {
+        "matched_functions": mf,
+        "total_functions": tf,
+        "matched_functions_percent": round(100.0 * mf / tf, 4) if tf else 0.0,
+        "matched_code": mc,
+        "total_code": tc,
+        "matched_code_percent": round(100.0 * mc / tc, 4) if tc else 0.0,
+    }
+
+
 def check_no_regression(base_path: Path, report_path: Path) -> None:
-    """The report must not fall behind the baseline."""
+    """The report must not fall behind the baseline.
+
+    The gate compares the reconstructed-C metric (the main progress). The match-build total can
+    include copied assembly that is withdrawn on purpose; that is not a C regression.
+    不回归门比较「重建 C」主指标。匹配构建总数可能含被撤下的照抄汇编，那不算 C 退步。
+    """
     base = load_report(base_path)
     cur = load_report(report_path)
     if not base or not cur:
         bad("the baseline or the report is missing, so the comparison is not possible")
         return
-    problems, oks = regression_hits(base.get("measures", {}), cur.get("measures", {}))
+    problems, oks = regression_hits(c_only_measures(base), c_only_measures(cur))
     for m in problems:
         bad(m)
     for m in oks:
@@ -493,7 +547,9 @@ def check_publication(root: Path, base: str) -> list[str]:
     if old is None:
         problems.append(f"cannot read progress/baseline.json at {base} (fail closed)")
     else:
-        reg, _oks = regression_hits(old.get("measures", {}), report_doc.get("measures", {}))
+        # Compare the reconstructed-C metric, as the always-on gate does.
+        # 与常驻门一致：比较「重建 C」主指标。
+        reg, _oks = regression_hits(c_only_measures(old), c_only_measures(report_doc))
         problems.extend(reg)
     return problems
 

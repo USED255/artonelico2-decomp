@@ -118,6 +118,9 @@ python3 tools/maintainer/publish_report.py \
 冒烟」时才会发布。随后它写入 `progress/SLPS_258.19_report.json` 并更新 `PUBLISHED.json`，同时与
 基线比对数字（**含分母**）。用 `--force --reason "..."` 越过门禁，理由会记进 `PUBLISHED.json`。
 
+不回归门比较的是**重建 C 分类**（主口径），不是匹配构建总数：主动撤下的照抄汇编会降低总数，但不算 C 退步。
+门禁读取报告的 `c` 分类与全体分母。
+
 **只要这次发布的报告内容变了，就必须带 `--freeze-baseline`。** `progress/baseline.json` 是冻结参照，
 而发布门禁会拒绝「基线与所发布报告对不上」的 PR（报 `the baseline provenance does not describe the
 published report`）。该参数写进去的是 **provenance 记录**（验证了什么），不是报告副本，这样

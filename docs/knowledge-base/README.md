@@ -2,8 +2,7 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-Reference material about this game and its toolchain. The operational documents (build, policy,
-transcription, contribution) stay one level up in [docs/](../README.md).
+Reference material about this game and its toolchain. The operational documents (build, policy, contribution) stay one level up in [docs/](../README.md).
 
 ## 1. Compiler handbook
 

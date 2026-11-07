@@ -6,7 +6,6 @@
 | --- | --- |
 | build the project | [BUILD.md](BUILD.md) |
 | know what may be published | [PUBLICATION-POLICY.md](PUBLICATION-POLICY.md) |
-| understand the transcription metric | [TRANSCRIPTION.md](TRANSCRIPTION.md) |
 | understand the compiler, the disc formats, or what cannot be matched | [knowledge-base/README.md](knowledge-base/README.md) |
 | contribute a matched function | [../CONTRIBUTING.md](../CONTRIBUTING.md) |
 

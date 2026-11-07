@@ -58,8 +58,7 @@ A match is a loop, not a single step. This is the loop:
 6. **Send the evidence.** Add the file, run the commands in section 2, and open a pull request with
    the objdiff result.
 
-A function that only matches by copying the retail instructions is a transcription, not a match.
-It is counted separately: see [docs/TRANSCRIPTION.md](docs/TRANSCRIPTION.md).
+A function that only matches by copying the retail instructions is not a decompiled match.
 
 ## 4. Send a pull request
 

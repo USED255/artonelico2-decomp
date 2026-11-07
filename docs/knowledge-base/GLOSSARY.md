@@ -43,7 +43,6 @@ All of these are described in [FORMATS.md](FORMATS.md).
 | --- | --- |
 | **matching decompilation** | Reconstructing C source that compiles, with the original compiler, to the **same bytes** as the retail function. It is the only reverse-engineering form that can be checked automatically. |
 | **matched function** | A function whose rebuilt object is byte-identical to the retail one. The main progress metric counts matched functions whose source is C. |
-| **transcription** | Copying the target instructions verbatim into an assembly block instead of reconstructing C. The object matches byte for byte, but no C was recovered. Counted as a separate metric; see [TRANSCRIPTION.md](../TRANSCRIPTION.md). |
 | **fakematch** | A byte match that the original developer's source could not have produced. The community treats it as invalid. |
 | **splat** | A binary splitter (from N64 projects, with PS2 support) that produces per-function assembly and a linker script. |
 | **spimdisasm** | The MIPS disassembler behind splat. |
@@ -63,7 +62,6 @@ All of these are described in [FORMATS.md](FORMATS.md).
 | Term | Meaning |
 | --- | --- |
 | **main metric** | The headline percentage: matched functions whose matched source is reconstructed C. |
-| **transcription metric** | A separate subtotal for functions matched by verbatim assembly transcription. Never added to the main metric. |
 | **matching-gate** | The CI workflow that rebuilds the payload and verifies a change against the retail binary. |
 | **progress report** | `progress/SLPS_258.19_report.json`, written by a verified build; decomp.dev reads it. |
 | **baseline report** | `progress/baseline.json`, the last published report. CI refuses to publish a worse one. |

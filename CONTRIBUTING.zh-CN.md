@@ -49,8 +49,7 @@ make check                       # 仓库自检
    [KNOWN-BLOCKERS](docs/knowledge-base/KNOWN-BLOCKERS.zh-CN.md)，按它的停止条件停下。
 6. **交证据**：加文件、跑第 2 节的命令，然后提 PR，附上 objdiff 结果。
 
-只靠照抄零售指令匹配上的函数是**转录**，不算匹配；它单独计数，见
-[docs/TRANSCRIPTION.zh-CN.md](docs/TRANSCRIPTION.zh-CN.md)。
+只靠照抄零售指令匹配上的函数不算匹配。
 
 ## 4. 提 PR
 

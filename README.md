@@ -21,8 +21,6 @@ report `sha256:1c837fb42af2…`, payload `sha1:7cc42d275750600d…`):
 - Matched functions: **4,800 / 10,923 (43.94%)**
 - Matched code: **268,372 / 2,276,780 bytes (11.79%)**
 
-The main metric counts reconstructed C only — see [docs/TRANSCRIPTION.md](docs/TRANSCRIPTION.md).
-
 CI does not publish a report that is worse than the baseline. Progress history:
 <https://decomp.dev/USED255/artonelico2-decomp>.
 

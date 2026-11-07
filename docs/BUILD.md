@@ -153,6 +153,10 @@ smoke test. It then writes `progress/SLPS_258.19_report.json` and updates `PUBLI
 checks the numbers (including the denominators) against the baseline. Use `--force --reason "..."`
 to override the gate; the reason is recorded in `PUBLISHED.json`.
 
+The no-regression gate compares the **reconstructed-C category** (the main metric), not the
+match-build total. Copied assembly that is withdrawn on purpose lowers the total but is not a C
+regression; the gate reads the `c` category and the full-universe denominators.
+
 **Pass `--freeze-baseline` whenever the report content changes.** `progress/baseline.json` is the
 frozen reference, and the publication gate refuses a pull request whose baseline does not describe
 the report being published (`the baseline provenance does not describe the published report`). The

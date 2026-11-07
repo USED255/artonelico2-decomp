@@ -247,6 +247,23 @@ def report_bytes(matched: int) -> bytes:
     return (json.dumps(doc, indent=1) + "\n").encode()
 
 
+def doc_with_c(total_matched: int, c_matched: int) -> dict:
+    """A report/provenance document whose match-build total and C category can differ."""
+    return {"measures": measures_for(total_matched),
+            "categories": {"c": measures_for(c_matched), "asm": {}}}
+
+
+# The no-regression gate compares the reconstructed-C category, not the match-build total.
+# Withdrawing copied assembly lowers the total but must not look like a C regression.
+# 不回归门比较「重建 C」分类而非匹配构建总数：撤下照抄汇编会降低总数，但不应被当成 C 退步。
+probs, _ = C.regression_hits(C.c_only_measures(doc_with_c(12, 10)),
+                             C.c_only_measures(doc_with_c(10, 10)))
+check("withdrawn asm units do not count as a C regression", not probs, str(probs))
+probs, _ = C.regression_hits(C.c_only_measures(doc_with_c(12, 10)),
+                             C.c_only_measures(doc_with_c(11, 9)))
+check("a lower C category is still refused", any("regression" in m for m in probs), str(probs))
+
+
 def provenance_for(rep: bytes, measures: dict, **over) -> dict:
     prov = {"schema": "at2-progress-baseline/1", "source_commit": "b" * 40, "source_dirty": False,
             "payload_check": {"ok": True, "baseline_sha1": PAYLOAD, "mixed_sha1": PAYLOAD,
